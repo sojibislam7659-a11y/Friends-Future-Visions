@@ -28,7 +28,7 @@ button,input{font:inherit}button{cursor:pointer}.wrap{max-width:1120px;margin:au
   <section class="hero">
     <div>
       <div class="eyebrow" data-bn="স্বচ্ছ হিসাব • সহজ ব্যবহার" data-en="CLEAR RECORDS • SIMPLE TO USE">স্বচ্ছ হিসাব • সহজ ব্যবহার</div>
-      <h1 data-bn="আমাদের সঞ্চয়, আমাদের ভবিষ্যৎ" data-en="Our Savings, Our Future">আমাদের সঞ্চয়, আমাদের ভবিষ্যৎ</h1>
+      <h1 data-bn="আমাদের সঞ্চয়, আমাদের ভবিষ্যৎ TEST 123" data-en="Our Savings, Our Future">আমাদের সঞ্চয়, আমাদের ভবিষ্যৎ TEST 123</h1>
       <p data-bn="কমিটির নিয়ম, সামগ্রিক তহবিলের সারসংক্ষেপ এবং সদস্যদের জন্য সহজ অনলাইন সেবা—সব এক জায়গায়।" data-en="Committee rules, a public fund summary, and simple online services for members—all in one place.">কমিটির নিয়ম, সামগ্রিক তহবিলের সারসংক্ষেপ এবং সদস্যদের জন্য সহজ অনলাইন সেবা—সব এক জায়গায়।</p>
       <div class="actions"><button class="btn primary" onclick="openLogin()" data-bn="সদস্য লগইন" data-en="Member Login">সদস্য লগইন</button><button class="btn secondary" onclick="showInfo('rules')" data-bn="নিয়মাবলি দেখুন" data-en="View Rules">নিয়মাবলি দেখুন</button></div>
     </div>
@@ -75,5 +75,8 @@ function closeModal(){document.getElementById('modal').classList.remove('open')}
 function showInfo(section){let title,text;if(section==='rules'){title=currentLang==='bn'?'কমিটির নিয়মাবলি':'Committee Rules';text=currentLang==='bn'?'এখানে অনুমোদিত নিয়মাবলি, মাসিক কিস্তির তারিখ, বকেয়া নীতি ও অন্যান্য শর্ত যোগ করা হবে।':'Approved rules, monthly contribution dates, overdue policy, and other terms will appear here.'}else if(section==='data'){title=currentLang==='bn'?'সামগ্রিক হিসাব':'Overall Data';text=currentLang==='bn'?'এখানে অ্যাডমিনের যাচাই করা সামগ্রিক তহবিলের হিসাব দেখানো হবে। ব্যক্তিগত সদস্যের তথ্য প্রকাশ করা হবে না।':'The verified overall fund summary will appear here. Individual member details will not be public.'}else{title=currentLang==='bn'?'প্রধান মেনু':'Main Menu';text=currentLang==='bn'?'সদস্যদের ব্যক্তিগত পেজ লগইনের পরই পাওয়া যাবে।':'Members-only pages will be available after secure login is connected.'}document.getElementById('modalTitle').textContent=title;document.getElementById('modalText').textContent=text;document.getElementById('userId').style.display='none';document.querySelector('label[for="userId"]').style.display='none';document.getElementById('password').style.display='none';document.querySelector('label[for="password"]').style.display='none';document.querySelector('.status').style.display='none';document.querySelector('.modal-actions button.primary').style.display='none';document.getElementById('modal').classList.add('open');}
 document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
 </script>
+
+  <!-- AUTO DEPLOY TEST -->
+
 </body>
 </html>
