@@ -28,3 +28,21 @@ No table query is implemented here. The schema and RLS policies must be inspecte
 - [ ] Financial write permissions verified
 - [ ] Private storage access verified
 - [ ] Backup and recovery plan confirmed
+
+
+## Grant audit review (owner-provided output)
+The supplied `information_schema.role_table_grants` output shows no table-level privileges (SELECT, INSERT, UPDATE, DELETE, etc.) for `anon` or `authenticated` on `profiles`, `members`, `financial_transactions`, and `payment_submissions`. This is a positive least-privilege signal, but it is not a complete security verdict.
+
+Important:
+- Grants and RLS policies are separate controls.
+- The output does not show column-level grants, inherited role memberships, function EXECUTE privileges, or storage object policies.
+- The `service_role` rows shown as NO in this particular result do not prove service-role access is unavailable; Supabase service-role access is privileged and bypasses RLS. Never expose its key.
+- Do not grant broad table access merely to make the browser UI work. If authenticated browser access is needed, grant only the minimum required privileges and rely on tested RLS policies.
+
+Still required before login activation:
+- RLS enabled/forced status for all four tables.
+- Complete `pg_policies` output for those tables.
+- Relevant columns and foreign keys, especially the mapping from `auth.uid()` to exactly one member.
+- Function definitions and EXECUTE grants for any security-definer or RPC functions.
+- Storage bucket privacy and storage.objects policies.
+- Separate-account tests proving cross-member reads and unauthorized writes are denied.
