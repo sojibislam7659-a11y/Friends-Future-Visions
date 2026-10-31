@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#075e4b"><meta name="robots" content="noindex,nofollow">
+<title>সদস্য লগইন | ঐক্য সঞ্চয় সমিতি</title>
+<style>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#f4f7f5;color:#18372f;font-family:system-ui,"Noto Sans Bengali",sans-serif}.panel{width:min(100%,420px);padding:30px;background:#fff;border:1px solid #dce7e1;border-radius:18px}.mark{width:46px;height:46px;display:grid;place-items:center;border-radius:50%;background:#e8f3ed;color:#075e4b;font-size:22px}.muted{color:#687a73;font-size:13px;line-height:1.7}label{display:block;margin:18px 0 7px;font-size:13px;font-weight:700}input{width:100%;height:47px;padding:0 12px;border:1px solid #dce7e1;border-radius:9px;font:inherit}button{width:100%;height:47px;margin-top:22px;border:0;border-radius:9px;background:#075e4b;color:white;font-weight:700;font-size:14px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.message{display:none;margin-top:14px;padding:12px;border-radius:9px;background:#fff4d8;color:#72530c;font-size:12px;line-height:1.6}.back{display:inline-block;margin-top:20px;color:#075e4b;text-decoration:none;font-size:13px}
+</style></head>
+<body><main class="panel">
+<div class="mark">ঐ</div><h2>ঐক্য সঞ্চয় সমিতি</h2><p class="muted">নিবন্ধিত Email ও Password দিয়ে সদস্য পোর্টালে প্রবেশ করুন।</p>
+<form id="loginForm">
+<label for="email">Email Address</label><input id="email" type="email" autocomplete="username" required placeholder="name@example.com">
+<label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required placeholder="আপনার পাসওয়ার্ড">
+<button id="submitButton" type="submit">লগইন করুন</button>
+<div class="message" id="message" role="alert"></div>
+</form>
+<p class="muted">শুধু অনুমোদিত ব্যবহারকারীরা প্রবেশ করতে পারবেন। ব্যক্তিগত সদস্য-তথ্য কেবল Super Admin-এর জন্য সংরক্ষিত।</p>
+<a class="back" href="index.html">← মূল পেজে ফিরে যান</a>
+</main>
+<script type="module">
+import { signIn, getSession } from "./auth.js";
+const form=document.getElementById("loginForm");
+const button=document.getElementById("submitButton");
+const message=document.getElementById("message");
+function showMessage(text){message.textContent=text;message.style.display="block";}
+form.addEventListener("submit",async event=>{
+ event.preventDefault();message.style.display="none";button.disabled=true;button.textContent="যাচাই হচ্ছে…";
+ const email=document.getElementById("email").value.trim();
+ const password=document.getElementById("password").value;
+ try{
+  const result=await signIn(email,password);
+  const session=result.session || await getSession();
+  if(!session) throw new Error("লগইন সেশন তৈরি হয়নি। আবার চেষ্টা করুন।");
+  const {supabase}=await import("./supabase-client.js");
+  const {data:profile,error}=await supabase.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+  if(error) throw new Error("আপনার অ্যাক্সেস যাচাই করা যায়নি। Admin-এর সঙ্গে যোগাযোগ করুন।");
+  if(!profile){await supabase.auth.signOut();throw new Error("এই অ্যাকাউন্টের কমিটি প্রোফাইল পাওয়া যায়নি। Admin-এর সঙ্গে যোগাযোগ করুন।");}
+  if(profile.role==="super_admin" || profile.role==="admin") window.location.replace("dashboard.html");
+  else if(profile.role==="member") window.location.replace("dashboard.html");
+  else {await supabase.auth.signOut();throw new Error("এই অ্যাকাউন্টের অনুমতি নির্ধারিত নয়।");}
+ }catch(error){showMessage(error.message || "লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।");}
+ finally{button.disabled=false;button.textContent="লগইন করুন";document.getElementById("password").value="";}
+});
+</script></body></html>
