@@ -1,48 +1,45 @@
 # Supabase integration readiness
 
-## What is prepared
-- `supabase-client.js`: browser client scaffold with session persistence and safe placeholders.
-- `auth.js`: sign-in, sign-out, session lookup, and auth-state listener helpers.
+## Current environment
+- The browser client in `supabase-client.js` is configured for **Project 1**.
+- The GitHub `development` branch and its Preview website therefore use Project 1 unless the client configuration is changed.
+- Do not perform database writes from Preview. A Preview page can still read or write the same live database when it uses this client.
+- Project 2 is not the active database target for this workflow.
 
-These files are not active until configured. No credentials have been added and no live database is queried.
+## Security boundary
+- The browser client must contain only the public anon/publishable key.
+- Never add a `service_role` key, secret key, database password, or privileged credential to browser files or GitHub.
+- Client-side page guards are navigation safeguards only. Supabase RLS and database privileges are the actual data-security boundary.
+- Do not assume that RLS being enabled means the policies are correct.
 
-## Required before activation
-1. Add only the Supabase project URL and anon/publishable key to `supabase-client.js`.
-2. Never add the service_role key, database password, or any privileged secret to browser files or GitHub.
-3. Inspect the actual current columns, constraints, triggers, RLS policies, and storage policies in Supabase.
-4. Verify that a normal member can read only the member row linked to their own authenticated UID and only their own financial records.
-5. Verify that a normal member cannot approve members, assign member numbers, alter status, change auth links, or write committee financial transactions.
-6. Verify that only the designated committee administrator can approve applications and assign member IDs. Enforce this in database policies or trusted server-side functions, not just in the UI.
-7. Test with separate administrator and member accounts, including attempts to read another member's records.
-8. Keep payment evidence in a private storage bucket with access policies.
+## Before any Project 1 database change
+1. Take and verify a recoverable backup of the database, including schema and data. Confirm the available restore method before proceeding.
+2. Capture the current schema, constraints, indexes, triggers, functions, grants, RLS policies, and Storage policies.
+3. Prepare a migration that is narrow, repeatable where practical, and includes a rollback or forward-repair plan.
+4. Review the SQL before execution. Do not execute destructive or irreversible statements without explicit approval.
+5. Test the change and verify the resulting permissions and data integrity.
 
-## Current intentional limitation
-No table query is implemented here. The schema and RLS policies must be inspected before choosing queries; guessing column names or assuming that RLS is correct could expose private member and financial data.
+## Role model to implement and verify
+- `super_admin`: full committee administration, with financial changes and member deletion restricted to this role.
+- `admin`: read-only financial access; can view and manage member details within the agreed limits; cannot alter transactions, roles, or settings.
+- `member`: aggregate dashboard only, plus their own permitted personal and financial summary; no access to other members' private data.
+- Overall financial dashboard values must be served through a safe aggregate view/RPC. Do not expose raw financial transaction rows to ordinary members.
 
-## Activation checklist
-- [ ] Public URL and anon/publishable key configured
-- [ ] RLS policy review completed
-- [ ] Admin-only approval and member-number assignment verified
-- [ ] Member self-access verified
-- [ ] Cross-member access denied
-- [ ] Financial write permissions verified
-- [ ] Private storage access verified
-- [ ] Backup and recovery plan confirmed
+## Accounting model
+- Track hand cash and bank balances separately.
+- Transfers between cash and bank change account balances but are not income or expense.
+- Project investment is an asset movement, not an expense.
+- Record project-level profit/loss separately.
+- Avoid double-counting transfers and investments in income/expense totals.
 
+## Current code limitations observed on development
+- `admin.html` and `member.html` are role-guarded placeholders; they do not yet render committee data.
+- No dashboard data queries are implemented in `auth.js` or `auth-guard.js`.
+- The current `wrangler.jsonc` sets the repository root as the static asset directory. This can publish repository files that should remain internal; restrict public assets to a dedicated public directory before adding SQL migrations, backups, or internal documentation.
+- Do not enable database writes from the Preview site while its browser client points to Project 1.
 
-## Grant audit review (owner-provided output)
-The supplied `information_schema.role_table_grants` output shows no table-level privileges (SELECT, INSERT, UPDATE, DELETE, etc.) for `anon` or `authenticated` on `profiles`, `members`, `financial_transactions`, and `payment_submissions`. This is a positive least-privilege signal, but it is not a complete security verdict.
-
-Important:
-- Grants and RLS policies are separate controls.
-- The output does not show column-level grants, inherited role memberships, function EXECUTE privileges, or storage object policies.
-- The `service_role` rows shown as NO in this particular result do not prove service-role access is unavailable; Supabase service-role access is privileged and bypasses RLS. Never expose its key.
-- Do not grant broad table access merely to make the browser UI work. If authenticated browser access is needed, grant only the minimum required privileges and rely on tested RLS policies.
-
-Still required before login activation:
-- RLS enabled/forced status for all four tables.
-- Complete `pg_policies` output for those tables.
-- Relevant columns and foreign keys, especially the mapping from `auth.uid()` to exactly one member.
-- Function definitions and EXECUTE grants for any security-definer or RPC functions.
-- Storage bucket privacy and storage.objects policies.
-- Separate-account tests proving cross-member reads and unauthorized writes are denied.
+## Release policy
+- Develop and review code on GitHub `development`.
+- Preview must not perform writes against Project 1.
+- Merge to GitHub `main` and deploy Production only after review and explicit user approval.
+- Do not create another Supabase project or branch for this workflow.
