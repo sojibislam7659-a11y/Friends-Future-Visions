@@ -1,21 +1,20 @@
 <!doctype html>
 <html lang="bn">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#075e4b">
-<title>Admin Panel | Oikko Savings Committee</title>
+<title>অ্যাডমিন অ্যাক্সেস সীমাবদ্ধ | ঐক্য সঞ্চয় সমিতি</title>
 <style>
-:root{--g:#075e4b;--g2:#0c8064;--bg:#f4f7f5;--ink:#18372f;--muted:#687a73;--line:#dce7e1;--white:#fff;--amber:#fff4d8}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Noto Sans Bengali",sans-serif}.wrap{max-width:1120px;margin:auto;padding:22px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}.brand{font-weight:800;font-size:22px}.sub{font-size:12px;color:var(--muted);margin-top:4px}.tag{font-size:12px;background:var(--amber);color:#72530c;padding:8px 11px;border-radius:20px}.notice{background:#fff;border:1px solid #efd99a;border-left:4px solid #d6a32c;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.6;margin-bottom:20px}.title{font-size:20px;margin:24px 0 12px}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.card{background:#fff;border:1px solid var(--line);border-radius:15px;padding:17px}.card span{font-size:12px;color:var(--muted)}.card b{display:block;font-size:24px;margin-top:8px}.actions{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.action{background:#fff;border:1px solid var(--line);border-radius:14px;padding:17px}.action b{display:block;margin-bottom:6px}.action p{font-size:12px;line-height:1.5;color:var(--muted);margin:0}.tablebox{overflow:auto;background:#fff;border:1px solid var(--line);border-radius:14px}table{border-collapse:collapse;width:100%;min-width:600px;font-size:13px}th,td{text-align:left;padding:13px 15px;border-bottom:1px solid var(--line)}th{background:#edf5f0;color:var(--g)}.empty{text-align:center;color:var(--muted);padding:24px}.back{display:inline-block;margin-top:22px;color:var(--g);text-decoration:none;font-weight:700}@media(max-width:700px){.wrap{padding:14px}.stats{grid-template-columns:repeat(2,1fr)}.actions{grid-template-columns:1fr}.brand{font-size:18px}}
-</style></head>
-<body><main class="wrap">
-<header class="top"><div><div class="brand">ঐক্য সঞ্চয় সমিতি — Admin Panel</div><div class="sub">প্রশাসনিক ড্যাশবোর্ডের প্রাথমিক কাঠামো</div></div><span class="tag">Preview / Not connected</span></header>
-<section class="notice"><b>গুরুত্বপূর্ণ নিরাপত্তা নোট:</b> এটি শুধু UI preview। এখনো Supabase Auth, role verification, database query বা কোনো admin action সংযুক্ত নয়। এই পেজকে নিরাপদ admin access হিসেবে ব্যবহার করবেন না; এখানে বাস্তব সদস্য বা আর্থিক তথ্য দেখানো হয় না।</section>
-<h2 class="title">কমিটির সারসংক্ষেপ</h2>
-<section class="stats"><div class="card"><span>মোট সদস্য</span><b>—</b></div><div class="card"><span>অনুমোদনের অপেক্ষায়</span><b>—</b></div><div class="card"><span>এই মাসের জমা</span><b>—</b></div><div class="card"><span>যাচাইকৃত তহবিল</span><b>—</b></div></section>
-<h2 class="title">অ্যাডমিন কাজ</h2>
-<section class="actions"><article class="action"><b>সদস্য আবেদন যাচাই</b><p>আবেদন দেখা, যাচাই করা, অনুমোদন/বাতিল এবং অনুমোদনের পর সদস্য ID বরাদ্দ।</p></article><article class="action"><b>সদস্য ব্যবস্থাপনা</b><p>সদস্যের অবস্থা, সংযুক্ত Auth account এবং প্রোফাইল তথ্য নিয়ন্ত্রিতভাবে পরিচালনা।</p></article><article class="action"><b>লেনদেন ও হিসাব</b><p>জমা, বিনিয়োগ, খরচ ও সংশোধনের audit trail-সহ হিসাব পরিচালনা।</p></article></section>
-<h2 class="title">সাম্প্রতিক আবেদন — UI placeholder</h2>
-<div class="tablebox"><table><thead><tr><th>আবেদনের তারিখ</th><th>নাম</th><th>ফোন</th><th>অবস্থা</th><th>অ্যাকশন</th></tr></thead><tbody><tr><td colspan="5" class="empty">ডেটাবেজ সংযোগ না থাকায় কোনো বাস্তব আবেদন দেখানো হচ্ছে না।</td></tr></tbody></table></div>
-<a class="back" href="index.html">← মূল ওয়েবসাইটে ফিরে যান</a>
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#f4f7f5;color:#18372f;font-family:system-ui,"Noto Sans Bengali",sans-serif}.panel{width:min(100%,480px);padding:28px;background:#fff;border:1px solid #dce7e1;border-radius:16px;text-align:center}.mark{width:48px;height:48px;margin:0 auto 16px;border-radius:50%;display:grid;place-items:center;background:#e8f3ed;color:#075e4b;font-size:23px}.muted{color:#687a73;font-size:14px;line-height:1.7}.notice{margin:18px 0;padding:12px;border-radius:10px;background:#fff4d8;color:#72530c;font-size:13px;line-height:1.6}.btn{display:inline-block;padding:11px 20px;border-radius:9px;background:#075e4b;color:white;text-decoration:none;font-weight:700}.back{display:block;margin-top:16px;color:#075e4b;text-decoration:none;font-size:13px}
+</style>
+</head>
+<body><main class="panel">
+<div class="mark">ঐ</div>
+<h2>অ্যাডমিন অ্যাক্সেস সীমাবদ্ধ</h2>
+<p class="muted">অ্যাডমিন ড্যাশবোর্ড শুধু যাচাইকৃত Super Admin-এর জন্য নির্ধারিত।</p>
+<div class="notice">এই পেজে এখনো কার্যকর লগইন ও অনুমতি যাচাই যুক্ত হয়নি। নিরাপত্তার কারণে ড্যাশবোর্ডের তথ্য ও কার্যক্রম বন্ধ রাখা হয়েছে।</div>
+<a class="btn" href="login.html">লগইন পেজে যান</a>
+<a class="back" href="index.html">মূল পেজে ফিরে যান</a>
 </main></body></html>
