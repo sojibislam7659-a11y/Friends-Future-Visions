@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#172b4d">
 <meta name="robots" content="noindex,nofollow">
-<title>সামগ্রিক ড্যাশবোর্ড | ঐক্য সঞ্চয় সমিতি</title>
+<title>সামগ্রিক ড্যাশবোর্ড | ফ্রেন্ডস ফিউচার ভিশন ফরএভার</title>
 <style>
 :root{color-scheme:light;--green:#075e4b;--green2:#0c8064;--ink:#18372f;--muted:#718078;--line:#e1ebe5;--bg:#f4f8f5;--white:#fff}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,"Hind Siliguri",system-ui,sans-serif}
@@ -193,7 +193,7 @@ input::placeholder{color:#8295ad}
 </head>
 <body>
 <header class="topbar">
- <div class="brand"><a class="home-icon" href="index.html" aria-label="হোম" title="হোম"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1z"/></svg></a><img class="logo" src="committee-logo.png" alt="ঐক্য লোগো"><div><div class="brand-name" data-bn="ঐক্য সঞ্চয় সমিতি" data-en="Oikko Savings Committee">ঐক্য সঞ্চয় সমিতি</div><div class="brand-sub">Oikko Savings Committee</div></div></div>
+ <div class="brand"><a class="home-icon" href="index.html" aria-label="হোম" title="হোম"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-6v-7h-4v7H4a1 1 0 0 1-1-1z"/></svg></a><img class="logo" src="friends-future-vision-logo.svg" alt="Friends Future Vision Forever লোগো"><div><div class="brand-name" data-bn="ফ্রেন্ডস ফিউচার ভিশন ফরএভার" data-en="Friends Future Vision Forever">ফ্রেন্ডস ফিউচার ভিশন ফরএভার</div><div class="brand-sub">Friends Future Vision Forever</div></div></div>
  <div class="top-actions"><span class="role" id="roleLabel">যাচাই হচ্ছে…</span><button id="languageButton" type="button" aria-label="Switch language">English</button><button id="logoutButton" type="button">লগআউট</button></div>
 </header>
 
@@ -228,7 +228,7 @@ input::placeholder{color:#8295ad}
  </section>
  <div class="notice"><strong data-bn="ডেটা নিরাপত্তা:" data-en="Data Security:">ডেটা নিরাপত্তা:</strong> <span data-bn="এই পর্যায়ে কোনো আর্থিক সংখ্যা দেখানো হচ্ছে না। ভুল বা অনুমানভিত্তিক ব্যালেন্স প্রকাশ না করে RLS-সুরক্ষিত aggregate data source প্রস্তুত হওয়ার পরই প্রকৃত হিসাব যুক্ত করা হবে।" data-en="No financial figures are displayed at this stage. Actual accounts will be connected only after an RLS-protected aggregate data source is ready, avoiding incorrect or estimated balances.">এই পর্যায়ে কোনো আর্থিক সংখ্যা দেখানো হচ্ছে না। ভুল বা অনুমানভিত্তিক ব্যালেন্স প্রকাশ না করে RLS-সুরক্ষিত aggregate data source প্রস্তুত হওয়ার পরই প্রকৃত হিসাব যুক্ত করা হবে।</span></div>
 </main>
-<footer data-bn="ঐক্য সঞ্চয় সমিতি · অনুমোদিত ব্যবহারকারীদের জন্য" data-en="Oikko Savings Committee · For authorized users only">ঐক্য সঞ্চয় সমিতি · অনুমোদিত ব্যবহারকারীদের জন্য</footer>
+<footer data-bn="ফ্রেন্ডস ফিউচার ভিশন ফরএভার · অনুমোদিত ব্যবহারকারীদের জন্য" data-en="Friends Future Vision Forever · For authorized users only">ফ্রেন্ডস ফিউচার ভিশন ফরএভার · অনুমোদিত ব্যবহারকারীদের জন্য</footer>
 <script type="module">
 import { requireRole } from "./auth-guard.js";
 import { supabase } from "./supabase-client.js";
@@ -257,7 +257,7 @@ function applyLanguage(language) {
   if (currentRole) {
     roleLabel.textContent = roleNames[lang][currentRole] || roleNames[lang].fallback;
   }
-  document.title = lang === "bn" ? "সামগ্রিক ড্যাশবোর্ড | ঐক্য সঞ্চয় সমিতি" : "Committee Dashboard | Oikko Savings Committee";
+  document.title = lang === "bn" ? "সামগ্রিক ড্যাশবোর্ড | ফ্রেন্ডস ফিউচার ভিশন ফরএভার" : "Committee Dashboard | Friends Future Vision Forever";
   try { localStorage.setItem("oikko-dashboard-language", lang); } catch (_) {}
 }
 
