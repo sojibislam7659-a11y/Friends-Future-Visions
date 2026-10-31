@@ -17,4 +17,7 @@
 <div class="notice">Login ও Super Admin Role যাচাই সফল হলে এই ড্যাশবোর্ডের পরবর্তী ফিচারগুলো চালু করা হবে। আপাতত কোনো কমিটি ডেটা দেখানো হচ্ছে না।</div>
 <a class="btn" href="login.html">লগইন পেজে যান</a>
 <a class="back" href="index.html">মূল পেজে ফিরে যান</a>
-</main><script type="module">\nimport { requireRole } from "./auth-guard.js";\nawait requireRole(["super_admin", "admin"]);\n</script>\n</body></html>
+</main><script type="module">
+import { requireRole } from "./auth-guard.js";
+await requireRole(["super_admin", "admin"]);
+</script>\n</body></html>
