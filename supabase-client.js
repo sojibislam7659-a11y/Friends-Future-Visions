@@ -6,7 +6,7 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const SUPABASE_URL = "https://ugtzmtmsfaajclftfeuz.supabase.co";
-const SUPABASE_ANON_KEY = "PASTE_SUPABASE_PUBLISHABLE_OR_ANON_KEY_HERE";
+const SUPABASE_ANON_KEY = "sb_publishable_j2LBGMqLPoaA9OD70W5pAw_Kgg9XEn9";
 
 const isConfigured =
   SUPABASE_URL.startsWith("https://") &&
