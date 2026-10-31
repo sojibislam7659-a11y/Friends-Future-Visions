@@ -24,13 +24,16 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #6eb4
 button{transition:background-color .16s ease,border-color .16s ease,color .16s ease}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
 </style><style id="oikko-page-refresh">
-body{background:#f5f8f6}
-.panel{border-color:#e5ece7;border-radius:20px;box-shadow:0 12px 42px rgba(20,47,40,.045);padding:34px}
-.mark{border-radius:14px}
-h2{font-family:Inter,"Hind Siliguri",sans-serif;font-size:24px;letter-spacing:-.035em}
-.btn{border-radius:999px;background:var(--green);padding:13px 24px}
-.notice{border-radius:12px}
-@media(max-width:520px){body{padding:14px}.panel{padding:26px 20px;border-radius:17px}}
+body{padding:24px;background:#f5f8f6}
+.panel{width:min(100%,500px);padding:clamp(28px,6vw,42px);border:1px solid #e3ebe5;border-radius:24px;box-shadow:0 18px 50px rgba(20,47,40,.05);text-align:left}
+.mark{width:52px;height:52px;margin:0 0 24px;border-radius:16px;background:#eaf3ed;font-size:24px}
+h2{margin:0 0 10px;font-size:clamp(25px,4vw,31px);font-weight:750;letter-spacing:-.05em;line-height:1.2}
+.muted{margin:0;font-size:14px;line-height:1.85}
+.notice{margin:24px 0;padding:16px 18px;border:1px solid #f0e4c7;border-radius:14px;background:#fffaf0;font-size:13px;line-height:1.8}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:12px 23px;border-radius:999px;background:var(--green);font-size:13px;font-weight:700;transition:background .18s ease,transform .18s ease}
+.btn:hover{background:var(--green-deep);transform:translateY(-1px)}
+.back{margin-top:23px;font-size:13px;font-weight:650}
+@media(max-width:520px){body{padding:14px}.panel{padding:27px 22px;border-radius:20px}.mark{margin-bottom:21px}}
 </style>
 </head>
 <body><main class="panel" data-protected-panel>
