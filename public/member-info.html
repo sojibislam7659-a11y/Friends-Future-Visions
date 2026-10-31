@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>MEMBER INFO | ঐক্য সঞ্চয় সমিতি</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="oikko-navigation">
+.oikko-nav{max-width:1160px;margin:14px auto 0;padding:12px 18px;display:flex;gap:9px;flex-wrap:wrap;background:linear-gradient(110deg,#d6edf2,#e3def7);border:1px solid #c5d8ed;border-radius:18px}
+.oikko-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:8px 15px;border-radius:999px;background:#eaf4fb;border:1px solid #c8dced;color:#24658a;text-decoration:none;font-size:12px;font-weight:750}
+.menu-toggle{border:1px solid #b7cde8;border-radius:999px;background:#d9e9f7;color:#234b70;min-height:42px;padding:8px 15px;font-weight:800;cursor:pointer}.menu-links{display:flex;gap:9px;flex-wrap:wrap}.menu-links[hidden]{display:none}@media(max-width:600px){.menu-links{flex:1 1 100%}.menu-links .nav-link{flex:1 1 calc(50% - 7px)}}
+.oikko-nav a:hover,.oikko-nav a[aria-current=page]{background:#ccebe8;border-color:#79c5c2;color:#08616b}
+@media(max-width:600px){.oikko-nav{margin:10px 10px 0;padding:10px;gap:7px}.oikko-nav a{flex:1 1 calc(50% - 7px);font-size:11px;min-height:44px}}
+.page-shell{max-width:1160px;margin:22px auto 60px;padding:34px 24px 48px;background:linear-gradient(145deg,#e8f1ff,#e4e8fb 60%,#e9e1fa);border:1px solid #c3d3ef;border-radius:24px}
+.page-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:22px}
+.page-card{display:block;padding:20px;border:1px solid #c5dced;border-radius:17px;background:linear-gradient(145deg,#e4f3f5,#dce9fb);text-decoration:none;color:#344d70}
+.page-card h2,.page-card h3{margin:0 0 7px;color:#087f8c;font-size:17px}
+.page-card p{margin:0;color:#526b86;font-size:13px;line-height:1.7}
+.page-note{margin-top:20px;padding:15px 17px;border:1px solid #e4d3e9;border-radius:14px;background:linear-gradient(110deg,#f7e9d9,#eee5fa);color:#765b43;font-size:13px;line-height:1.8}
+.profile-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-top:22px}
+.profile-field{padding:16px;border:1px solid #cbdced;border-radius:14px;background:#eef4ff}
+.profile-field span{display:block;color:#7964b5;font-size:12px;font-weight:700;margin-bottom:5px}
+.profile-field strong{color:#526b86;font-size:14px;font-weight:600}
+@media(max-width:600px){.page-shell{margin:12px 10px 35px;padding:25px 16px 32px;border-radius:19px}}
+</style><style>body{margin:0;background:radial-gradient(ellipse at 8% 4%,#c4e5f0,transparent 38%),radial-gradient(ellipse at 95% 85%,#ddd0f5,transparent 40%),#dce8ff;font-family:Inter,"Hind Siliguri",sans-serif;color:#526b86}.topbar{padding:16px max(18px,calc((100% - 1160px)/2));background:linear-gradient(105deg,#c9e7f1,#d9d8f6);font-weight:800;color:#397bc2}.eyebrow{font-size:11px;letter-spacing:.13em;color:#087f8c;font-weight:800}h1{font-size:clamp(27px,4vw,40px);color:#087f8c;margin:10px 0}p{line-height:1.8}</style></head>
+<body><header class="topbar">ঐক্য সঞ্চয় সমিতি · Oikko Savings Committee</header>
+<nav class="oikko-nav" aria-label="প্রধান মেনু">
+ <a class="nav-link" href="dashboard.html"><span data-bn="ড্যাশবোর্ড" data-en="DASHBOARD">ড্যাশবোর্ড</span></a>
+ <button class="menu-toggle" type="button" aria-expanded="true" aria-controls="oikko-menu-links"><span data-bn="মেনু ☰" data-en="MENU ☰">মেনু ☰</span></button>
+ <div class="menu-links" id="oikko-menu-links">
+  <a class="nav-link" href="rules.html"><span data-bn="নিয়মাবলি" data-en="RULES">নিয়মাবলি</span></a>
+  <a class="nav-link" href="member-info.html"><span data-bn="সদস্য পরিচিতি" data-en="MEMBER INFO">সদস্য পরিচিতি</span></a>
+  <a class="nav-link" href="data.html"><span data-bn="হিসাবের তথ্য" data-en="DATA">হিসাবের তথ্য</span></a>
+  <a class="nav-link" href="personal-due.html"><span data-bn="ব্যক্তিগত বকেয়া" data-en="PERSONAL DUE">ব্যক্তিগত বকেয়া</span></a>
+  <a class="nav-link" href="proof.html"><span data-bn="প্রমাণপত্র" data-en="PROOF">প্রমাণপত্র</span></a>
+ </div>
+</nav>
+<script>
+(()=>{const b=document.querySelector(".menu-toggle"),links=document.querySelector(".menu-links");if(!b||!links)return;b.addEventListener("click",()=>{const open=b.getAttribute("aria-expanded")==="true";b.setAttribute("aria-expanded",String(!open));links.hidden=open;});})();
+</script><main class="page-shell" data-protected-panel><div class="eyebrow">MEMBER INFO</div><h1>সদস্য পরিচিতি</h1><p>১২ জন সদস্যের আলাদা প্রোফাইল পেজে যাও। নাম, ছবি ও ব্যক্তিগত তথ্য পরে যোগ করা যাবে।</p><div class="page-note">এখন ১২টি placeholder profile তৈরি করা হচ্ছে। বাস্তব ব্যক্তিগত তথ্য এখনো যুক্ত করা হয়নি।</div><section class="page-grid" aria-label="১২ জন সদস্যের প্রোফাইল"><a class="page-card" href="member-01.html"><h2>সদস্য 1</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-02.html"><h2>সদস্য 2</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-03.html"><h2>সদস্য 3</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-04.html"><h2>সদস্য 4</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-05.html"><h2>সদস্য 5</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-06.html"><h2>সদস্য 6</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-07.html"><h2>সদস্য 7</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-08.html"><h2>সদস্য 8</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-09.html"><h2>সদস্য 9</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-10.html"><h2>সদস্য 10</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-11.html"><h2>সদস্য 11</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a><a class="page-card" href="member-12.html"><h2>সদস্য 12</h2><p>নাম ও প্রোফাইল তথ্য পরে যোগ করা হবে</p></a></section></main><script type="module">import {requireRole} from "./auth-guard.js";await requireRole(["super_admin","admin","member"]);</script></body></html>

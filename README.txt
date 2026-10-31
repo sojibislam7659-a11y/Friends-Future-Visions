@@ -1,22 +1,44 @@
 OIKKO SAVINGS COMMITTEE — WEBSITE STARTER
 
-Included:
-- index.html: responsive Bangla/English homepage prototype
-- assets/committee-logo.png: newly generated logo concept
+Current files on the development branch:
+- index.html: responsive Bangla/English public homepage prototype
+- admin.html: administrative dashboard UI preview (not connected)
+- member.html: member dashboard UI preview (not connected)
+- supabase-client.js: browser client scaffold with safe placeholders
+- auth.js: Supabase Auth helper scaffold (not connected to homepage UI)
+- supabase-audit.sql: read-only metadata/security audit queries
+- SUPABASE_READINESS.md: backend activation and security checklist
+- committee-logo.png: committee logo asset
+- oikko_committee_website_starter.zip: original starter archive
 
-IMPORTANT:
-This is a FRONT-END DESIGN PROTOTYPE, not a live website and not a secure production system.
-The login screen is intentionally non-functional. Do not enter real passwords or financial information.
-The displayed fund amounts are placeholders set to zero.
-No Google Form, database, real member accounts, private proof storage, or admin authentication is connected yet.
+IMPORTANT — CURRENT STATUS:
+This repository is still a prototype, not a production-ready financial system.
+The homepage login is intentionally non-functional. The admin and member pages are static UI previews only.
+Do not enter real passwords or financial information into the prototype.
+Displayed amounts and dashboard values are placeholders; no real balances or transactions are shown.
+No live authentication, role verification, dashboard data query, or payment workflow is connected to these new pages.
 
-Planned production setup (free-tier target):
-1. Publish the static front end using a free hosting plan.
-2. Configure secure authentication and database permissions (e.g. Supabase).
-3. Make member rows accessible only to their owner; admin role can manage all.
-4. Store receipt images in private storage, never a public folder.
-5. Add the Google Form link(s) for deposit information, withdrawal requests, and other requests.
-6. Connect verified admin entries to the public aggregate summary and each member's own due page.
-7. Test access with separate member accounts before real use.
+Existing backend context:
+The project has previously used Supabase tables and a Google Forms/Sheets synchronization workflow. Their current schema, policies, function configuration, and deployment state must be re-verified before frontend integration. Do not assume that a table existing means its access policies are secure.
 
-No paid domain or paid service is required for this initial prototype. Free plans have limits and can change.
+Production implementation sequence:
+1. Run supabase-audit.sql in Supabase SQL Editor and review its metadata-only results.
+2. Re-verify Supabase Auth, table schemas, RLS policies, storage policies, and Edge Function configuration.
+3. Define and test role boundaries: only the committee's authorized administrator can approve applicants and assign member IDs; members can read only their own approved profile and transactions.
+4. Connect authentication and enforce authorization in the database; never rely on hiding buttons or frontend-only role checks.
+5. Connect the admin workflow for pending applications, member approval/ID assignment, and audited financial entries.
+6. Connect the member dashboard to the authenticated member's own profile, dues, and transaction history.
+7. Keep payment proof files in private storage and authorize access per member/admin.
+8. Verify public aggregate totals are calculated from approved/verified records and do not expose private member details.
+9. Test with separate admin and member accounts, including attempts to access another member's records.
+10. Deploy only after the security and data-integrity tests pass.
+
+Security constraints:
+- Never place a Supabase service_role key or other privileged secret in browser code or a public repository.
+- Browser code may use only the project's publishable/anon key with correctly configured RLS.
+- Do not change production member data, financial records, authentication settings, or security policies without explicit authorization.
+- Do not use real member information in static previews.
+- supabase-audit.sql contains SELECT-only metadata queries; it does not prove policies are safe and does not inspect private member row contents.
+
+Hosting:
+A free static hosting tier may be sufficient for the frontend prototype, but service limits and terms can change. Production use requires a tested deployment and backup/recovery plan.
