@@ -17,4 +17,7 @@
 <div class="notice">Login ও Member Role যাচাই সফল হলে অনুমোদিত সদস্য-তথ্য এখানে দেখানো হবে। আপাতত কোনো কমিটি ডেটা দেখানো হচ্ছে না।</div>
 <a class="btn" href="login.html">লগইন পেজে যান</a>
 <a class="back" href="index.html">মূল পেজে ফিরে যান</a>
-</main><script type="module">\nimport { requireRole } from "./auth-guard.js";\nawait requireRole(["member"]);\n</script>\n</body></html>
+</main><script type="module">
+import { requireRole } from "./auth-guard.js";
+await requireRole(["member"]);
+</script>\n</body></html>
