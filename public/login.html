@@ -106,6 +106,56 @@ button{background:linear-gradient(110deg,#087f8c,#397bc2);box-shadow:0 9px 22px 
 .privacy{color:#536987}
 .message{background:#fff0dc;border-color:#f0d5ad;color:#79541d}
 </style>
+
+<style id="oikko-multicolour-typography">
+:root{
+ --type-body:#526b86;
+ --type-muted:#71849b;
+ --type-teal:#087f8c;
+ --type-green:#16856d;
+ --type-blue:#397bc2;
+ --type-purple:#7964b5;
+ --type-coral:#c87562;
+ --type-navy:#344d70;
+ --type-line:#cbdced;
+}
+body{color:var(--type-body)}
+h1{
+ color:var(--type-teal);
+ background:linear-gradient(100deg,#087f8c 0%,#397bc2 48%,#7964b5 100%);
+ -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+h2{
+ color:var(--type-blue);
+ background:linear-gradient(100deg,#16856d 0%,#397bc2 58%,#7964b5 100%);
+ -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+h3{color:var(--type-teal)}
+p,.intro,.muted,.sub,.brand-sub,.privacy,.security,.card-label,.section-head p{
+ color:var(--type-body);
+}
+.eyebrow,.kicker{color:var(--type-teal)}
+.brand,.brand-name{
+ color:var(--type-blue);
+ background:linear-gradient(100deg,#087f8c,#397bc2 58%,#7964b5);
+ -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+strong,b{color:var(--type-purple)}
+a:not(.button):not(.btn){color:var(--type-blue)}
+label{color:var(--type-purple)}
+.value{
+ color:var(--type-green);
+ background:linear-gradient(100deg,#16856d,#087f8c 45%,#397bc2 80%,#7964b5);
+ -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+}
+.pending{color:var(--type-coral)}
+.notice{color:#765b43}
+footer{color:var(--type-muted)}
+input,select,textarea{color:var(--type-navy)}
+input::placeholder{color:#8295ad}
+@media(prefers-reduced-motion:reduce){#oikko-multicolour-typography *{transition:none!important}}
+</style>
+
 </head>
 <body><main class="panel">
 <div class="brand"><div class="mark" aria-hidden="true">ঐ</div><div><div class="brand-name">ঐক্য সঞ্চয় সমিতি</div><div class="brand-sub">Oikko Savings Committee</div></div></div>
