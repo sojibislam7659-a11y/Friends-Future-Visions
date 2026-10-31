@@ -26,6 +26,36 @@ body{font-family:Inter,"Hind Siliguri",system-ui,sans-serif}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style id="oikko-design-system">
+:root{--green:#075e4b;--green-deep:#064b3d;--green-soft:#eaf3ed;--ink:#142f28;--muted:#687a72;--line:#e1e9e4;--canvas:#f5f8f6;--white:#fff;--radius:18px}
+html{scroll-behavior:smooth}
+body{font-family:Inter,"Hind Siliguri",system-ui,sans-serif;background:var(--canvas);color:var(--ink);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3,.brand-name,.brand,.value,.card-label,button,a{font-family:Inter,"Hind Siliguri",system-ui,sans-serif}
+:lang(bn),[lang="bn"]{font-family:"Hind Siliguri",Inter,system-ui,sans-serif}
+button,a,input{ -webkit-tap-highlight-color:transparent}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #6eb49c;outline-offset:3px}
+button{transition:background-color .16s ease,border-color .16s ease,color .16s ease}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
+</style><style id="oikko-page-refresh">
+body{background:#f5f8f6}
+.topbar{min-height:78px;padding:12px max(22px,calc((100% - 1160px)/2));border-bottom-color:#e7ede9}
+.brand-name{font-size:16px;letter-spacing:-.02em}
+.role{background:#edf5f0;border-radius:999px}
+button{border-radius:999px;padding:10px 16px}
+button:hover{background:#f3f8f5}
+main{padding-top:42px}
+h1{font-size:clamp(28px,4vw,38px);font-weight:800;letter-spacing:-.04em}
+.section-head{margin-top:34px}
+.section-head h2{font-size:19px;letter-spacing:-.02em}
+.grid{gap:16px}
+.card{border-radius:16px;border-color:#e5ece7;box-shadow:0 3px 12px rgba(20,47,40,.025);padding:20px}
+.value{font-size:27px;letter-spacing:-.03em}
+.lower{gap:16px}
+.empty{min-height:220px}
+.notice{border-radius:14px}
+@media(max-width:800px){main{padding-top:30px}.grid{gap:12px}}
+@media(max-width:520px){.topbar{padding:10px 13px}.brand-name{font-size:13px}main{padding:28px 14px 40px}.card{padding:15px;border-radius:13px}.value{font-size:22px}}
+</style>
 </head>
 <body>
 <header class="topbar">
