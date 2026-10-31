@@ -36,8 +36,8 @@ form.addEventListener("submit",async event=>{
   const {data:profile,error}=await supabase.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
   if(error) throw new Error("আপনার অ্যাক্সেস যাচাই করা যায়নি। Admin-এর সঙ্গে যোগাযোগ করুন।");
   if(!profile){await supabase.auth.signOut();throw new Error("এই অ্যাকাউন্টের কমিটি প্রোফাইল পাওয়া যায়নি। Admin-এর সঙ্গে যোগাযোগ করুন।");}
-  if(profile.role==="super_admin" || profile.role==="admin") window.location.replace("admin.html");
-  else if(profile.role==="member") window.location.replace("member.html");
+  if(profile.role==="super_admin" || profile.role==="admin") window.location.replace("dashboard.html");
+  else if(profile.role==="member") window.location.replace("dashboard.html");
   else {await supabase.auth.signOut();throw new Error("এই অ্যাকাউন্টের অনুমতি নির্ধারিত নয়।");}
  }catch(error){showMessage(error.message || "লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।");}
  finally{button.disabled=false;button.textContent="লগইন করুন";document.getElementById("password").value="";}
