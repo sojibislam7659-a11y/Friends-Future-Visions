@@ -3,6 +3,7 @@
 <style id="oikko-navigation">
 .oikko-nav{max-width:1160px;margin:14px auto 0;padding:12px 18px;display:flex;gap:9px;flex-wrap:wrap;background:linear-gradient(110deg,#d6edf2,#e3def7);border:1px solid #c5d8ed;border-radius:18px}
 .oikko-nav a{display:inline-flex;align-items:center;justify-content:center;min-height:42px;padding:8px 15px;border-radius:999px;background:#eaf4fb;border:1px solid #c8dced;color:#24658a;text-decoration:none;font-size:12px;font-weight:750}
+.menu-toggle{border:1px solid #b7cde8;border-radius:999px;background:#d9e9f7;color:#234b70;min-height:42px;padding:8px 15px;font-weight:800;cursor:pointer}.menu-links{display:flex;gap:9px;flex-wrap:wrap}.menu-links[hidden]{display:none}@media(max-width:600px){.menu-links{flex:1 1 100%}.menu-links .nav-link{flex:1 1 calc(50% - 7px)}}
 .oikko-nav a:hover,.oikko-nav a[aria-current=page]{background:#ccebe8;border-color:#79c5c2;color:#08616b}
 @media(max-width:600px){.oikko-nav{margin:10px 10px 0;padding:10px;gap:7px}.oikko-nav a{flex:1 1 calc(50% - 7px);font-size:11px;min-height:44px}}
 .page-shell{max-width:1160px;margin:22px auto 60px;padding:34px 24px 48px;background:linear-gradient(145deg,#e8f1ff,#e4e8fb 60%,#e9e1fa);border:1px solid #c3d3ef;border-radius:24px}
@@ -19,10 +20,16 @@
 </style><style>body{margin:0;background:radial-gradient(ellipse at 8% 4%,#c4e5f0,transparent 38%),radial-gradient(ellipse at 95% 85%,#ddd0f5,transparent 40%),#dce8ff;font-family:Inter,"Hind Siliguri",sans-serif;color:#526b86}.topbar{padding:16px max(18px,calc((100% - 1160px)/2));background:linear-gradient(105deg,#c9e7f1,#d9d8f6);font-weight:800;color:#397bc2}.eyebrow{font-size:11px;letter-spacing:.13em;color:#087f8c;font-weight:800}h1{font-size:clamp(27px,4vw,40px);color:#087f8c;margin:10px 0}p{line-height:1.8}</style></head>
 <body><header class="topbar">ঐক্য সঞ্চয় সমিতি · Oikko Savings Committee</header>
 <nav class="oikko-nav" aria-label="প্রধান মেনু">
- <a class="nav-link" href="dashboard.html">Dashboard</a>
- <a class="nav-link" href="rules.html">RULES</a>
- <a class="nav-link" href="member-info.html">MEMBER INFO</a>
- <a class="nav-link" href="data.html">DATA</a>
- <a class="nav-link" href="personal-due.html">PERSONAL DUE</a>
- <a class="nav-link" href="proof.html">PROOF</a>
-</nav><main class="page-shell" data-protected-panel><div class="eyebrow">RULES</div><h1>সমিতির নিয়মাবলি</h1><p>সমিতির অনুমোদিত নিয়ম, মাসিক জমা, সময়সীমা, জরিমানা, সভা ও সিদ্ধান্তের নথি এখানে থাকবে।</p><div class="page-note">এই পেজের নিয়মাবলি চূড়ান্তভাবে প্রকাশের আগে কমিটির অনুমোদন ও তোমার দেওয়া তথ্য প্রয়োজন।</div></main><script type="module">import {requireRole} from "./auth-guard.js";await requireRole(["super_admin","admin","member"]);</script></body></html>
+ <a class="nav-link" href="dashboard.html">DASHBOARD</a>
+ <button class="menu-toggle" type="button" aria-expanded="true" aria-controls="oikko-menu-links">MENU ☰</button>
+ <div class="menu-links" id="oikko-menu-links">
+  <a class="nav-link" href="rules.html">RULES</a>
+  <a class="nav-link" href="member-info.html">MEMBER INFO</a>
+  <a class="nav-link" href="data.html">DATA</a>
+  <a class="nav-link" href="personal-due.html">PERSONAL DUE</a>
+  <a class="nav-link" href="proof.html">PROOF</a>
+ </div>
+</nav>
+<script>
+(()=>{const b=document.querySelector(".menu-toggle"),links=document.querySelector(".menu-links");if(!b||!links)return;b.addEventListener("click",()=>{const open=b.getAttribute("aria-expanded")==="true";b.setAttribute("aria-expanded",String(!open));links.hidden=open;});})();
+</script><main class="page-shell" data-protected-panel><div class="eyebrow">RULES</div><h1>সমিতির নিয়মাবলি</h1><p>সমিতির অনুমোদিত নিয়ম, মাসিক জমা, সময়সীমা, জরিমানা, সভা ও সিদ্ধান্তের নথি এখানে থাকবে।</p><div class="page-note">এই পেজের নিয়মাবলি চূড়ান্তভাবে প্রকাশের আগে কমিটির অনুমোদন ও তোমার দেওয়া তথ্য প্রয়োজন।</div></main><script type="module">import {requireRole} from "./auth-guard.js";await requireRole(["super_admin","admin","member"]);</script></body></html>
