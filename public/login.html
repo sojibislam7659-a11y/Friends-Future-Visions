@@ -42,18 +42,25 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid #6eb4
 button{transition:background-color .16s ease,border-color .16s ease,color .16s ease}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
 </style><style id="oikko-page-refresh">
-body{padding:24px;background:#f5f8f6}
-.panel{width:min(100%,460px);padding:clamp(28px,6vw,46px);border-radius:22px;box-shadow:0 12px 42px rgba(20,47,40,.045);border-color:#e6ede8}
-.brand{margin-bottom:40px}
-.mark{border-radius:14px;background:#eaf3ed}
-h1{font-size:clamp(28px,4vw,34px);font-weight:800;letter-spacing:-.045em;line-height:1.22}
-.intro{font-size:14px;line-height:1.85}
-label{font-size:13px}
-input{height:52px;border-radius:12px;background:#fbfcfb}
-button{height:52px;border-radius:999px;background:var(--green);font-size:14px}
-button:hover{background:var(--green-deep)}
-.back{font-size:13px}
-@media(max-width:480px){body{padding:14px}.panel{padding:28px 22px;border-radius:18px}.brand{margin-bottom:34px}}
+body{padding:26px;background:#f5f8f6}
+.panel{width:min(100%,480px);padding:clamp(30px,6vw,48px);border:1px solid #e3ebe5;border-radius:26px;box-shadow:0 18px 55px rgba(20,47,40,.055)}
+.brand{gap:14px;margin-bottom:44px}
+.mark{width:50px;height:50px;border-radius:16px;background:#eaf3ed;font-size:23px}
+.brand-name{font-size:17px;font-weight:750;letter-spacing:-.035em}
+.brand-sub{font-size:11px;letter-spacing:.02em}
+.eyebrow{font-size:10px;letter-spacing:.16em}
+h1{margin:13px 0 10px;font-size:clamp(28px,5vw,36px);font-weight:750;letter-spacing:-.05em;line-height:1.2}
+.intro{margin:0 0 30px;font-size:14px;line-height:1.85}
+label{margin:19px 0 9px;font-size:12px;font-weight:650}
+input{height:54px;padding:0 17px;border:1px solid #dfe8e2;border-radius:14px;background:#fbfcfb;font-size:14px}
+input:focus{border-color:var(--green);box-shadow:0 0 0 4px rgba(7,94,75,.09)}
+button{height:56px;margin-top:28px;border-radius:999px;background:var(--green);font-size:14px;font-weight:700;letter-spacing:.005em;box-shadow:none;transition:background .18s ease,transform .18s ease}
+button:hover{background:var(--green-deep);transform:translateY(-1px)}
+button:active{transform:translateY(0)}
+.message{border-radius:14px}
+.privacy{margin:22px 0 0;font-size:12px;line-height:1.8}
+.back{margin-top:30px;font-size:13px;font-weight:650}
+@media(max-width:480px){body{padding:14px}.panel{padding:29px 23px;border-radius:21px}.brand{margin-bottom:38px}}
 </style>
 </head>
 <body><main class="panel">
