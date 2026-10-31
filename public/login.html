@@ -5,18 +5,40 @@
 <meta name="theme-color" content="#075e4b"><meta name="robots" content="noindex,nofollow">
 <title>সদস্য লগইন | ঐক্য সঞ্চয় সমিতি</title>
 <style>
-*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:20px;background:#f4f7f5;color:#18372f;font-family:system-ui,"Noto Sans Bengali",sans-serif}.panel{width:min(100%,420px);padding:30px;background:#fff;border:1px solid #dce7e1;border-radius:18px}.mark{width:46px;height:46px;display:grid;place-items:center;border-radius:50%;background:#e8f3ed;color:#075e4b;font-size:22px}.muted{color:#687a73;font-size:13px;line-height:1.7}label{display:block;margin:18px 0 7px;font-size:13px;font-weight:700}input{width:100%;height:47px;padding:0 12px;border:1px solid #dce7e1;border-radius:9px;font:inherit}button{width:100%;height:47px;margin-top:22px;border:0;border-radius:9px;background:#075e4b;color:white;font-weight:700;font-size:14px;cursor:pointer}button:disabled{opacity:.6;cursor:wait}.message{display:none;margin-top:14px;padding:12px;border-radius:9px;background:#fff4d8;color:#72530c;font-size:12px;line-height:1.6}.back{display:inline-block;margin-top:20px;color:#075e4b;text-decoration:none;font-size:13px}
+:root{color-scheme:light;--green:#075e4b;--green-deep:#064b3d;--green-soft:#eaf3ed;--ink:#142f28;--muted:#718078;--line:#e2e9e4;--canvas:#f5f7f5;--white:#fff;--radius:18px}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--canvas);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Bengali",sans-serif}
+.panel{width:min(100%,440px);padding:clamp(26px,6vw,42px);background:var(--white);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 18px 55px rgba(20,47,40,.07)}
+.brand{display:flex;align-items:center;gap:13px;margin-bottom:34px}
+.mark{width:48px;height:48px;display:grid;place-items:center;border-radius:14px;background:var(--green-soft);color:var(--green);font-size:22px;font-weight:800}
+.brand-name{font-size:16px;font-weight:800;letter-spacing:-.02em}.brand-sub{margin-top:3px;color:var(--muted);font-size:11px}
+.eyebrow{color:var(--green);font-size:11px;font-weight:800;letter-spacing:.13em}
+h1{margin:9px 0 8px;font-size:27px;line-height:1.3;letter-spacing:-.035em}
+.intro{margin:0 0 25px;color:var(--muted);font-size:13px;line-height:1.8}
+label{display:block;margin:17px 0 8px;font-size:12px;font-weight:700}
+input{width:100%;height:49px;padding:0 14px;border:1px solid #dce5df;border-radius:11px;background:#fff;color:var(--ink);font:inherit;font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s}
+input::placeholder{color:#a1ada6}
+input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(7,94,75,.10)}
+button{width:100%;height:49px;margin-top:25px;border:0;border-radius:11px;background:var(--green);color:#fff;font:inherit;font-size:13px;font-weight:750;cursor:pointer;transition:background .15s,transform .15s}
+button:hover{background:var(--green-deep)}button:active{transform:translateY(1px)}button:disabled{opacity:.65;cursor:wait}
+.message{display:none;margin-top:14px;padding:12px 14px;border:1px solid #f0dfb4;border-radius:11px;background:#fff9eb;color:#76591b;font-size:12px;line-height:1.65}
+.privacy{margin:20px 0 0;color:var(--muted);font-size:11px;line-height:1.75}
+.back{display:inline-flex;align-items:center;gap:7px;margin-top:26px;color:var(--green);text-decoration:none;font-size:12px;font-weight:700}
+.back:hover{text-decoration:underline}
+@media(max-width:480px){body{padding:14px}.panel{padding:27px 22px;border-radius:16px}.brand{margin-bottom:29px}h1{font-size:25px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 </style></head>
 <body><main class="panel">
-<div class="mark">ঐ</div><h2>ঐক্য সঞ্চয় সমিতি</h2><p class="muted">নিবন্ধিত Email ও Password দিয়ে সদস্য পোর্টালে প্রবেশ করুন।</p>
+<div class="brand"><div class="mark" aria-hidden="true">ঐ</div><div><div class="brand-name">ঐক্য সঞ্চয় সমিতি</div><div class="brand-sub">Oikko Savings Committee</div></div></div>
+<div class="eyebrow">MEMBER PORTAL</div><h1>আপনার অ্যাকাউন্টে প্রবেশ করুন</h1><p class="intro">নিবন্ধিত Email ও Password দিয়ে সদস্য পোর্টালে নিরাপদে লগইন করুন।</p>
 <form id="loginForm">
 <label for="email">Email Address</label><input id="email" type="email" autocomplete="username" required placeholder="name@example.com">
 <label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required placeholder="আপনার পাসওয়ার্ড">
-<button id="submitButton" type="submit">লগইন করুন</button>
+<button id="submitButton" type="submit">লগইন করুন <span aria-hidden="true">→</span></button>
 <div class="message" id="message" role="alert"></div>
 </form>
-<p class="muted">শুধু অনুমোদিত ব্যবহারকারীরা প্রবেশ করতে পারবেন। ব্যক্তিগত সদস্য-তথ্য কেবল Super Admin-এর জন্য সংরক্ষিত।</p>
-<a class="back" href="index.html">← মূল পেজে ফিরে যান</a>
+<p class="privacy">শুধু অনুমোদিত ব্যবহারকারীরা প্রবেশ করতে পারবেন। ব্যক্তিগত সদস্য-তথ্য অনুমতি অনুযায়ী সুরক্ষিত থাকবে।</p>
+<a class="back" href="index.html"><span aria-hidden="true">←</span> মূল পেজে ফিরে যান</a>
 </main>
 <script type="module">
 import { signIn, getSession } from "./auth.js";
@@ -36,10 +58,9 @@ form.addEventListener("submit",async event=>{
   const {data:profile,error}=await supabase.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
   if(error) throw new Error("আপনার অ্যাক্সেস যাচাই করা যায়নি। Admin-এর সঙ্গে যোগাযোগ করুন।");
   if(!profile){await supabase.auth.signOut();throw new Error("এই অ্যাকাউন্টের কমিটি প্রোফাইল পাওয়া যায়নি। Admin-এর সঙ্গে যোগাযোগ করুন।");}
-  if(profile.role==="super_admin" || profile.role==="admin") window.location.replace("dashboard.html");
-  else if(profile.role==="member") window.location.replace("dashboard.html");
+  if(profile.role==="super_admin" || profile.role==="admin" || profile.role==="member") window.location.replace("dashboard.html");
   else {await supabase.auth.signOut();throw new Error("এই অ্যাকাউন্টের অনুমতি নির্ধারিত নয়।");}
  }catch(error){showMessage(error.message || "লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।");}
- finally{button.disabled=false;button.textContent="লগইন করুন";document.getElementById("password").value="";}
+ finally{button.disabled=false;button.textContent="লগইন করুন →";document.getElementById("password").value="";}
 });
 </script></body></html>
