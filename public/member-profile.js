@@ -25,10 +25,14 @@ async function main(){
  if(error)throw error;
  if(!m){root.innerHTML=empty("Member Profile পাওয়া যায়নি।");return}
  if(access.role!=="super_admin"&&m.status!=="active"){root.innerHTML=empty("এই Profile এখনো Active নয়।");return}
- let photo="";
+ let photo="",nomineePhoto="";
  if(m.profile_photo_path){
   const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);
   if(u?.signedUrl)photo='<img class="member-profile-photo" src="'+esc(u.signedUrl)+'" alt="Profile photo">';
+ }
+ if(m.nominee_photo_path){
+  const {data:u}=await supabase.storage.from("member-private-documents").createSignedUrl(m.nominee_photo_path,1800);
+  if(u?.signedUrl)nomineePhoto='<section class="section"><h2>Nominee Picture</h2><img class="private-doc-thumb" src="'+esc(u.signedUrl)+'" alt="Nominee picture"></section>';
  }
  const groups=[
   {title:"ব্যক্তিগত তথ্য",fields:[["full_name","পূর্ণ নাম"],["full_name_bn","বাংলা নাম"],["father_name","পিতার নাম"],["mother_name","মাতার নাম"],["spouse_name","স্বামী/স্ত্রীর নাম"],["date_of_birth","জন্মতারিখ"],["gender","লিঙ্গ"],["profession","পেশা"]]},
@@ -45,7 +49,7 @@ async function main(){
  const adminControls=access.role==="super_admin"
   ? '<section class="section"><h2>সদস্যের Status ও Member No</h2><div class="field"><label for="memberStatus">Status</label><select id="memberStatus"><option value="pending" '+(m.status==="pending"?"selected":"")+' >Pending</option><option value="active" '+(m.status==="active"?"selected":"")+' >Active</option><option value="inactive" '+(m.status==="inactive"?"selected":"")+' >Inactive</option></select></div><p class="muted small">Pending সদস্যকে Active করলে Member No না থাকলে স্বয়ংক্রিয়ভাবে তৈরি হবে।</p><div class="field"><label for="memberNo">Member No</label><input id="memberNo" type="text" value="'+esc(m.member_no||"")+'" placeholder="যেমন: M-003" maxlength="30"></div><div class="form-actions"><button class="button" id="saveMemberNo" type="button">Member No Save</button></div></section>'
   : "";
- root.innerHTML='<div class="shell"><header class="topbar"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><div class="actions"><a class="button secondary" href="member-info.html">Member Info</a><a class="button secondary" href="dashboard.html">Dashboard</a></div></header><main class="page" style="margin-top:16px"><section class="member-profile-header">'+(photo||'<span class="member-profile-photo member-directory-fallback">FF</span>')+'<div><h1>'+esc(m.full_name_bn||m.full_name||"Member")+'</h1><p class="lead">'+esc(m.member_no||"Member No not assigned")+' · '+esc(m.status)+'</p>'+(m.joining_date?'<p class="muted small">যোগদানের তারিখ: '+esc(dateText(m.joining_date))+'</p>':"")+'</div></section>'+adminControls+'<div class="grid member-profile-summary">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div>'+sections+(m.member_note?'<section class="section"><h2>নোট</h2><p>'+esc(m.member_note)+'</p></section>':"")+'</main><footer class="footer">Friends Future Vision Forever · Secure member profile</footer></div>';
+ root.innerHTML='<div class="shell"><header class="topbar"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><div class="actions"><a class="button secondary" href="member-info.html">Member Info</a><a class="button secondary" href="dashboard.html">Dashboard</a></div></header><main class="page" style="margin-top:16px"><section class="member-profile-header">'+(photo||'<span class="member-profile-photo member-directory-fallback">FF</span>')+'<div><h1>'+esc(m.full_name_bn||m.full_name||"Member")+'</h1><p class="lead">'+esc(m.member_no||"Member No not assigned")+' · '+esc(m.status)+'</p>'+(m.joining_date?'<p class="muted small">যোগদানের তারিখ: '+esc(dateText(m.joining_date))+'</p>':"")+'</div></section>'+adminControls+'<div class="grid member-profile-summary">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div>'+sections+nomineePhoto+(m.member_note?'<section class="section"><h2>নোট</h2><p>'+esc(m.member_note)+'</p></section>':"")+'</main><footer class="footer">Friends Future Vision Forever · Secure member profile</footer></div>';
  if(access.role==="super_admin"){
   const statusSelect=document.getElementById("memberStatus");
   statusSelect?.addEventListener("change",async()=>{
