@@ -272,3 +272,70 @@ body.login-theme .member-profile-header .lead{color:#c5d3eb}
  body.login-theme .topbar{background:linear-gradient(145deg,rgba(30,48,86,.97),rgba(23,43,75,.95))}
  body.login-theme .page{background:linear-gradient(145deg,rgba(30,48,86,.96),rgba(23,43,75,.94))}
 }
+
+
+/* Mobile navigation refinement — compact, touch-friendly and overflow-safe */
+.nav a{
+  min-width:0;
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  border:1px solid transparent;
+  border-radius:11px;
+  transition:background-color .18s ease,border-color .18s ease,transform .18s ease;
+}
+.nav a .ui-icon{width:18px;height:18px;flex:0 0 18px}
+.nav a span{min-width:0;overflow-wrap:anywhere}
+.nav a:focus-visible{
+  outline:3px solid rgba(120,160,255,.75);
+  outline-offset:2px;
+}
+.nav a.active{font-weight:800}
+@media(max-width:640px){
+  .shell{padding:10px}
+  .nav:not([hidden]){
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:8px;
+    margin:10px 0 14px;
+    padding:10px;
+    border-radius:16px;
+  }
+  .nav a{
+    width:100%;
+    min-width:0;
+    min-height:50px;
+    justify-content:flex-start;
+    padding:9px 10px;
+    gap:8px;
+    border-radius:12px;
+    font-size:11px;
+    line-height:1.3;
+    white-space:normal;
+    overflow-wrap:anywhere;
+  }
+  .nav a .ui-icon{width:18px;height:18px;flex-basis:18px}
+  .nav a.active{box-shadow:inset 0 0 0 1px currentColor}
+  .actions{min-width:0}
+  .actions>*{max-width:100%}
+  .brand{min-width:0}
+  .brand>div{min-width:0}
+  .brand strong,.brand small{overflow-wrap:anywhere}
+  .page,.card,.list-item,.member-directory-item,.member-profile-field{min-width:0}
+  .table-wrap,.matrix-wrap{-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+  .table-wrap{max-width:100%}
+  .proof-month-grid,.members-grid,.member-profile-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .form-grid{grid-template-columns:minmax(0,1fr)}
+  .member-profile-header>div{min-width:0}
+}
+@media(max-width:360px){
+  .nav:not([hidden]){gap:6px;padding:8px}
+  .nav a{padding:8px;font-size:10.5px;gap:6px}
+  .nav a .ui-icon{width:16px;height:16px;flex-basis:16px}
+  .page{padding:14px}
+  .actions{gap:6px}
+}
+@media(prefers-reduced-motion:reduce){
+  .nav a{transition:none}
+}
