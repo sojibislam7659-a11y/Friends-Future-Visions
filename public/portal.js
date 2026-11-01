@@ -16,13 +16,23 @@ function toast(message){let n=document.createElement("div");n.className="toast";
 function setPage(html){document.getElementById("pageContent").innerHTML=html}
 function card(label,value,sub=""){return '<article class="card"><div class="label">'+esc(label)+'</div><div class="value">'+esc(value)+'</div><small>'+esc(sub)+'</small></article>'}
 function empty(msg){return '<div class="empty">'+esc(msg)+'</div>'}
-function navItem(href,label){return '<a href="'+href+'" '+(page===href.replace(".html","")?'class="active"':'')+'>'+label+'</a>'}
-function shell(){
- const isSuper=access.role==="super_admin";
- root.innerHTML='<div class="shell"><header class="topbar"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Friends Future Vision Forever"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><div class="actions"><span class="role">'+(isSuper?"Super Admin":access.role==="admin"?"Admin · View only":"Member · View only")+'</span><button class="secondary" id="languageBtn">English</button><button class="secondary" id="logoutBtn">লগআউট</button></div></header><nav class="nav">'+navItem("dashboard.html","Dashboard")+navItem("rules.html","Rules")+navItem("member-info.html","Member Info")+navItem("data.html","Data")+navItem("personal-due.html","Personal Due")+navItem("proof.html","Proof")+(isSuper?navItem("admin.html","Super Admin"):"")+(access.role==="member"?navItem("member.html","My Profile"):"")+'</nav><main class="page" id="pageContent"><div class="empty">তথ্য লোড হচ্ছে…</div></main><footer class="footer">Friends Future Vision Forever · Secure member portal</footer></div>';
- document.getElementById("logoutBtn").addEventListener("click",async()=>{const {error}=await supabase.auth.signOut();if(error)toast(error.message);else location.replace("login.html")});
- document.getElementById("languageBtn").addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";document.documentElement.lang=lang;document.getElementById("languageBtn").textContent=lang==="bn"?"English":"বাংলা";renderPage()});
+function icon(name){
+ const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M23 11h-6"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5M10 14l2 2 4-4"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6zM9 12l2 2 4-4"/>'};
+ return '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.data)+'</svg>';
 }
+function navItem(href,label,iconName){return '<a href="'+href+'" '+(page===href.replace(".html","")?'class="active"':'')+'>'+icon(iconName)+'<span>'+label+'</span></a>'}
+function shell(){
+ const isSuper=access.role==="super_admin",isPublic=access.role==="public";
+ const nav=navItem("rules.html","RULES","rules")+navItem("member-info.html","MEMBER INFO","members")+navItem("data.html","DATA","data")+(isPublic?"":navItem("personal-due.html","PERSONAL DUE","due")+navItem("proof.html","PROOF","proof")+navItem("payment.html","PAYMENT","payment")+(isSuper?navItem("admin.html","SUPER ADMIN","admin"):"")+(access.role==="member"?navItem("member.html","MY PROFILE","profile"):""));
+ root.innerHTML='<div class="shell"><header class="topbar"><div class="header-left"><a class="home-icon" href="dashboard.html" aria-label="Home" title="Dashboard">'+icon("home")+'</a><div class="brand"><img src="friends-future-vision-logo.svg" alt="Friends Future Vision Forever"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div></div><div class="actions">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<button class="icon-button" id="notificationBtn" aria-label="Notifications" title="Notifications">'+icon("bell")+'<span class="unread-count" id="unreadCount" hidden></span></button><button class="secondary menu-button" id="menuBtn">'+icon("menu")+' MENU</button><span class="role">'+(isSuper?"Super Admin":access.role==="admin"?"Admin · View only":"Member · View only")+'</span><button class="secondary" id="languageBtn">English</button><button class="secondary" id="logoutBtn">লগআউট</button>')+'</div></header><nav class="nav" id="mainNav" hidden>'+nav+'</nav><main class="page" id="pageContent"><div class="empty">তথ্য লোড হচ্ছে…</div></main><footer class="footer">Friends Future Vision Forever · Secure member portal</footer></div>';
+ if(!isPublic){
+  document.getElementById("menuBtn").addEventListener("click",()=>{const n=document.getElementById("mainNav");n.hidden=!n.hidden});
+  document.getElementById("notificationBtn").addEventListener("click",()=>{if(page!=="dashboard"){location.href="dashboard.html";return}document.getElementById("inboxList")?.scrollIntoView({behavior:"smooth",block:"start"})});
+  document.getElementById("logoutBtn").addEventListener("click",async()=>{const {error}=await supabase.auth.signOut();if(error)toast(error.message);else location.replace("login.html")});
+  document.getElementById("languageBtn").addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";document.documentElement.lang=lang;document.getElementById("languageBtn").textContent=lang==="bn"?"English":"বাংলা";renderPage()});refreshUnreadCount();
+ }
+}
+async function refreshUnreadCount(){if(!access?.session?.user?.id)return;const {count,error}=await supabase.from("notifications").select("id",{count:"exact",head:true}).eq("user_id",access.session.user.id).is("read_at",null);if(error)return;const badge=document.getElementById("unreadCount");if(!badge)return;badge.textContent=count>99?"99+":String(count||0);badge.hidden=!(count>0)}
 async function summary(){
  const {data,error}=await supabase.rpc("get_financial_summary");
  if(error)throw error;
@@ -30,7 +40,7 @@ async function summary(){
 }
 async function renderDashboard(){
  const s=await summary();
- setPage('<h1>'+t("সামগ্রিক ড্যাশবোর্ড","Committee Dashboard")+'</h1><p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p><div class="grid">'+
+ setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p><div class="grid">'+
  card(t("মোট সম্পদ","Total assets"),money(s.total_assets),t("নগদ + ব্যাংক + বিনিয়োগ","Cash + bank + investments"))+
  card(t("ব্যাংক ব্যালেন্স","Bank balance"),money(s.bank_balance))+
  card(t("হাতে নগদ","Cash in hand"),money(s.cash_balance))+
@@ -46,7 +56,7 @@ async function renderDashboard(){
   supabase.from("notifications").select("id,title,body,notification_type,created_at,read_at").eq("user_id",access.session.user.id).order("created_at",{ascending:false}).limit(10)
  ]);
  if(!notices.error){document.getElementById("noticeList").innerHTML=notices.data.length?notices.data.map(n=>'<article class="list-item"><strong>'+esc(n.title)+'</strong><p>'+esc(n.body)+'</p><small>'+esc(n.notice_type==="meeting"&&n.meeting_at?new Date(n.meeting_at).toLocaleString():new Date(n.published_at).toLocaleString())+'</small></article>').join(""):empty(t("কোনো প্রকাশিত নোটিশ নেই।","No published notices."))}
- if(!inbox.error){document.getElementById("inboxList").innerHTML=inbox.data.length?inbox.data.map(n=>'<article class="list-item"><div class="row"><strong>'+esc(n.title)+'</strong>'+(n.read_at?'<span class="pill">Read</span>':'<span class="pill">New</span>')+'</div><p>'+esc(n.body)+'</p><small>'+esc(new Date(n.created_at).toLocaleString())+'</small>'+(n.read_at?"":' <button class="secondary mark-read" data-id="'+esc(n.id)+'">পড়া হয়েছে</button>')+'</article>').join(""):empty(t("কোনো নোটিফিকেশন নেই।","No notifications."));document.querySelectorAll(".mark-read").forEach(b=>b.addEventListener("click",async()=>{const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",b.dataset.id);if(error)toast(error.message);else renderDashboard()}))}
+ if(!inbox.error){document.getElementById("inboxList").innerHTML=inbox.data.length?inbox.data.map(n=>'<article class="list-item"><div class="row"><strong>'+esc(n.title)+'</strong>'+(n.read_at?'<span class="pill">Read</span>':'<span class="pill">New</span>')+'</div><p>'+esc(n.body)+'</p><small>'+esc(new Date(n.created_at).toLocaleString())+'</small>'+(n.read_at?"":' <button class="secondary mark-read" data-id="'+esc(n.id)+'">পড়া হয়েছে</button>')+'</article>').join(""):empty(t("কোনো নোটিফিকেশন নেই।","No notifications."));document.querySelectorAll(".mark-read").forEach(b=>b.addEventListener("click",async()=>{const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",b.dataset.id);if(error)toast(error.message);else{renderDashboard();refreshUnreadCount()}}))}
 }
 async function renderData(){
  const s=await summary();
@@ -65,42 +75,25 @@ function monthCount(start){
 }
 async function renderDue(){
  let q=supabase.from("members").select("id,member_no,full_name,monthly_contribution,contribution_start_date,joined_at,status");
- if(access.role==="member")q=q.eq("auth_user_id",access.session.user.id);
- else if(access.role==="super_admin")q=q.eq("status","active");
- const {data:members,error}=await q.order("member_no");
- if(error)throw error;
- if(access.role==="admin"){setPage('<h1>Personal Due</h1>'+empty(t("এই Admin অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই।","This read-only Admin account is not linked to a member record.")));return}
- if(!members.length){setPage('<h1>Personal Due</h1>'+empty(t("এই লগইন অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই। Super Admin-কে অ্যাকাউন্ট লিংক করতে হবে।","No member record is linked to this login. The Super Admin must link the account.")));return}
+ if(access.role==="member")q=q.eq("auth_user_id",access.session.user.id);else if(access.role==="super_admin")q=q.eq("status","active");
+ const {data:members,error}=await q.order("member_no");if(error)throw error;
+ if(access.role==="admin"){setPage('<h1>Personal Due</h1>'+empty("এই Admin অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই।"));return}
+ if(!members.length){setPage('<h1>Personal Due</h1>'+empty("এই লগইন অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই।"));return}
  const ids=members.map(m=>m.id);
- const [rateResult,tx]=await Promise.all([
-  supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").in("member_id",ids).order("effective_from"),
-  supabase.from("financial_transactions").select("member_id,transaction_type,amount,transaction_date").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in")
- ]);
- if(rateResult.error)throw rateResult.error;if(tx.error)throw tx.error;
- const ratesByMember={};(rateResult.data||[]).forEach(r=>(ratesByMember[r.member_id]??=[]).push(r));
- const starts=Object.fromEntries(members.map(m=>[m.id,ratesByMember[m.id]?.[0]?.effective_from||null]));
- const paid={};(tx.data||[]).forEach(x=>{const start=starts[x.member_id];if(start&&x.transaction_date>=start)paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount)});
- const body=members.map(m=>{
-  const rateList=ratesByMember[m.id]||[];
-  const start=rateList[0]?.effective_from||null;
-  const months=monthCount(start);
-  const configured=rateList.length>0;
-  let expected=0;
-  for(let k=0;k<months;k++){
-   const monthStart=new Date(start+"T00:00:00");monthStart.setMonth(monthStart.getMonth()+k);
-   const from=localDate(monthStart);
-   const next=new Date(monthStart);next.setMonth(next.getMonth()+1);
-   const to=localDate(new Date(next.getTime()-86400000));
-   const rate=rateList.find(r=>r.effective_from<=from&&(!r.effective_to||r.effective_to>=to));
-   if(rate)expected+=Number(rate.monthly_amount);
-  }
-  const received=paid[m.id]||0;
-  const due=configured?Math.max(0,expected-received):null;
-  return '<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+esc(configured?money(m.monthly_contribution):"Not configured")+'</td><td>'+esc(configured?String(months):"—")+'</td><td>'+money(received)+'</td><td><strong>'+esc(configured?money(due):"—")+'</strong></td></tr>'
- }).join("");
- setPage('<h1>'+t("ব্যক্তিগত জমা ও বকেয়া","Personal deposits and dues")+'</h1><p class="lead">'+(access.role==="super_admin"?t("Super Admin সব সদস্যের হিসাব দেখতে পারবেন।","Super Admin view of all members."):t("শুধু তোমার নিজের হিসাব এখানে দেখানো হবে।","Only your own account is shown here."))+'</p><div class="table-wrap"><table><thead><tr><th>Member ID</th><th>Name</th><th>Monthly amount</th><th>Months due</th><th>Paid</th><th>Outstanding</th></tr></thead><tbody>'+body+'</tbody></table></div><div class="notice">'+t("বকেয়া হিসাবের জন্য প্রত্যেক সদস্যের Monthly contribution ও Contribution start date Super Admin-কে সেট করতে হবে। এগুলো না থাকলে বকেয়া গণনা করা হবে না।","The Super Admin must configure each member’s monthly contribution and start date before dues can be calculated.")+'</div>');
-}
-async function renderMembers(){
+ const [rr,tr]=await Promise.all([supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").in("member_id",ids).order("effective_from"),supabase.from("financial_transactions").select("member_id,transaction_type,amount,transaction_date,created_at").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in")]);
+ if(rr.error)throw rr.error;if(tr.error)throw tr.error;
+ const rates={};(rr.data||[]).forEach(r=>(rates[r.member_id]??=[]).push(r));const paid={};(tr.data||[]).forEach(x=>paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount));
+ const now=new Date(),nowIndex=now.getFullYear()*12+now.getMonth(),rows=members.map(m=>{
+  const list=rates[m.id]||[],start=list[0]?.effective_from;let expected=0,months=0;
+  if(start){const [y,mo]=start.split("-").map(Number),first=y*12+mo-1;months=Math.max(0,nowIndex-first+1);for(let k=0;k<months;k++){const d=new Date(y,mo-1+k,1),from=localDate(d),next=new Date(d.getFullYear(),d.getMonth()+1,1),to=localDate(new Date(next.getTime()-86400000)),rate=list.find(r=>r.effective_from<=from&&(!r.effective_to||r.effective_to>=to));if(rate)expected+=Number(rate.monthly_amount)}}
+  const received=paid[m.id]||0;return {m,received,due:list.length?Math.max(0,expected-received):null,configured:list.length>0,months};
+ });
+ const sumPaid=rows.reduce((n,r)=>n+r.received,0),sumDue=rows.reduce((n,r)=>n+(r.due||0),0);
+ const head='<p class="lead">1 December, 2026 to '+esc(dateText(today()))+' · '+(access.role==="super_admin"?"Super Admin view":"শুধু আপনার নিজের হিসাব") +'</p>';
+ const deposits=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+money(r.received)+'</td></tr>').join("");
+ const dues=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+esc(r.configured?money(r.due):"Not configured")+'</td></tr>').join("");
+ setPage('<h1>'+t("ব্যক্তিগত জমা ও বকেয়া","Personal deposits and dues")+'</h1>'+head+'<section class="section"><h2>মোট জমা</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>'+deposits+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumPaid)+'</td></tr></tbody></table></div></section><section class="section"><h2>মোট বকেয়া</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>'+dues+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumDue)+'</td></tr></tbody></table></div></section><div class="notice">বকেয়া হিসাবের জন্য প্রত্যেক সদস্যের মাসিক জমার হার ও কার্যকর তারিখ Super Admin-কে নির্ধারণ করতে হবে।</div>');
+}async function renderMembers(){
  const {data,error}=await supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no");
  if(error)throw error;
  if(!data.length){setPage('<h1>Member Info</h1>'+empty(t("এখনো কোনো Active member নেই।","No active members yet.")));return}
