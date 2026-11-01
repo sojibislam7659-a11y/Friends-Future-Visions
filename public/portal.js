@@ -36,7 +36,7 @@ function shell(){
   document.getElementById("notificationBtn").addEventListener("click",async()=>{const open=panel.hidden;closeDrawers();if(open){panel.hidden=false;await loadNotificationPanel()}});
   document.getElementById("mainNav").addEventListener("click",e=>{if(e.target.closest("a"))closeDrawers()});
   document.getElementById("logoutBtn").addEventListener("click",async()=>{const {error}=await supabase.auth.signOut();if(error)toast(error.message);else location.replace("login.html")});
-  document.getElementById("languageBtn").addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";document.documentElement.lang=lang;renderPage();shell()});
+  document.getElementById("languageBtn").addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";document.documentElement.lang=lang;shell();renderPage()});
   refreshUnreadCount();
  }
 }
