@@ -63,6 +63,7 @@ body:after{width:280px;height:280px;bottom:-170px;left:-100px;background:rgba(48
  </form>
  <div class="security-note"><span class="security-dot"></span><span>শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন</span></div>
  <p class="small">আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।</p>
+ <p class="small" style="text-align:center;margin-top:14px">নতুন সদস্য? <a href="signup.html" style="color:#c8d7ff;font-weight:700">নিজে অ্যাকাউন্ট তৈরি করুন</a></p>
 </main>
 <script type="module">
 import {supabase,supabaseReady} from "./supabase-client.js";
@@ -77,7 +78,9 @@ form.addEventListener("submit",async e=>{
  if(error){show("লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।")}
  else{
   const {data:p,error:pe}=await supabase.from("profiles").select("role").eq("id",data.user.id).maybeSingle();
-  if(pe||!p||!["super_admin","admin","member"].includes(p.role)){await supabase.auth.signOut();show("এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।")}
+  if(!pe&&p?.role==="pending"){await supabase.auth.signOut();show("আপনার ইমেইল যাচাই হয়েছে। এখন Super Admin-এর অনুমোদনের অপেক্ষায় আছেন।")}
+  else if(!pe&&p?.role==="rejected"){await supabase.auth.signOut();show("এই অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি। Super Admin-এর সঙ্গে যোগাযোগ করুন।")}
+  else if(pe||!p||!["super_admin","admin","member"].includes(p.role)){await supabase.auth.signOut();show("এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।")}
   else location.replace("dashboard.html")
  }
  btn.disabled=false;btn.textContent="লগইন করুন →";document.getElementById("password").value="";
