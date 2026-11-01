@@ -99,13 +99,13 @@ async function renderDue(){
  const own=access.role==="member"?await supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle():{data:null};if(own.error)throw own.error;const ownId=own.data?.id||null;
  const cards=await Promise.all(data.map(async m=>{
   let photo="";
-  if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);if(u?.signedUrl)photo='<img class="member-directory-avatar" loading="lazy" src="'+esc(u.signedUrl)+'" alt="">'}
+  if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);if(u?.signedUrl)photo='<img class="member-directory-avatar" loading="lazy" src="'+esc(u.signedUrl)+'" alt="'+esc(m.full_name||"Member")+'">'}
   const label=lang==="bn"?(m.full_name_bn||m.full_name):m.full_name;
   const canOpen=access.role==="super_admin"||m.member_id===ownId;
-  const inside=(photo||'<span class="member-directory-avatar member-directory-fallback">FF</span>')+'<span class="member-directory-text"><strong>'+esc(label)+'</strong><small>'+esc(m.member_no||"")+'</small></span>'+(canOpen?'<span class="member-directory-arrow">›</span>':"");
-  return canOpen?'<a class="member-directory-item" href="member-profile.html?id='+encodeURIComponent(m.member_id)+'">'+inside+'</a>':'<div class="member-directory-item">'+inside+'</div>';
+  const inside=(photo||'<span class="member-directory-avatar member-directory-fallback">'+esc(String(label||"M").trim().slice(0,1).toUpperCase())+'</span>')+'<strong class="member-directory-name">'+esc(label)+'</strong>';
+  return canOpen?'<a class="member-directory-person" href="member-profile.html?id='+encodeURIComponent(m.member_id)+'" aria-label="'+esc("Open profile: "+label)+'">'+inside+'</a>':'<div class="member-directory-person">'+inside+'</div>';
  }));
- setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("সদস্যের ছবি ও নাম। Super Admin যেকোনো সদস্যের পূর্ণ প্রোফাইল দেখতে পারবেন; সদস্যরা শুধু নিজের প্রোফাইল খুলতে পারবেন।","Member photos and names. Super Admin can open any profile; members can open only their own.")+'</p><div class="member-directory-list">'+cards.join("")+'</div>');
+ setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("সদস্যদের ছবি ও নাম। নিজের ছবি বা নাম চাপলে ব্যক্তিগত প্রোফাইল খুলবে। Super Admin যেকোনো সদস্যের প্রোফাইল খুলতে পারবেন।","Members are shown by photo and name. Members can open their own profile; Super Admin can open any profile.")+'</p><div class="member-directory-grid">'+cards.join("")+'</div>');
 }
 async function renderProofs(){
  const {data,error}=await supabase.from("committee_proofs").select("id,proof_month,title,storage_path,note,created_at").eq("published",true).order("proof_month",{ascending:true});if(error)throw error;
