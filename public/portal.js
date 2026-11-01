@@ -54,7 +54,7 @@ async function summary(){
  if(error)throw error;
  return data||{};
 }
-async async function renderDashboard(){
+async function renderDashboard(){
  const s=await Promise.race([
   summary(),
   new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
