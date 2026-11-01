@@ -7,7 +7,7 @@ async function init(){
  let role="public",session=null;
  if(supabaseReady){const {data}=await supabase.auth.getSession();session=data?.session||null;if(session){home.href="dashboard.html";const {data:p}=await supabase.from("profiles").select("role").eq("id",session.user.id).maybeSingle();role=p?.role||"member"}}
  if(!session)home.href="index.html";
- const links=session?[item("dashboard.html","DASHBOARD","home"),item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("member.html","MY PROFILE","members")]:[])]:[item("rules.html","RULES","rules"),item("data.html","DATA","data"),item("login.html","LOGIN","members")];
+ const links=session?[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("member.html","MY PROFILE","members")]:[])]:[item("rules.html","RULES","rules"),item("data.html","DATA","data"),item("login.html","LOGIN","members")];
  nav.innerHTML=links.join("");
  menu.addEventListener("click",()=>{nav.hidden=!nav.hidden});
  if(session){
