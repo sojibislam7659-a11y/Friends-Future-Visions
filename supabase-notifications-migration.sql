@@ -86,6 +86,9 @@ create policy notifications_update_own
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
+-- Remove the earlier client-side INSERT policy if this migration was previously applied.
+drop policy if exists notifications_super_admin_insert on public.notifications;
+
 -- Inbox rows are created only by trusted server-side code (service_role).
 -- Clients must never fabricate or alter notification content.
 
