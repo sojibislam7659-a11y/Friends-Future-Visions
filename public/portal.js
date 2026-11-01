@@ -125,7 +125,64 @@ async function loadProofMonth(month,allProofs){
    toast(success+"টি ফাইল আপলোড হয়েছে।");renderProofs();
   });
  }
-}async function renderProfile(){
+}async function renderPayment(){
+ const isSuper=access.role==="super_admin";
+ const mr=await supabase.from("payment_methods").select("id,method,account_name,account_number,qr_path,active").eq("active",true).order("method");
+ if(mr.error)throw mr.error;
+ const methods=mr.data||[];
+ const cards=await Promise.all(methods.map(async m=>{
+  const {data:u}=m.qr_path?await supabase.storage.from("payment-qr").createSignedUrl(m.qr_path,1800):{data:null};
+  return '<article class="payment-method-card"><div class="row"><strong>'+esc(m.method.toUpperCase())+'</strong><span class="pill">Active</span></div><p>'+esc(m.account_name||"")+'</p><p class="payment-number">'+esc(m.account_number||"নম্বর সেট করা হয়নি")+'</p>'+(u?.signedUrl?'<img class="payment-qr" loading="lazy" src="'+esc(u.signedUrl)+'" alt="Payment QR">':"")+'</article>';
+ }));
+ const base='<h1>Payment</h1><p class="lead">bKash অথবা Nagad-এ টাকা পাঠানোর পর Transaction ID জমা দিন। Super Admin যাচাই করে অনুমোদন করবেন।</p><div class="payment-method-grid">'+(cards.join("")||empty("Super Admin এখনো bKash/Nagad নম্বর সেট করেননি।"))+'</div>';
+ if(isSuper){
+  setPage(base+'<section class="section"><h2>Payment account settings</h2><p class="muted">শুধু Super Admin নম্বর ও QR code পরিবর্তন করতে পারবেন।</p><div class="form-grid">'+["bkash","nagad"].map(m=>'<form class="payment-method-form card" data-method="'+m+'"><h3>'+m.toUpperCase()+'</h3><div class="field"><label>Account name</label><input name="account_name" required></div><div class="field"><label>Account number</label><input name="account_number" required inputmode="tel"></div><div class="field"><label>QR image (optional)</label><input name="qr" type="file" accept="image/jpeg,image/png,image/webp"></div><button type="submit">Save '+m.toUpperCase()+'</button></form>').join("")+'</div></section><section class="section"><h2>Pending payment submissions</h2><div id="pendingPayments" class="list">'+empty("লোড হচ্ছে…")+'</div></section>');
+  for(const form of document.querySelectorAll(".payment-method-form")){
+   const method=form.dataset.method,existing=methods.find(m=>m.method===method);
+   if(existing){form.elements.account_name.value=existing.account_name||"";form.elements.account_number.value=existing.account_number||""}
+   form.addEventListener("submit",async e=>{
+    e.preventDefault();const fd=new FormData(form),name=String(fd.get("account_name")||"").trim(),number=String(fd.get("account_number")||"").trim(),file=fd.get("qr");
+    if(!name||!number){toast("Account name ও number দিতে হবে।");return}
+    let qrPath=existing?.qr_path||null;
+    if(file?.size){
+     if(file.size>2*1024*1024||!["image/jpeg","image/png","image/webp"].includes(file.type)){toast("QR image 2MB-এর মধ্যে JPG/PNG/WEBP হতে হবে।");return}
+     const ext=(file.name.split(".").pop()||"png").toLowerCase();qrPath=method+"/"+crypto.randomUUID()+"."+ext;
+     const {error:upError}=await supabase.storage.from("payment-qr").upload(qrPath,file,{upsert:false,contentType:file.type});
+     if(upError){toast(upError.message);return}
+    }
+    const {error:saveError}=await supabase.from("payment_methods").upsert({method,account_name:name,account_number:number,qr_path:qrPath,active:true,updated_by:access.session.user.id},{onConflict:"method"});
+    if(saveError){if(file?.size&&qrPath)await supabase.storage.from("payment-qr").remove([qrPath]);toast(saveError.message)}
+    else{toast(method.toUpperCase()+" details saved.");renderPayment()}
+   });
+  }
+  const pending=await supabase.from("payment_submissions").select("id,member_id,submitted_by,amount,payment_date,payment_method,reference_no,created_at,members(full_name,member_no)").eq("status","pending").order("created_at");
+  const box=document.getElementById("pendingPayments");
+  if(pending.error)box.textContent=pending.error.message;
+  else if(!pending.data.length)box.innerHTML=empty("কোনো Pending payment নেই।");
+  else box.innerHTML=pending.data.map(p=>'<article class="list-item"><strong>'+esc(p.members?.member_no||"")+' · '+esc(p.members?.full_name||"Member")+'</strong><p>'+money(p.amount)+' · '+esc(p.payment_method||"")+' · '+esc(p.payment_date)+'</p><p>Transaction ID: <strong>'+esc(p.reference_no)+'</strong></p><div class="field"><label>Ledger account</label><select data-payment-account="'+esc(p.id)+'"><option value="cash">Cash</option><option value="bank">Bank</option></select></div><div class="row"><button data-payment-approve="'+esc(p.id)+'">Approve & add to ledger</button><button class="danger" data-payment-reject="'+esc(p.id)+'">Reject</button></div></article>').join("");
+  box.querySelectorAll("[data-payment-approve],[data-payment-reject]").forEach(b=>b.addEventListener("click",async()=>{
+   const approved=b.hasAttribute("data-payment-approve"),id=approved?b.dataset.paymentApprove:b.dataset.paymentReject,note=prompt("Admin note (optional):")||null,account=document.querySelector('[data-payment-account="'+id+'"]')?.value||"cash";
+   const {error}=await supabase.rpc("review_payment_submission",{p_submission_id:id,p_approved:approved,p_admin_note:note,p_account_type:account});
+   if(error)toast(error.message);else{toast(approved?"Payment verified and added once to ledger.":"Payment rejected.");renderPayment()}
+  }));
+  return;
+ }
+ if(access.role!=="member"){setPage(base+empty("এই অ্যাকাউন্টে Payment submission করার অনুমতি নেই।"));return}
+ const {data:member,error:memberError}=await supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle();
+ if(memberError)throw memberError;
+ if(!member){setPage(base+empty("এই লগইন অ্যাকাউন্টের সঙ্গে Member record link করা নেই।"));return}
+ const history=await supabase.from("payment_submissions").select("id,amount,payment_date,payment_method,reference_no,status,admin_note,created_at").eq("submitted_by",access.session.user.id).order("created_at",{ascending:false}).limit(20);
+ if(history.error)throw history.error;
+ setPage(base+'<section class="section"><h2>Payment submission</h2><form id="paymentSubmitForm" class="form-grid"><div class="field"><label>Amount (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>Payment method</label><select name="method" required>'+methods.map(m=>'<option value="'+esc(m.method)+'">'+esc(m.method.toUpperCase())+'</option>').join("")+'</select></div><div class="field"><label>Payment date</label><input name="date" type="date" max="'+today()+'" value="'+today()+'" required></div><div class="field"><label>Transaction ID</label><input name="reference" maxlength="100" required></div><div class="form-actions"><button type="submit">Submit for verification</button></div></form></section><section class="section"><h2>Your payment history</h2><div class="list">'+(history.data.map(p=>'<article class="list-item"><div class="row"><strong>'+money(p.amount)+'</strong><span class="pill">'+esc(p.status)+'</span></div><p>'+esc(p.payment_method||"")+' · '+esc(p.payment_date)+' · '+esc(p.reference_no)+'</p><small>'+esc(p.admin_note||"")+'</small></article>').join("")||empty("কোনো Payment submission নেই।"))+'</div></section>');
+ document.getElementById("paymentSubmitForm").addEventListener("submit",async e=>{
+  e.preventDefault();const fd=new FormData(e.currentTarget),amount=Number(fd.get("amount")),reference=String(fd.get("reference")||"").trim();
+  if(!(amount>0)||!reference){toast("সঠিক Amount ও Transaction ID দিন।");return}
+  const {error}=await supabase.from("payment_submissions").insert({member_id:member.id,submitted_by:access.session.user.id,amount,payment_date:fd.get("date"),payment_method:fd.get("method"),reference_no:reference,status:"pending"});
+  if(error)toast(error.message);else{toast("Payment যাচাইয়ের জন্য জমা হয়েছে।");renderPayment()}
+ });
+}
+
+async function renderProfile(){
  const {data:m,error}=await supabase.from("members").select("*").eq("auth_user_id",access.session.user.id).maybeSingle();
  if(error)throw error;
  if(!m){setPage('<h1>My Profile</h1>'+empty(t("এই অ্যাকাউন্টের সঙ্গে কোনো সদস্য প্রোফাইল যুক্ত নেই। Super Admin-কে তোমার Auth account-এর সঙ্গে Member record link করতে হবে।","No member profile is linked to this account. The Super Admin must link your Auth account to your member record.")));return}
@@ -187,7 +244,7 @@ async function renderPage(){
   else if(page==="member")await renderProfile();
   else if(page==="admin")await renderAdmin();
   else if(page==="rules")await renderRules();
-  else if(page==="payment")setPage('<h1>Payment</h1>'+empty("Member payment submission is disabled. The Super Admin records all payments directly in the committee ledger."));
+  else if(page==="payment")await renderPayment();
  }catch(error){console.error(error);setPage('<h1>তথ্য লোড করা যায়নি</h1><div class="error">'+esc(error.message||"Unknown error")+'</div><p class="muted">Supabase connection, permissions and table setup পরীক্ষা করো।</p>')}
 }
 access=await requireRole(page==="admin"?["super_admin"]:["super_admin","admin","member"]);
