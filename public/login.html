@@ -70,7 +70,18 @@ import {supabase,supabaseReady} from "./supabase-client.js";
 const form=document.getElementById("loginForm"),btn=document.getElementById("loginButton"),msg=document.getElementById("message");
 const show=t=>{msg.textContent=t;msg.style.display="block"};
 if(!supabaseReady)show("Login service configured নয়।");
-else{const {data}=await supabase.auth.getSession();if(data.session)location.replace("dashboard.html")}
+else{
+ const {data}=await supabase.auth.getSession();
+ if(data.session){
+  const {data:profile}=await supabase.from("profiles").select("role").eq("id",data.session.user.id).maybeSingle();
+  if(profile&&["super_admin","admin","member"].includes(profile.role))location.replace("dashboard.html");
+  else{
+   await supabase.auth.signOut();
+   if(profile?.role==="pending")show("আপনার অ্যাকাউন্ট এখনো Super Admin অনুমোদন করেননি।");
+   else if(profile?.role==="rejected")show("এই অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি। Super Admin-এর সঙ্গে যোগাযোগ করুন।");
+  }
+ }
+}
 form.addEventListener("submit",async e=>{
  e.preventDefault();if(!supabaseReady)return;
  btn.disabled=true;btn.textContent="যাচাই হচ্ছে…";msg.style.display="none";
