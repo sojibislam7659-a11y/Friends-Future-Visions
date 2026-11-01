@@ -160,5 +160,5 @@ async function renderPage(){
   else if(page==="payment")setPage('<h1>Payment</h1>'+empty("Member payment submission is disabled. The Super Admin records all payments directly in the committee ledger."));
  }catch(error){console.error(error);setPage('<h1>তথ্য লোড করা যায়নি</h1><div class="error">'+esc(error.message||"Unknown error")+'</div><p class="muted">Supabase connection, permissions and table setup পরীক্ষা করো।</p>')}
 }
-access=await requireRole(["super_admin","admin","member"]);
+access=await requireRole(page==="admin"?["super_admin"]:["super_admin","admin","member"]);
 if(access){shell();await renderPage();if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(e=>console.warn("Service worker registration failed",e))}}
