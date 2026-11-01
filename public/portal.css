@@ -375,3 +375,10 @@ body.login-theme a.member-directory-person:hover{background:rgba(65,91,139,.38);
  .member-profile-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:360px){.member-directory-avatar{width:68px;height:68px;flex-basis:68px}}
+
+/* Reduce oversized controls consistently across desktop and mobile */
+.nav a{min-height:36px;padding:7px 10px;font-size:12px;gap:6px}
+button,.button{min-height:38px;padding:8px 12px;font-size:13px}
+@media(max-width:760px){
+ button,.button{min-height:36px;padding:7px 10px;font-size:12px}
+}
