@@ -1,1 +1,87 @@
-<!doctype html><html lang="bn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>লগইন | Friends Future Vision Forever</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"><link rel="stylesheet" href="portal.css"><style>body{display:grid;place-items:center;min-height:100vh;padding:15px}.login{width:min(100%,440px);padding:30px;background:#fff;border:1px solid #dce8e0;border-radius:16px}.login .brand{margin-bottom:24px}.login h1{font-size:27px;color:#164e3d}.login form{display:grid;gap:10px}.login label{font-weight:700;font-size:13px}.login input{padding:12px;border:1px solid #d7e3da;border-radius:9px;min-height:48px}.login .message{display:none;padding:10px;background:#fff0ef;border-radius:8px;color:#963b35}.login button{margin-top:12px}</style></head><body><main class="login"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><h1>সদস্য লগইন</h1><p class="muted">নিবন্ধিত Email ও Password দিয়ে প্রবেশ করুন।</p><form id="loginForm"><label for="email">Email</label><input id="email" type="email" autocomplete="username" required><label for="password">Password</label><input id="password" type="password" autocomplete="current-password" required><button id="loginButton">লগইন করুন</button><div class="message" id="message" role="alert"></div></form><p class="muted small">শুধু অনুমোদিত অ্যাকাউন্ট প্রবেশ করতে পারবে।</p><a href="index.html">← মূল পেজ</a></main><script type="module">import {supabase,supabaseReady} from "./supabase-client.js";const form=document.getElementById("loginForm"),btn=document.getElementById("loginButton"),msg=document.getElementById("message");const show=t=>{msg.textContent=t;msg.style.display="block"};if(!supabaseReady)show("Login service configured নয়।");else{const {data}=await supabase.auth.getSession();if(data.session)location.replace("dashboard.html")}form.addEventListener("submit",async e=>{e.preventDefault();if(!supabaseReady)return;btn.disabled=true;btn.textContent="যাচাই হচ্ছে…";msg.style.display="none";const {data,error}=await supabase.auth.signInWithPassword({email:document.getElementById("email").value.trim(),password:document.getElementById("password").value});if(error){show("লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।");}else{const {data:p,error:pe}=await supabase.from("profiles").select("role").eq("id",data.user.id).maybeSingle();if(pe||!p||!["super_admin","admin","member"].includes(p.role)){await supabase.auth.signOut();show("এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।");}else location.replace("dashboard.html")}btn.disabled=false;btn.textContent="লগইন করুন";document.getElementById("password").value=""});</script></body></html>
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#182b54">
+<meta name="robots" content="noindex,nofollow">
+<title>সদস্য লগইন | Friends Future Vision Forever</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="portal.css">
+<style>
+*{box-sizing:border-box}
+body{min-height:100vh;margin:0;padding:24px;display:grid;place-items:center;overflow-x:hidden;
+ background:radial-gradient(ellipse at 14% 12%,rgba(112,117,255,.46),transparent 36%),
+ radial-gradient(ellipse at 88% 84%,rgba(30,191,188,.32),transparent 34%),
+ linear-gradient(135deg,#101a39 0%,#192d55 48%,#204b68 100%);color:#edf3ff}
+body:before,body:after{content:"";position:fixed;border-radius:50%;filter:blur(2px);pointer-events:none}
+body:before{width:360px;height:360px;top:-170px;right:-100px;border:1px solid rgba(190,205,255,.18);box-shadow:0 0 0 38px rgba(190,205,255,.035),0 0 0 78px rgba(190,205,255,.025)}
+body:after{width:280px;height:280px;bottom:-170px;left:-100px;background:rgba(48,190,190,.09);filter:blur(35px)}
+.login{position:relative;z-index:1;width:min(100%,460px);padding:clamp(26px,5vw,42px);
+ background:linear-gradient(145deg,rgba(30,48,86,.94),rgba(23,43,75,.92));
+ border:1px solid rgba(185,205,255,.22);border-radius:24px;
+ box-shadow:0 28px 90px rgba(3,12,34,.42),inset 0 1px rgba(255,255,255,.08);backdrop-filter:blur(18px)}
+.login .brand{gap:14px;margin-bottom:34px}
+.login .brand img{width:52px;height:52px;filter:brightness(0) invert(1);opacity:.95}
+.login .brand strong{font-size:16px;color:#f0f4ff}
+.login .brand small{font-size:12px;color:#aebfdf}
+.login h1{margin:0 0 7px;color:#f4f6ff;font-size:clamp(25px,5vw,31px);letter-spacing:-.035em}
+.login .muted{color:#b4c2dc}
+.login .intro{margin:0 0 26px;font-size:14px}
+.login form{display:grid;gap:9px}
+.login label{margin-top:8px;color:#dce6fa;font-size:13px;font-weight:600}
+.login input{width:100%;min-height:52px;padding:13px 15px;border-radius:12px;
+ background:#263e66;border:1px solid rgba(181,202,242,.25);color:#f5f7ff;outline:none}
+.login input:focus{border-color:#91a9ff;box-shadow:0 0 0 3px rgba(126,151,255,.17)}
+.login input::placeholder{color:#9eb0d0}
+.login button{width:100%;min-height:52px;margin-top:16px;border:0;border-radius:12px;
+ background:linear-gradient(105deg,#788cff,#5a75ed 58%,#43a9c1);color:#fff;font-weight:700;
+ box-shadow:0 10px 26px rgba(74,107,218,.26)}
+.login button:hover{filter:brightness(1.08)}
+.login button:disabled{opacity:.65}
+.login .message{display:none;padding:12px;border-radius:10px;background:#553a50;color:#ffd9dd;border:1px solid #a86b7b;font-size:13px}
+.login .small{margin-top:22px;color:#aebfdf;line-height:1.7}
+.login .security-note{display:flex;align-items:center;gap:9px;margin-top:20px;color:#b6c8e4;font-size:12px}
+.login .security-dot{width:8px;height:8px;border-radius:50%;background:#70dfb1;box-shadow:0 0 12px #70dfb1}
+@media(max-width:480px){body{padding:14px}.login{border-radius:20px}.login .brand{margin-bottom:28px}}
+</style>
+</head>
+<body>
+<main class="login">
+ <div class="brand"><img src="friends-future-vision-logo.svg" alt="Friends Future Vision Forever logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div>
+ <h1>সদস্য লগইন</h1>
+ <p class="muted intro">আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।</p>
+ <form id="loginForm">
+  <label for="email">Email address</label>
+  <input id="email" type="email" autocomplete="username" placeholder="আপনার নিবন্ধিত ইমেইল" required>
+  <label for="password">Password</label>
+  <input id="password" type="password" autocomplete="current-password" placeholder="আপনার পাসওয়ার্ড" required>
+  <button id="loginButton" type="submit">লগইন করুন <span aria-hidden="true">→</span></button>
+  <div class="message" id="message" role="alert"></div>
+ </form>
+ <div class="security-note"><span class="security-dot"></span><span>শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন</span></div>
+ <p class="small">আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।</p>
+</main>
+<script type="module">
+import {supabase,supabaseReady} from "./supabase-client.js";
+const form=document.getElementById("loginForm"),btn=document.getElementById("loginButton"),msg=document.getElementById("message");
+const show=t=>{msg.textContent=t;msg.style.display="block"};
+if(!supabaseReady)show("Login service configured নয়।");
+else{const {data}=await supabase.auth.getSession();if(data.session)location.replace("dashboard.html")}
+form.addEventListener("submit",async e=>{
+ e.preventDefault();if(!supabaseReady)return;
+ btn.disabled=true;btn.textContent="যাচাই হচ্ছে…";msg.style.display="none";
+ const {data,error}=await supabase.auth.signInWithPassword({email:document.getElementById("email").value.trim(),password:document.getElementById("password").value});
+ if(error){show("লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।")}
+ else{
+  const {data:p,error:pe}=await supabase.from("profiles").select("role").eq("id",data.user.id).maybeSingle();
+  if(pe||!p||!["super_admin","admin","member"].includes(p.role)){await supabase.auth.signOut();show("এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।")}
+  else location.replace("dashboard.html")
+ }
+ btn.disabled=false;btn.textContent="লগইন করুন →";document.getElementById("password").value="";
+});
+</script>
+</body>
+</html>
