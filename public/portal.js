@@ -80,7 +80,7 @@ async function renderDue(){
  if(access.role==="admin"){setPage('<h1>Personal Due</h1>'+empty("এই Admin অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই।"));return}
  if(!members.length){setPage('<h1>Personal Due</h1>'+empty("এই লগইন অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই।"));return}
  const ids=members.map(m=>m.id);
- const [rr,tr]=await Promise.all([supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").in("member_id",ids).order("effective_from"),supabase.from("financial_transactions").select("member_id,transaction_type,amount,transaction_date,created_at").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in")]);
+ const [rr,tr]=await Promise.all([supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").in("member_id",ids).order("effective_from"),supabase.from("financial_transactions").select("member_id,transaction_type,amount,transaction_date,created_at").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in").lte("transaction_date",today())]);
  if(rr.error)throw rr.error;if(tr.error)throw tr.error;
  const rates={};(rr.data||[]).forEach(r=>(rates[r.member_id]??=[]).push(r));const paid={};(tr.data||[]).forEach(x=>{const start=rates[x.member_id]?.[0]?.effective_from;if(start&&x.transaction_date>=start)paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount)});
  const now=new Date(),nowIndex=now.getFullYear()*12+now.getMonth(),rows=members.map(m=>{
