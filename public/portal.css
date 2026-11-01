@@ -449,3 +449,29 @@ button,.button{min-height:38px;padding:8px 12px;font-size:13px}
     width:112px;height:136px;flex-basis:112px;border-radius:10px;
   }
 }
+
+
+/* High-contrast navigation and member upload cards */
+.sidebar-nav a{color:#e0eaff;background:rgba(255,255,255,.035);border:1px solid rgba(195,211,245,.10);font-weight:700}
+.sidebar-nav a:hover{background:rgba(102,145,230,.25);color:#fff;border-color:rgba(180,205,255,.35)}
+.sidebar-nav a.active{background:linear-gradient(100deg,rgba(104,137,255,.42),rgba(53,177,196,.26));color:#fff;border-color:rgba(174,203,255,.55);box-shadow:inset 3px 0 0 #8fb0ff}
+.sidebar-nav a .ui-icon{color:#bcd0ff}
+body.login-theme .sidebar-nav a{color:#e4edff}
+body.login-theme .sidebar-nav a.active{color:#fff}
+.upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.upload-card{display:grid;gap:10px;align-content:start;padding:15px;border:1px solid rgba(185,205,255,.20);border-radius:13px;background:rgba(37,59,97,.45);min-width:0}
+.upload-card>strong{color:#f0f4ff}
+.upload-preview-wrap{display:flex;align-items:center;gap:12px;min-height:96px}
+.profile-upload-preview{width:88px;height:108px;object-fit:cover;border-radius:10px;border:1px solid rgba(185,205,255,.28);background:#263e66}
+.profile-upload-preview.nominee-preview{width:88px;height:88px;border-radius:10px}
+.profile-upload-placeholder{width:88px;height:108px;display:grid;place-items:center;border:1px dashed rgba(185,205,255,.35);border-radius:10px;color:#b9c9e3;font-size:12px}
+.private-doc-thumb{display:block;max-width:180px;max-height:180px;object-fit:contain;border-radius:9px;border:1px solid rgba(185,205,255,.22);background:#263e66}
+body.login-theme .upload-card{background:rgba(37,59,97,.48);border-color:rgba(185,205,255,.20)}
+body.login-theme .upload-card .muted{color:#c2d1e9}
+body.login-theme .dropzone{border-color:#8faeff;background:rgba(79,112,178,.22);color:#f0f4ff}
+body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#b7caff}
+@media(max-width:640px){
+ .upload-grid{grid-template-columns:1fr}
+ .upload-card{padding:12px}
+ .profile-upload-preview{width:76px;height:96px}
+}
