@@ -64,7 +64,19 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
   <button class="submit" id="loginButton" type="submit" data-i18n="loginButton">লগইন করুন →</button>
   <div class="message" id="message" role="alert"></div>
  </form>
- <p class="small" style="text-align:center;margin-top:14px"><a href="forgot-password.html" id="forgotPasswordLink">পাসওয়ার্ড ভুলে গেছেন?</a></p>
+ <p class="small" style="text-align:center;margin-top:14px"><a href="#" id="forgotPasswordLink">পাসওয়ার্ড ভুলে গেছেন?</a></p>
+ <section id="resetPanel" hidden>
+  <h1 data-i18n="resetTitle">নতুন পাসওয়ার্ড সেট করুন</h1>
+  <p class="muted intro" data-i18n="resetIntro">ইমেইলে পাওয়া নিরাপদ লিংক দিয়ে নতুন পাসওয়ার্ড দিন।</p>
+  <form id="resetForm">
+   <label for="newPassword" data-i18n="newPasswordLabel">নতুন পাসওয়ার্ড</label>
+   <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+   <label for="confirmNewPassword" data-i18n="confirmPasswordLabel">আবার লিখুন</label>
+   <input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required>
+   <button class="submit" id="resetButton" type="submit" data-i18n="savePassword">পাসওয়ার্ড পরিবর্তন করুন</button>
+   <div class="message" id="resetMessage" role="status" aria-live="polite"></div>
+  </form>
+ </section>
  <div class="security-note"><span class="security-dot"></span><span data-i18n="security">শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন</span></div>
  <p class="small" data-i18n="privacy">আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।</p>
  <p class="small" style="text-align:center;margin-top:14px"><span data-i18n="newMember">নতুন সদস্য?</span> <a href="signup.html" data-i18n="createAccount">নিজে অ্যাকাউন্ট তৈরি করুন</a></p>
@@ -74,8 +86,8 @@ import {supabase,supabaseReady} from "./supabase-client.js";
 const form=document.getElementById("loginForm"),btn=document.getElementById("loginButton"),msg=document.getElementById("message");
 let lang="bn";
 const copy={
- bn:{brandBn:"ফ্রেন্ডস ফিউচার ভিশন ফরএভার",title:"সদস্য লগইন",intro:"আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।",emailLabel:"Email address",emailPlaceholder:"আপনার নিবন্ধিত ইমেইল",passwordLabel:"Password",passwordPlaceholder:"আপনার পাসওয়ার্ড",loginButton:"লগইন করুন →",security:"শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন",privacy:"আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।",newMember:"নতুন সদস্য?",forgot:"পাসওয়ার্ড ভুলে গেছেন?",createAccount:"নিজে অ্যাকাউন্ট তৈরি করুন",toggle:"English",checking:"যাচাই হচ্ছে…",service:"Login service configured নয়।",loginError:"লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।",pending:"আপনার অ্যাকাউন্ট এখনো Super Admin অনুমোদন করেননি।",rejected:"এই অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি। Super Admin-এর সঙ্গে যোগাযোগ করুন।",pendingVerified:"আপনার ইমেইল যাচাই হয়েছে। এখন Super Admin-এর অনুমোদনের অপেক্ষায় আছেন।",noAccess:"এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।"},
- en:{brandBn:"Friends Future Vision Forever",title:"Member Login",intro:"Sign in securely with your approved account.",emailLabel:"Email address",emailPlaceholder:"Your registered email",passwordLabel:"Password",passwordPlaceholder:"Your password",loginButton:"Sign in →",security:"Access is restricted to approved members and administrators.",privacy:"Do not share your login credentials with anyone.",newMember:"New member?",forgot:"Forgot password?",createAccount:"Create an account",toggle:"বাংলা",checking:"Checking…",service:"Login service is not configured.",loginError:"Unable to sign in. Check your details and try again.",pending:"Your account is awaiting Super Admin approval.",rejected:"This application was not approved. Please contact the Super Admin.",pendingVerified:"Your email is verified. Your account is now awaiting Super Admin approval.",noAccess:"This account does not have committee access."}
+ bn:{brandBn:"ফ্রেন্ডস ফিউচার ভিশন ফরএভার",title:"সদস্য লগইন",intro:"আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।",emailLabel:"Email address",emailPlaceholder:"আপনার নিবন্ধিত ইমেইল",passwordLabel:"Password",passwordPlaceholder:"আপনার পাসওয়ার্ড",loginButton:"লগইন করুন →",security:"শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন",privacy:"আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।",newMember:"নতুন সদস্য?",forgot:"পাসওয়ার্ড ভুলে গেছেন?",resetTitle:"নতুন পাসওয়ার্ড সেট করুন",resetIntro:"ইমেইলে পাওয়া নিরাপদ লিংক দিয়ে নতুন পাসওয়ার্ড দিন।",newPasswordLabel:"নতুন পাসওয়ার্ড",confirmPasswordLabel:"আবার লিখুন",savePassword:"পাসওয়ার্ড পরিবর্তন করুন",createAccount:"নিজে অ্যাকাউন্ট তৈরি করুন",toggle:"English",checking:"যাচাই হচ্ছে…",service:"Login service configured নয়।",loginError:"লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।",pending:"আপনার অ্যাকাউন্ট এখনো Super Admin অনুমোদন করেননি।",rejected:"এই অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি। Super Admin-এর সঙ্গে যোগাযোগ করুন।",pendingVerified:"আপনার ইমেইল যাচাই হয়েছে। এখন Super Admin-এর অনুমোদনের অপেক্ষায় আছেন।",noAccess:"এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।"},
+ en:{brandBn:"Friends Future Vision Forever",title:"Member Login",intro:"Sign in securely with your approved account.",emailLabel:"Email address",emailPlaceholder:"Your registered email",passwordLabel:"Password",passwordPlaceholder:"Your password",loginButton:"Sign in →",security:"Access is restricted to approved members and administrators.",privacy:"Do not share your login credentials with anyone.",newMember:"New member?",forgot:"Forgot password?",resetTitle:"Set a new password",resetIntro:"Enter a new password using the secure link sent to your email.",newPasswordLabel:"New password",confirmPasswordLabel:"Confirm new password",savePassword:"Update password",createAccount:"Create an account",toggle:"বাংলা",checking:"Checking…",service:"Login service is not configured.",loginError:"Unable to sign in. Check your details and try again.",pending:"Your account is awaiting Super Admin approval.",rejected:"This application was not approved. Please contact the Super Admin.",pendingVerified:"Your email is verified. Your account is now awaiting Super Admin approval.",noAccess:"This account does not have committee access."}
 };
 function tr(key){return copy[lang][key]||copy.bn[key]||key}
 function show(key){msg.textContent=tr(key);msg.style.display="block"}
@@ -85,11 +97,42 @@ function renderLanguage(){
  document.querySelectorAll("[data-i18n-placeholder]").forEach(node=>{node.placeholder=tr(node.dataset.i18nPlaceholder)});
  document.getElementById("languageToggle").textContent=tr("toggle");
  document.getElementById("forgotPasswordLink").textContent=tr("forgot");
+ document.querySelectorAll("#resetPanel [data-i18n]").forEach(node=>{node.textContent=tr(node.dataset.i18n)});
  document.title=lang==="bn"?"সদস্য লগইন | Friends Future Vision Forever":"Member Login | Friends Future Vision Forever";
 }
 document.getElementById("languageToggle").addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";renderLanguage();if(msg.style.display==="block")msg.textContent=msg.dataset.messageKey?tr(msg.dataset.messageKey):msg.textContent});
 function showKey(key){msg.dataset.messageKey=key;show(key)}
-if(!supabaseReady)showKey("service");
+
+const resetPanel=document.getElementById("resetPanel"),resetMessage=document.getElementById("resetMessage");
+const showResetMessage=text=>{resetMessage.textContent=text;resetMessage.style.display="block"};
+document.getElementById("forgotPasswordLink").addEventListener("click",async event=>{
+ event.preventDefault();if(!supabaseReady)return;
+ const email=document.getElementById("email").value.trim().toLowerCase();
+ if(!email){showKey("loginError");document.getElementById("email").focus();return}
+ const link=document.getElementById("forgotPasswordLink");link.style.pointerEvents="none";
+ const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:new URL("login.html",location.href).href});
+ link.style.pointerEvents="";
+ showKey(error?"loginError": "resetSent");
+ if(!error){msg.textContent=lang==="bn"?"যদি এই ইমেইলে অ্যাকাউন্ট থাকে, পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। Inbox/Spam দেখুন।":"If an account exists for this email, a password reset link has been sent. Check Inbox/Spam."}
+});
+supabase.auth.onAuthStateChange((event,session)=>{
+ if(event==="PASSWORD_RECOVERY"&&session){
+  form.hidden=true;document.querySelector(".security-note").hidden=true;document.querySelectorAll("body > main > p").forEach(x=>x.hidden=true);
+  resetPanel.hidden=false;document.getElementById("forgotPasswordLink").hidden=true;
+ }
+});
+document.getElementById("resetForm").addEventListener("submit",async event=>{
+ event.preventDefault();
+ const password=document.getElementById("newPassword").value,confirmPassword=document.getElementById("confirmNewPassword").value;
+ if(password.length<8){showResetMessage(lang==="bn"?"পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।":"Password must be at least 8 characters.");return}
+ if(password!==confirmPassword){showResetMessage(lang==="bn"?"দুটি পাসওয়ার্ড এক নয়।":"The passwords do not match.");return}
+ const button=document.getElementById("resetButton");button.disabled=true;
+ const {error}=await supabase.auth.updateUser({password});
+ if(error)showResetMessage(error.message);
+ else{showResetMessage(lang==="bn"?"পাসওয়ার্ড পরিবর্তন হয়েছে। এখন নতুন পাসওয়ার্ড দিয়ে Login করুন।":"Password updated. Sign in with your new password.");await supabase.auth.signOut();setTimeout(()=>location.replace("login.html"),1200)}
+ button.disabled=false;
+});
+\nif(!supabaseReady)showKey("service");
 else{
  const {data}=await supabase.auth.getSession();
  if(data.session){
