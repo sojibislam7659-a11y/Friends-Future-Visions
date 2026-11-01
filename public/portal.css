@@ -140,3 +140,5 @@ button:hover,.button:hover{background:linear-gradient(110deg,#104d42,#176653)}
 }
 
 body.auth-pending .shell{visibility:hidden}
+
+.contribution-matrix .sticky-col{background:#eaf2e9}
