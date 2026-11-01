@@ -132,12 +132,14 @@ document.getElementById("resetForm").addEventListener("submit",async event=>{
  else{showResetMessage(lang==="bn"?"পাসওয়ার্ড পরিবর্তন হয়েছে। এখন নতুন পাসওয়ার্ড দিয়ে Login করুন।":"Password updated. Sign in with your new password.");await supabase.auth.signOut();setTimeout(()=>location.replace("login.html"),1200)}
  button.disabled=false;
 });
-\nif(!supabaseReady)showKey("service");
+
+const isPasswordRecovery=location.hash.includes('type=recovery');
+if(!supabaseReady)showKey("service");
 else{
  const {data}=await supabase.auth.getSession();
  if(data.session){
   const {data:profile}=await supabase.from("profiles").select("role").eq("id",data.session.user.id).maybeSingle();
-  if(profile&&["super_admin","admin","member"].includes(profile.role))location.replace("dashboard.html");
+  if(!isPasswordRecovery&&profile&&["super_admin","admin","member"].includes(profile.role))location.replace("dashboard.html");
   else{
    await supabase.auth.signOut();
    if(profile?.role==="pending")showKey("pending");
