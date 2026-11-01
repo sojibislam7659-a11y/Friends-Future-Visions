@@ -182,3 +182,93 @@ body.auth-pending .shell{visibility:hidden}
  .member-profile-header{align-items:flex-start;gap:12px}
  .member-profile-photo{width:78px;height:78px;flex-basis:78px}
 }
+
+
+/* Shared login-page visual system for portal data, directory and member profiles */
+body.login-theme{
+  min-height:100vh;
+  background:radial-gradient(ellipse at 12% 8%,rgba(112,117,255,.20),transparent 34%),
+    radial-gradient(ellipse at 88% 88%,rgba(30,191,188,.13),transparent 32%),
+    linear-gradient(135deg,#101a39 0%,#192d55 52%,#204b68 100%);
+  color:#edf3ff;
+  font-family:Inter,"Noto Sans Bengali",system-ui,sans-serif;
+}
+body.login-theme h1,body.login-theme h2,body.login-theme h3,
+body.login-theme h4,body.login-theme strong,body.login-theme label,
+body.login-theme th{color:#f0f4ff}
+body.login-theme p,body.login-theme li,body.login-theme td,
+body.login-theme small,body.login-theme .muted,body.login-theme .lead{color:#b9c9e3}
+body.login-theme a{color:#c8d7ff}
+body.login-theme .shell{max-width:1180px}
+body.login-theme .topbar,body.login-theme .nav,body.login-theme .page{
+  background:linear-gradient(145deg,rgba(30,48,86,.94),rgba(23,43,75,.92));
+  border:1px solid rgba(185,205,255,.20);
+  color:#edf3ff;
+  box-shadow:0 18px 48px rgba(3,12,34,.20),inset 0 1px rgba(255,255,255,.035);
+  backdrop-filter:blur(14px);
+}
+body.login-theme .topbar{border-radius:18px}
+body.login-theme .page{border-radius:20px}
+body.login-theme .brand strong,body.login-theme .brand small{color:#f0f4ff}
+body.login-theme .brand small{opacity:.72}
+body.login-theme .brand img{filter:brightness(0) invert(1);opacity:.92}
+body.login-theme .nav{background:rgba(20,38,70,.88)}
+body.login-theme .nav a{color:#c4d3ed}
+body.login-theme .nav a.active,body.login-theme .nav a:hover{background:rgba(120,140,255,.20);color:#fff}
+body.login-theme .home-icon,body.login-theme .icon-button,
+body.login-theme .button.secondary,body.login-theme button.secondary{
+  background:rgba(255,255,255,.08);color:#eaf1ff;
+  border:1px solid rgba(190,205,255,.22);box-shadow:none;
+}
+body.login-theme .home-icon:hover,body.login-theme .icon-button:hover,
+body.login-theme .button.secondary:hover,body.login-theme button.secondary:hover{background:rgba(255,255,255,.15)}
+body.login-theme button:not(.secondary),body.login-theme .button:not(.secondary){
+  background:linear-gradient(105deg,#788cff,#5a75ed 58%,#43a9c1);
+  color:#fff;border:0;box-shadow:0 8px 22px rgba(74,107,218,.20)
+}
+body.login-theme .role,body.login-theme .pill{background:rgba(112,223,177,.13);color:#a9f0d0;border:1px solid rgba(112,223,177,.20)}
+body.login-theme .card,body.login-theme .list-item,body.login-theme .person,
+body.login-theme .payment-method-card,body.login-theme .profile-dialog,
+body.login-theme .proof-month-card,body.login-theme .member-directory-item,
+body.login-theme .member-profile-field{
+  background:rgba(37,59,97,.72);border:1px solid rgba(185,205,255,.16);
+  color:#edf3ff;box-shadow:none;
+}
+body.login-theme .card .label,body.login-theme .card small,
+body.login-theme .member-directory-text small,body.login-theme .member-profile-field small{color:#b4c2dc}
+body.login-theme .card .value,body.login-theme .member-profile-field strong{color:#f0f4ff}
+body.login-theme .section h2{color:#dce7ff}
+body.login-theme th{background:rgba(120,140,255,.18);color:#edf3ff}
+body.login-theme td,body.login-theme tr:nth-child(even) td,
+body.login-theme .total-row td{background:rgba(27,48,83,.68);color:#d9e4f7;border-color:rgba(185,205,255,.12)}
+body.login-theme .table-wrap{border-color:rgba(185,205,255,.18)}
+body.login-theme .field label{color:#dce6fa}
+body.login-theme .field input,body.login-theme .field select,
+body.login-theme .field textarea,body.login-theme input,
+body.login-theme select,body.login-theme textarea{
+  background:#263e66;color:#f5f7ff;border-color:rgba(181,202,242,.25)
+}
+body.login-theme input::placeholder,body.login-theme textarea::placeholder{color:#9eb0d0}
+body.login-theme .notice{background:rgba(112,91,47,.20);border-color:rgba(221,205,165,.25);color:#f0dfb5}
+body.login-theme .success{background:rgba(55,130,91,.20);border-color:rgba(112,223,177,.24);color:#b8f1d4}
+body.login-theme .error{background:rgba(168,72,87,.20);border-color:rgba(255,160,173,.25);color:#ffd9dd}
+body.login-theme .empty{background:rgba(37,59,97,.55);border-color:rgba(185,205,255,.22);color:#b9c9e3}
+body.login-theme .member-directory-item:hover,body.login-theme .person-button:hover{background:rgba(65,91,139,.65);border-color:rgba(145,169,255,.45)}
+body.login-theme .member-directory-fallback{background:rgba(120,140,255,.20);color:#eaf1ff}
+body.login-theme .member-directory-arrow{color:#c8d7ff}
+body.login-theme .profile-backdrop{background:rgba(5,12,30,.86)}
+body.login-theme .footer{color:#aebfdf}
+body.login-theme .toast{background:#263e66;color:#f5f7ff;border:1px solid rgba(185,205,255,.18)}
+body.login-theme .contribution-matrix .sticky-col{background:#1d355e}
+body.login-theme .contribution-matrix th.sticky-col{background:#304a79}
+body.login-theme .matrix-toggle{color:#dce6fa}
+body.login-theme .matrix-amount{background:#263e66;color:#f5f7ff;border-color:rgba(181,202,242,.25)}
+body.login-theme .matrix-save-actions{background:#1d355e;border-color:rgba(185,205,255,.22)}
+body.login-theme .dropzone{background:rgba(37,59,97,.72);border-color:rgba(145,169,255,.45);color:#dce6fa}
+body.login-theme .payment-number{color:#eaf1ff}
+body.login-theme .deed-pdf,body.login-theme .deed-image-frame{background:#1d355e;border-color:rgba(185,205,255,.20)}
+body.login-theme .member-profile-header .lead{color:#c5d3eb}
+@media(max-width:640px){
+ body.login-theme .topbar{background:linear-gradient(145deg,rgba(30,48,86,.97),rgba(23,43,75,.95))}
+ body.login-theme .page{background:linear-gradient(145deg,rgba(30,48,86,.96),rgba(23,43,75,.94))}
+}
