@@ -97,12 +97,17 @@ async function renderDue(){
  const {data,error}=await supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no");if(error)throw error;
  if(!data.length){setPage('<h1>Member Info</h1>'+empty(t("এখনো কোনো Active member নেই।","No active members yet.")));return}
  const own=access.role==="member"?await supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle():{data:null};if(own.error)throw own.error;const ownId=own.data?.id||null;
- const cards=await Promise.all(data.map(async m=>{let photo="";if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);if(u?.signedUrl)photo='<img loading="lazy" src="'+esc(u.signedUrl)+'" alt="">'}return '<button type="button" class="person person-button" title="Member No: '+esc(m.member_no||"")+'" data-member-id="'+esc(m.member_id)+'" data-member-name="'+esc(lang==="bn"?(m.full_name_bn||m.full_name):m.full_name)+'" data-member-no="'+esc(m.member_no||"")+'" data-member-photo="'+esc(photo)+'">'+(photo||'<div class="avatar">FF</div>')+'<strong>'+esc(lang==="bn"?(m.full_name_bn||m.full_name):m.full_name)+'</strong><small>'+esc(m.member_no||"")+'</small></button>'}));
- setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("ছবি, নাম ও সদস্য নম্বর। ব্যক্তিগত তথ্য শুধু সংশ্লিষ্ট সদস্য ও Super Admin দেখতে পারবেন।","Photos, names and member numbers. Private details are restricted to the member and Super Admin.")+'</p><div class="members-grid">'+cards.join("")+'</div><div class="profile-backdrop" id="profileBackdrop" hidden><section class="profile-dialog" role="dialog" aria-modal="true"><button class="secondary profile-close" id="profileClose">Close</button><div id="profileDetails"></div></section></div>');
- document.querySelectorAll("[data-member-id]").forEach(b=>b.addEventListener("click",()=>{const details=document.getElementById("profileDetails");details.innerHTML=(b.dataset.memberPhoto||'<div class="avatar">FF</div>')+'<h2>'+esc(b.dataset.memberName)+'</h2><p class="pill">'+esc(b.dataset.memberNo)+'</p><p class="muted">ব্যক্তিগত তথ্য গোপন রাখা হয়েছে। নিজের বিস্তারিত প্রোফাইল দেখতে My Profile ব্যবহার করুন।</p>'+(b.dataset.memberId===ownId?'<a class="button" href="member.html">My Profile</a>':"");document.getElementById("profileBackdrop").hidden=false}));
- document.getElementById("profileClose").addEventListener("click",()=>{document.getElementById("profileBackdrop").hidden=true});
- document.getElementById("profileBackdrop").addEventListener("click",e=>{if(e.target.id==="profileBackdrop")e.currentTarget.hidden=true});
-}async function renderProofs(){
+ const cards=await Promise.all(data.map(async m=>{
+  let photo="";
+  if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);if(u?.signedUrl)photo='<img class="member-directory-avatar" loading="lazy" src="'+esc(u.signedUrl)+'" alt="">'}
+  const label=lang==="bn"?(m.full_name_bn||m.full_name):m.full_name;
+  const canOpen=access.role==="super_admin"||m.member_id===ownId;
+  const inside=(photo||'<span class="member-directory-avatar member-directory-fallback">FF</span>')+'<span class="member-directory-text"><strong>'+esc(label)+'</strong><small>'+esc(m.member_no||"")+'</small></span>'+(canOpen?'<span class="member-directory-arrow">›</span>':"");
+  return canOpen?'<a class="member-directory-item" href="member-profile.html?id='+encodeURIComponent(m.member_id)+'">'+inside+'</a>':'<div class="member-directory-item">'+inside+'</div>';
+ }));
+ setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("সদস্যের ছবি ও নাম। Super Admin যেকোনো সদস্যের পূর্ণ প্রোফাইল দেখতে পারবেন; সদস্যরা শুধু নিজের প্রোফাইল খুলতে পারবেন।","Member photos and names. Super Admin can open any profile; members can open only their own.")+'</p><div class="member-directory-list">'+cards.join("")+'</div>');
+}
+async function renderProofs(){
  const {data,error}=await supabase.from("committee_proofs").select("id,proof_month,title,storage_path,note,created_at").eq("published",true).order("proof_month",{ascending:true});if(error)throw error;
  const counts={};(data||[]).forEach(p=>{const k=p.proof_month.slice(0,7);counts[k]=(counts[k]||0)+1});
  const months=[];for(let i=0;i<60;i++){const d=new Date(2026,11+i,1);months.push(localDate(d).slice(0,7))}
