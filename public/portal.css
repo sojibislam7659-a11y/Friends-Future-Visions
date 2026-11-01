@@ -68,3 +68,5 @@
 .person-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;white-space:normal}
 .person-button strong{display:block;overflow-wrap:anywhere}
 .person-button small{color:var(--muted)}
+
+[hidden]{display:none!important}
