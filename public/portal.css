@@ -64,3 +64,7 @@
  .contribution-matrix .name-col{left:90px;min-width:125px}
  .deed-pdf{height:65vh}
 }
+
+.person-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;white-space:normal}
+.person-button strong{display:block;overflow-wrap:anywhere}
+.person-button small{color:var(--muted)}
