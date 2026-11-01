@@ -139,7 +139,8 @@ else{
  const {data}=await supabase.auth.getSession();
  if(data.session){
   const {data:profile}=await supabase.from("profiles").select("role").eq("id",data.session.user.id).maybeSingle();
-  if(!isPasswordRecovery&&profile&&["super_admin","admin","member"].includes(profile.role))location.replace("dashboard.html");
+  if(isPasswordRecovery){ /* Keep the recovery session active for updateUser(). */ }
+  else if(profile&&["super_admin","admin","member"].includes(profile.role))location.replace("dashboard.html");
   else{
    await supabase.auth.signOut();
    if(profile?.role==="pending")showKey("pending");
