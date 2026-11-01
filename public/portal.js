@@ -54,7 +54,7 @@ async function summary(){
  if(error)throw error;
  return data||{};
 }
-async function renderDashboard(){
+async async function renderDashboard(){
  const s=await summary();
  setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p><div class="grid">'+
  card(t("মোট সম্পদ","Total assets"),money(s.total_assets),t("নগদ + ব্যাংক + বিনিয়োগ","Cash + bank + investments"))+
@@ -209,55 +209,84 @@ async function renderProfile(){
  if(!m){setPage('<h1>My Profile</h1>'+empty("এই অ্যাকাউন্টের সঙ্গে কোনো সদস্য প্রোফাইল যুক্ত নেই।"));return}
  const fields=[["full_name","নাম"],["full_name_bn","বাংলা নাম"],["phone","মোবাইল"],["email","ইমেইল"],["profession","পেশা"],["present_address","বর্তমান ঠিকানা"],["permanent_address","স্থায়ী ঠিকানা"],["emergency_contact_name","জরুরি যোগাযোগের নাম"],["emergency_contact_phone","জরুরি যোগাযোগের নম্বর"],["nominee_name","নমিনির নাম"],["nominee_phone","নমিনির নম্বর"]];
  const inputs=fields.map(([key,label])=>'<div class="field"><label>'+label+'</label><input name="'+key+'" value="'+esc(m[key]||"")+'"></div>').join("");
- const [requests,docs]=await Promise.all([
+ const [requests,docs,profilePhoto,nomineePhoto]=await Promise.all([
   supabase.from("profile_change_requests").select("id,status,created_at,admin_note").eq("submitted_by",access.session.user.id).order("created_at",{ascending:false}).limit(10),
-  supabase.from("member_private_documents").select("id,document_type,status,storage_path,admin_note,uploaded_at").eq("member_id",m.id).order("uploaded_at",{ascending:false}).limit(10)
+  supabase.from("member_private_documents").select("id,document_type,status,storage_path,admin_note,uploaded_at").eq("member_id",m.id).order("uploaded_at",{ascending:false}).limit(20),
+  m.profile_photo_path?supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,900):Promise.resolve({data:null}),
+  m.nominee_photo_path?supabase.storage.from("member-private-documents").createSignedUrl(m.nominee_photo_path,900):Promise.resolve({data:null})
  ]);
  if(requests.error)throw requests.error;if(docs.error)throw docs.error;
+ const docLabel=type=>({member_nid:"নিজের NID",nominee_nid:"Nominee NID",nominee_photo:"Nominee Picture"}[type]||"Private document");
  const docRows=await Promise.all((docs.data||[]).map(async d=>{
   const {data:u}=await supabase.storage.from("member-private-documents").createSignedUrl(d.storage_path,900);
-  return '<article class="list-item"><div class="row"><strong>'+esc(d.document_type==="member_nid"?"Member ID document":"Nominee ID document")+'</strong><span class="pill">'+esc(d.status)+'</span></div><small>'+esc(new Date(d.uploaded_at).toLocaleString())+'</small><p>'+esc(d.admin_note||"")+'</p>'+(u?.signedUrl?'<a href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">View private document</a>':"")+'</article>';
+  const preview=d.document_type==="nominee_photo"&&u?.signedUrl?'<img class="private-doc-thumb" src="'+esc(u.signedUrl)+'" alt="Nominee photo">':"";
+  return '<article class="list-item"><div class="row"><strong>'+esc(docLabel(d.document_type))+'</strong><span class="pill">'+esc(d.status)+'</span></div><small>'+esc(new Date(d.uploaded_at).toLocaleString())+'</small>'+preview+'<p>'+esc(d.admin_note||"")+'</p>'+(u?.signedUrl?'<a href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">ফাইল দেখুন</a>':"")+'</article>';
  }));
- setPage('<h1>My Profile</h1><p class="lead">তথ্য পরিবর্তন ও পরিচয়পত্র আপলোডের অনুরোধ Super Admin অনুমোদন না করা পর্যন্ত মূল তথ্য পরিবর্তিত হবে না।</p><div class="grid">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div><form id="profileRequest"><div class="form-grid">'+inputs+'</div><div class="field" style="margin-top:12px"><label>প্রোফাইল ছবি (JPG, PNG, WEBP · সর্বোচ্চ 5MB)</label><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"></div><div class="form-grid section"><div class="field"><label>নিজের NID / ID (JPG, PNG, WEBP, PDF · সর্বোচ্চ 10MB)</label><input type="file" name="member_nid" accept="image/jpeg,image/png,image/webp,application/pdf"></div><div class="field"><label>Nominee NID / ID (JPG, PNG, WEBP, PDF · সর্বোচ্চ 10MB)</label><input type="file" name="nominee_nid" accept="image/jpeg,image/png,image/webp,application/pdf"></div></div><div class="notice">আপনার ও Nominee-এর পরিচয়পত্র শুধু আপনি এবং Super Admin দেখতে পারবেন। অন্য সদস্যরা দেখতে পারবেন না।</div><div class="form-actions"><button type="submit">পরিবর্তনের অনুরোধ পাঠান</button></div></form><section class="section"><h2>Profile request history</h2><div class="list">'+((requests.data||[]).map(r=>'<article class="list-item"><strong>'+esc(r.status)+'</strong><small>'+esc(new Date(r.created_at).toLocaleString())+'</small><p>'+esc(r.admin_note||"")+'</p></article>').join("")||empty("কোনো অনুরোধ নেই।"))+'</div></section><section class="section"><h2>Private ID document status</h2><div class="list">'+(docRows.join("")||empty("কোনো ID document জমা দেওয়া হয়নি।"))+'</div></section>');
+ const photoPreview=profilePhoto.data?.signedUrl?'<img class="profile-upload-preview" src="'+esc(profilePhoto.data.signedUrl)+'" alt="Current approved profile photo">':'<div class="profile-upload-placeholder">ছবি নেই</div>';
+ const nomineePreview=nomineePhoto.data?.signedUrl?'<img class="profile-upload-preview nominee-preview" src="'+esc(nomineePhoto.data.signedUrl)+'" alt="Current approved nominee photo">':'<div class="profile-upload-placeholder">ছবি নেই</div>';
+ setPage('<h1>My Profile</h1><p class="lead">আপনার তথ্য ও ছবি পরিবর্তনের অনুরোধ Super Admin অনুমোদন না করা পর্যন্ত মূল Profile-এ কার্যকর হবে না। NID ও Nominee-এর ফাইল শুধু আপনি এবং Super Admin দেখতে পারবেন।</p><div class="grid">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div><form id="profileRequest"><section class="section"><h2>ব্যক্তিগত তথ্য</h2><div class="form-grid">'+inputs+'</div></section><section class="section"><h2>Profile Picture</h2><div class="upload-card"><div class="upload-preview-wrap">'+photoPreview+'</div><div class="field"><label>নিজের Profile Picture · JPG, PNG বা WEBP · সর্বোচ্চ 5MB</label><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><small class="muted">Personal Profile-এ ছবি Rectangular দেখাবে। নতুন ছবি Approve না হওয়া পর্যন্ত পুরোনো ছবিই থাকবে।</small></div></div></section><section class="section"><h2>পরিচয়পত্র ও Nominee-এর ছবি</h2><div class="upload-grid"><div class="upload-card"><strong>নিজের NID</strong><label class="dropzone">NID ছবি/PDF নির্বাচন করুন<input type="file" name="member_nid" accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">JPG, PNG, WEBP বা PDF · সর্বোচ্চ 10MB</small></div><div class="upload-card"><strong>Nominee NID</strong><label class="dropzone">Nominee NID ছবি/PDF নির্বাচন করুন<input type="file" name="nominee_nid" accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">JPG, PNG, WEBP বা PDF · সর্বোচ্চ 10MB</small></div><div class="upload-card"><strong>Nominee Picture</strong><div class="upload-preview-wrap">'+nomineePreview+'</div><label class="dropzone">Nominee-এর ছবি নির্বাচন করুন<input type="file" name="nominee_photo" accept="image/jpeg,image/png,image/webp"></label><small class="muted">JPG, PNG বা WEBP · সর্বোচ্চ 5MB</small></div></div></section><div class="notice">সব নতুন ফাইল প্রথমে Pending Approval থাকবে। অনুমোদনের আগে অন্য সদস্য বা আপনার সক্রিয় Profile-এ নতুন ফাইল দেখানো হবে না। NID এবং Nominee NID অন্য কোনো সদস্য দেখতে পারবেন না।</div><div class="form-actions"><button type="submit" id="profileSubmit">পরিবর্তন ও ফাইল জমা দিন</button></div></form><section class="section"><h2>Profile request history</h2><div class="list">'+((requests.data||[]).map(r=>'<article class="list-item"><strong>'+esc(r.status)+'</strong><small>'+esc(new Date(r.created_at).toLocaleString())+'</small><p>'+esc(r.admin_note||"")+'</p></article>').join("")||empty("কোনো অনুরোধ নেই।"))+'</div></section><section class="section"><h2>আপনার Upload Status</h2><div class="list">'+(docRows.join("")||empty("কোনো NID বা Nominee ফাইল জমা দেওয়া হয়নি।"))+'</div></section>');
+ document.querySelectorAll('#profileRequest input[type="file"]').forEach(input=>input.addEventListener("change",()=>{const label=input.closest("label");if(label)label.dataset.selected=input.files?.[0]?.name||""}));
  document.getElementById("profileRequest").addEventListener("submit",async e=>{
   e.preventDefault();const form=e.currentTarget,fd=new FormData(form),changes={};
   fields.forEach(([k])=>{const v=String(fd.get(k)||"").trim();if(v!==(m[k]||""))changes[k]=v});
-  let photoPath=null;const photo=fd.get("photo");
-  if(photo&&photo.size){if(photo.size>5*1024*1024){toast("ছবির আকার 5MB-এর বেশি।");return}const ext=(photo.name.split(".").pop()||"jpg").toLowerCase();photoPath=access.session.user.id+"/"+crypto.randomUUID()+"."+ext;const {error:upErr}=await supabase.storage.from("member-profile-photos").upload(photoPath,photo,{upsert:false,contentType:photo.type});if(upErr){toast(upErr.message);return}}
-  const memberDoc=fd.get("member_nid"),nomineeDoc=fd.get("nominee_nid"),hasChanges=Object.keys(changes).length>0||Boolean(photoPath);
-  if(!hasChanges&&!(memberDoc?.size)&&!(nomineeDoc?.size)){toast("কোনো পরিবর্তন বা ফাইল নির্বাচন করা হয়নি।");return}
-  if(hasChanges){const {error:insErr}=await supabase.from("profile_change_requests").insert({member_id:m.id,submitted_by:access.session.user.id,requested_changes:changes,requested_photo_path:photoPath});if(insErr){if(photoPath)await supabase.storage.from("member-profile-photos").remove([photoPath]);toast(insErr.message);return}}
-  for(const [docType,file] of [["member_nid",memberDoc],["nominee_nid",nomineeDoc]]){
-   if(!file?.size)continue;
-   if(file.size>10*1024*1024){toast(file.name+" 10MB-এর বেশি।");continue}
-   if(!["image/jpeg","image/png","image/webp","application/pdf"].includes(file.type)){toast("এই ফাইলের ধরন গ্রহণযোগ্য নয়।");continue}
-   const ext=(file.name.split(".").pop()||"pdf").toLowerCase(),path=access.session.user.id+"/"+crypto.randomUUID()+"."+ext;
-   const {error:upError}=await supabase.storage.from("member-private-documents").upload(path,file,{upsert:false,contentType:file.type});
-   if(upError){toast(upError.message);continue}
-   const {error:rowError}=await supabase.from("member_private_documents").insert({member_id:m.id,owner_user_id:access.session.user.id,document_type:docType,storage_path:path,status:"pending"});
-   if(rowError){await supabase.storage.from("member-private-documents").remove([path]);toast(rowError.message)}
+  const photo=fd.get("photo"),memberDoc=fd.get("member_nid"),nomineeDoc=fd.get("nominee_nid"),nomineePic=fd.get("nominee_photo");
+  const selected=[photo,memberDoc,nomineeDoc,nomineePic].filter(f=>f&&f.size);
+  if(!Object.keys(changes).length&&!selected.length){toast("কোনো পরিবর্তন বা ফাইল নির্বাচন করা হয়নি।");return}
+  for(const f of selected){
+   const isPhoto=f===photo||f===nomineePic,limit=isPhoto?5*1024*1024:10*1024*1024;
+   const allowed=isPhoto?["image/jpeg","image/png","image/webp"]:["image/jpeg","image/png","image/webp","application/pdf"];
+   if(f.size>limit){toast(f.name+" ফাইলের আকার সীমার বেশি।");return}
+   if(!allowed.includes(f.type)){toast(f.name+" ফাইলের ধরন গ্রহণযোগ্য নয়।");return}
   }
-  toast("অনুরোধ/ডকুমেন্ট জমা হয়েছে। Super Admin-এর অনুমোদনের অপেক্ষায় আছে।");renderProfile();
+  const button=document.getElementById("profileSubmit");button.disabled=true;button.textContent="জমা হচ্ছে…";
+  try{
+   let photoPath=null;
+   if(photo?.size){
+    const ext=photo.type==="image/png"?"png":photo.type==="image/webp"?"webp":"jpg";
+    photoPath=access.session.user.id+"/"+crypto.randomUUID()+"."+ext;
+    const {error:upErr}=await supabase.storage.from("member-profile-photos").upload(photoPath,photo,{upsert:false,contentType:photo.type});
+    if(upErr)throw upErr;
+   }
+   if(Object.keys(changes).length||photoPath){
+    const {error:insErr}=await supabase.from("profile_change_requests").insert({member_id:m.id,submitted_by:access.session.user.id,requested_changes:changes,requested_photo_path:photoPath});
+    if(insErr){if(photoPath)await supabase.storage.from("member-profile-photos").remove([photoPath]);throw insErr}
+   }
+   const uploads=[["member_nid",memberDoc],["nominee_nid",nomineeDoc],["nominee_photo",nomineePic]];
+   let uploaded=0;
+   for(const [docType,file] of uploads){
+    if(!file?.size)continue;
+    const ext=file.type==="application/pdf"?"pdf":file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
+    const path=access.session.user.id+"/"+crypto.randomUUID()+"."+ext;
+    const {error:upError}=await supabase.storage.from("member-private-documents").upload(path,file,{upsert:false,contentType:file.type});
+    if(upError)throw upError;
+    const {error:rowError}=await supabase.from("member_private_documents").insert({member_id:m.id,owner_user_id:access.session.user.id,document_type:docType,storage_path:path,status:"pending"});
+    if(rowError){await supabase.storage.from("member-private-documents").remove([path]);throw rowError}
+    uploaded++;
+   }
+   toast("জমা হয়েছে। "+(uploaded?"ডকুমেন্ট/ছবি":"") +" Super Admin-এর Approval-এর অপেক্ষায় আছে।");await renderProfile();
+  }catch(err){console.error(err);toast("Upload/Save হয়নি: "+(err.message||"Unknown error"))}
+  finally{const b=document.getElementById("profileSubmit");if(b){b.disabled=false;b.textContent="পরিবর্তন ও ফাইল জমা দিন"}}
  });
 }
-
 async function renderPendingPrivateDocuments(){
  const box=document.getElementById("pendingDocuments");if(!box)return;
  const {data,error}=await supabase.from("member_private_documents").select("id,member_id,owner_user_id,document_type,storage_path,uploaded_at,members(full_name,member_no)").eq("status","pending").order("uploaded_at");
  if(error){box.textContent=error.message;return}
- if(!data.length){box.innerHTML=empty("কোনো Pending ID document নেই।");return}
+ if(!data.length){box.innerHTML=empty("কোনো Pending private upload নেই।");return}
+ const label=type=>({member_nid:"Member NID",nominee_nid:"Nominee NID",nominee_photo:"Nominee Picture"}[type]||type);
  const cards=await Promise.all(data.map(async d=>{
   const {data:u}=await supabase.storage.from("member-private-documents").createSignedUrl(d.storage_path,900);
-  return '<article class="list-item"><strong>'+esc(d.members?.member_no||"")+' · '+esc(d.members?.full_name||"Member")+'</strong><p>'+esc(d.document_type==="member_nid"?"Member NID / ID":"Nominee NID / ID")+'</p><small>'+esc(new Date(d.uploaded_at).toLocaleString())+'</small>'+(u?.signedUrl?'<p><a href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">View private document</a></p>':"")+'<div class="row"><button data-doc-approve="'+esc(d.id)+'">Approve</button><button class="danger" data-doc-reject="'+esc(d.id)+'">Reject</button></div></article>';
+  const preview=u?.signedUrl?(d.document_type==="nominee_photo"?'<p><img class="private-doc-thumb" src="'+esc(u.signedUrl)+'" alt="Nominee picture preview"></p>':'<p><a href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">Private document দেখুন</a></p>'):"<p class='muted small'>Preview তৈরি করা যায়নি।</p>";
+  return '<article class="list-item"><strong>'+esc(d.members?.member_no||"")+' · '+esc(d.members?.full_name||"Member")+'</strong><p>'+esc(label(d.document_type))+'</p><small>'+esc(new Date(d.uploaded_at).toLocaleString())+'</small>'+preview+'<div class="row"><button data-doc-approve="'+esc(d.id)+'">Approve</button><button class="danger" data-doc-reject="'+esc(d.id)+'">Reject</button></div></article>';
  }));
  box.innerHTML=cards.join("");
  box.querySelectorAll("[data-doc-approve],[data-doc-reject]").forEach(b=>b.addEventListener("click",async()=>{
   const approved=b.hasAttribute("data-doc-approve"),id=approved?b.dataset.docApprove:b.dataset.docReject,note=prompt("Admin note (optional):")||null;
-  const {error}=await supabase.from("member_private_documents").update({status:approved?"approved":"rejected",admin_note:note,reviewed_by:access.session.user.id,reviewed_at:new Date().toISOString()}).eq("id",id);
-  if(error)toast(error.message);else{toast(approved?"Document approved.":"Document rejected.");renderPendingPrivateDocuments()}
+  b.disabled=true;
+  const {error}=await supabase.rpc("review_private_document",{p_document_id:id,p_approved:approved,p_admin_note:note});
+  if(error){toast(error.message);b.disabled=false}else{toast(approved?"Upload approved.":"Upload rejected.");await renderPendingPrivateDocuments()}
  }));
 }
-
 async function renderAdmin(){
  if(access.role!=="super_admin"){setPage('<h1>Super Admin</h1>'+empty("এই পেজে শুধু Super Admin প্রবেশ করতে পারবেন।"));return}
  setPage('<h1>Super Admin Control Panel</h1><p class="lead">সব কমিটি ডেটা, আর্থিক লেনদেন, সদস্য, প্রমাণপত্র ও নোটিশ এখান থেকে নিয়ন্ত্রণ করো।</p><div class="notice">শুধু যাচাইকৃত তথ্য এন্ট্রি করবে। Opening balance, monthly contribution ও start date না দেওয়া পর্যন্ত সেগুলো শূন্য/অনির্ধারিত থাকবে।</div><section class="section"><h2>Member Login Invite</h2><form id="inviteForm"><div class="form-grid"><div class="field"><label>Active member</label><select id="inviteMember" name="member_id" required><option value="">সদস্য নির্বাচন করো</option></select></div><div class="field"><label>Member email</label><input id="inviteEmail" name="email" type="email" required></div></div><div class="form-actions"><button type="submit">Login invitation পাঠাও</button></div></form><p class="muted small">শুধু Active এবং এখনো Login account link হয়নি—এমন সদস্য নির্বাচন করা যাবে।</p></section><section class="section"><h2>মাসিক জমার হার নির্ধারণ/পরিবর্তন</h2><form id="rateForm"><div class="form-grid"><div class="field"><label>Active member</label><select id="rateMember" name="member_id" required><option value="">সদস্য নির্বাচন</option></select></div><div class="field"><label>মাসিক জমা (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>কার্যকর হবে (মাসের ১ তারিখ)</label><input name="effective_from" type="date" required></div></div><div class="form-actions"><button type="submit">জমার হার সংরক্ষণ</button></div></form><p class="muted small">আগের হার স্বয়ংক্রিয়ভাবে আগের মাসের শেষ দিনে বন্ধ হবে। কার্যকর তারিখ অবশ্যই মাসের ১ তারিখ হতে হবে।</p></section><section class="section"><h2>নতুন আর্থিক লেনদেন</h2><form id="transactionForm"><div class="form-grid"><div class="field"><label>লেনদেনের ধরন</label><select name="type"><option value="opening_balance">Opening balance</option><option value="contribution">Member contribution</option><option value="withdrawal">Withdrawal</option><option value="expense">Expense</option><option value="other_income">Other income</option><option value="investment_profit">Investment profit</option><option value="investment_loss">Investment loss</option><option value="transfer">Account transfer</option></select></div><div class="field"><label>Amount (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>তারিখ</label><input name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Account</label><select name="account"><option value="cash">Cash</option><option value="bank">Bank</option><option value="investment">Investment</option></select></div><div class="field"><label>Transfer destination (transfer হলে)</label><select name="destination"><option value="bank">Bank</option><option value="cash">Cash</option><option value="investment">Investment</option></select></div><div class="field"><label>সদস্য (ঐচ্ছিক; Contribution-এ বাধ্যতামূলক)</label><select name="member_id" id="transactionMember"><option value="">Select member</option></select></div><div class="field"><label>বিবরণ</label><input name="description" required></div><div class="field"><label>Reference No</label><input name="reference_no"></div></div><div class="form-actions"><button type="submit">লেনদেন সংরক্ষণ</button></div></form></section><section class="section"><h2>মাসিক প্রমাণপত্র</h2><p>মাস নির্বাচন করে Proof পেজে এক বা একাধিক ছবি/PDF Drop অথবা Browse করে আপলোড করুন।</p></section><section class="section"><h2>নোটিশ প্রকাশ</h2><form id="noticeForm"><div class="form-grid"><div class="field"><label>শিরোনাম</label><input name="title" required maxlength="180"></div><div class="field"><label>ধরন</label><select name="type"><option value="general">সাধারণ</option><option value="meeting">সভা</option><option value="reminder">স্মরণবার্তা</option></select></div><div class="field"><label>সভা হলে তারিখ ও সময়</label><input name="meeting_at" type="datetime-local"></div></div><div class="field" style="margin-top:12px"><label>বিস্তারিত</label><textarea name="body" required maxlength="5000"></textarea></div><div class="form-actions"><button type="submit">সবার জন্য প্রকাশ</button></div></form></section><section class="section"><h2>Pending Google Form registrations</h2><div id="pendingMembers" class="list"></div></section><section class="section"><h2>Pending website signups</h2><p class="muted small">সদস্যরা নিজেরা অ্যাকাউন্ট তৈরি করলে এখানে দেখা যাবে। Google Form-এ থাকা একই ইমেইল এবং verified email ছাড়া অনুমোদন করা যাবে না।</p><div id="pendingSignups" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>Pending profile changes</h2><div id="pendingRequests" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>Pending private ID documents</h2><div id="pendingDocuments" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>সদস্য তালিকা</h2><div id="adminMembers" class="table-wrap"></div></section><section class="section"><h2>সাম্প্রতিক লেনদেন</h2><div id="adminTransactions" class="table-wrap"></div></section>');
