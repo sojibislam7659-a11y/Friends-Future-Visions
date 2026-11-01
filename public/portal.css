@@ -70,3 +70,5 @@
 .person-button small{color:var(--muted)}
 
 [hidden]{display:none!important}
+
+@media(max-width:640px){.actions{flex-wrap:wrap;gap:8px}}
