@@ -13,6 +13,24 @@ const today=()=>localDate(new Date());
 let access=null,lang="bn";
 const t=(bn,en)=>lang==="bn"?bn:en;
 function toast(message){let n=document.createElement("div");n.className="toast";n.textContent=message;document.body.append(n);setTimeout(()=>n.remove(),4200)}
+async function refreshUnreadCount(){
+ const badge=document.getElementById("unreadCount");
+ const userId=access?.session?.user?.id;
+ if(!badge||!userId||!supabase)return;
+ try{
+  const {count,error}=await supabase.from("notifications")
+   .select("id",{count:"exact",head:true})
+   .eq("user_id",userId)
+   .is("read_at",null);
+  if(error)throw error;
+  const total=Number(count||0);
+  badge.textContent=total>99?"99+":String(total);
+  badge.hidden=total<1;
+ }catch(error){
+  console.warn("Unread notification count unavailable",error);
+  badge.hidden=true;
+ }
+}
 function setPage(html){document.getElementById("pageContent").innerHTML=html}
 function card(label,value,sub=""){return '<article class="card"><div class="label">'+esc(label)+'</div><div class="value">'+esc(value)+'</div><small>'+esc(sub)+'</small></article>'}
 function empty(msg){return '<div class="empty">'+esc(msg)+'</div>'}
