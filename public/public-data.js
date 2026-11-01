@@ -15,7 +15,7 @@ async function loadMemberMatrix(){
  else memberQuery=memberQuery.eq("status","active");
  const {data:members,error:memberError}=await memberQuery;
  if(memberError||!members?.length)return;
- const {data:transactions,error:txError}=await supabase.from("financial_transactions").select("member_id,amount,transaction_date,created_at").eq("transaction_type","contribution").eq("direction","in").gte("transaction_date","2026-12-01").lt("transaction_date","2031-12-01");
+ const {data:transactions,error:txError}=await supabase.from("financial_transactions").select("member_id,amount,transaction_date,created_at").in("member_id",members.map(m=>m.id)).eq("transaction_type","contribution").eq("direction","in").gte("transaction_date","2026-12-01").lt("transaction_date","2031-12-01");
  if(txError)return;
  const map={};(transactions||[]).forEach(tx=>{
   const month=String(tx.transaction_date).slice(0,7),key=tx.member_id+"|"+month;
