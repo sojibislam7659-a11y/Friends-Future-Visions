@@ -1,1 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title"><title id="title">Friends Future Vision Forever</title><circle cx="64" cy="64" r="57" fill="#f4f8fb" stroke="#d8e6ef" stroke-width="3"/><g fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="9"><path d="M64 18a46 46 0 0 1 39 22" stroke="#2877b9"/><path d="M103 40a46 46 0 0 1 0 48" stroke="#e59a35"/><path d="M103 88a46 46 0 0 1-78 0" stroke="#278b69"/><path d="M25 88a46 46 0 0 1 0-48" stroke="#d65b57"/></g><g fill="#172b4d"><circle cx="64" cy="43" r="9"/><circle cx="85" cy="64" r="9"/><circle cx="64" cy="85" r="9"/><circle cx="43" cy="64" r="9"/></g><path d="M50 55l14 9 14-9M50 73l14-9 14 9" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
+<title id="title">Friends Future Vision Forever</title>
+<circle cx="48" cy="48" r="44" fill="#edf6f0" stroke="#0b6b50" stroke-width="3"/>
+<g fill="#0b6b50">
+<circle cx="48" cy="26" r="7"/>
+<circle cx="69" cy="48" r="7"/>
+<circle cx="48" cy="70" r="7"/>
+<circle cx="27" cy="48" r="7"/>
+</g>
+<g fill="none" stroke="#0b6b50" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+<path d="M48 35v26M35 48h26"/>
+<path d="M38 38l20 20M58 38L38 58" opacity=".5"/>
+</g>
+<circle cx="48" cy="48" r="8" fill="#fff" stroke="#0b6b50" stroke-width="3"/>
+</svg>
