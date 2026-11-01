@@ -433,3 +433,19 @@ button,.button{min-height:38px;padding:8px 12px;font-size:13px}
  .sidebar-panel{width:min(300px,84vw);padding:13px 11px}
  .sidebar-nav a{min-height:40px;font-size:11px}
 }
+
+
+/* Profile page portrait is rectangular; Member Info directory avatars remain circular. */
+.member-profile-header .member-profile-photo{
+  width:144px;height:176px;flex:0 0 144px;
+  aspect-ratio:9/11;border-radius:12px;object-fit:cover;
+  border:1px solid var(--line);background:#edf5ef;
+}
+.member-profile-header .member-profile-photo.member-directory-fallback{
+  border-radius:12px;display:grid;place-items:center;
+}
+@media(max-width:640px){
+  .member-profile-header .member-profile-photo{
+    width:112px;height:136px;flex-basis:112px;border-radius:10px;
+  }
+}
