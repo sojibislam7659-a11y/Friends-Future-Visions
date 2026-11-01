@@ -122,6 +122,10 @@ create policy "Profile requests: member submits own pending request"
     and status = 'pending'
     and reviewed_by is null
     and reviewed_at is null
+    and (
+      requested_photo_path is null
+      or requested_photo_path like ((select auth.uid())::text || '/%')
+    )
     and exists (
       select 1 from public.members m
       where m.id = profile_change_requests.member_id
