@@ -98,7 +98,7 @@ async function loadMatrix() {
         const manualRows = rows.filter(row => !String(row.reference_no || "").startsWith(matrixPrefix + month + "|"));
         const amount = record?.amount || 0;
         yearTotal += amount;
-        const locked = manualRows.length > 0;
+        const locked = manualRows.length > 0 || matrixRows.length > 1;
         const selected = amount > 0;
         const savedAt = dateTime(record?.latest);
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
@@ -109,7 +109,7 @@ async function loadMatrix() {
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
           amountInput +
-          (savedAt ? '<small class="cell-date">' + esc(savedAt) + '</small>' : (locked ? '<small class="cell-date">Manual entry</small>' : "")) +
+          (matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedAt ? '<small class="cell-date">' + esc(savedAt) + '</small>' : ""))) +
           '</div></td>';
       }).join("");
       const name = member.full_name_bn || member.full_name || "—";
