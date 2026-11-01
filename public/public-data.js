@@ -219,12 +219,27 @@ async function loadMatrix() {
               .eq("id", existing.id);
             if (error) throw error;
           } else {
-            const { error } = await supabase.from("financial_transactions").insert({
-              member_id: entry.memberId, transaction_type: "contribution", amount: entry.amount,
-              transaction_date: entry.month + "-01", description: "Monthly contribution matrix",
-              reference_no: reference, account_type: "bank", direction: "in", created_by: user.id
-            });
-            if (error) throw error;
+            const { data: matches, error: lookupError } = await supabase.from("financial_transactions")
+              .select("id,amount").eq("reference_no", reference).limit(2);
+            if (lookupError) throw lookupError;
+            if (matches.length > 1) throw new Error("একই সদস্য ও মাসের একাধিক Matrix Entry পাওয়া গেছে। আগে Duplicate Entry যাচাই করুন।");
+            if (matches.length === 1) {
+              if (Number(matches[0].amount) !== entry.amount) {
+                const { error } = await supabase.from("financial_transactions")
+                  .update({ amount: entry.amount, updated_by: user.id, updated_at: new Date().toISOString() })
+                  .eq("id", matches[0].id);
+                if (error) throw error;
+              } else {
+                continue;
+              }
+            } else {
+              const { error } = await supabase.from("financial_transactions").insert({
+                member_id: entry.memberId, transaction_type: "contribution", amount: entry.amount,
+                transaction_date: entry.month + "-01", description: "Monthly contribution matrix",
+                reference_no: reference, account_type: "bank", direction: "in", created_by: user.id
+              });
+              if (error) throw error;
+            }
           }
           changed++;
         } else if (existing) {
