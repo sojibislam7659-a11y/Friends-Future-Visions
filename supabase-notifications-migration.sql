@@ -86,11 +86,8 @@ create policy notifications_update_own
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
--- Creation is restricted to the trusted server/service role; do not grant client INSERT.
-drop policy if exists notifications_super_admin_insert on public.notifications;
-create policy notifications_super_admin_insert
-  on public.notifications for insert to authenticated
-  with check (public.is_super_admin());
+-- Inbox rows are created only by trusted server-side code (service_role).
+-- Clients must never fabricate or alter notification content.
 
 -- A user can register, refresh, or remove only their own browser push subscription.
 drop policy if exists push_subscriptions_select_own on public.push_subscriptions;
@@ -116,8 +113,13 @@ create policy push_subscriptions_delete_own
 
 grant select on public.notices to authenticated;
 grant insert, update, delete on public.notices to authenticated;
-grant select, update on public.notifications to authenticated;
-grant insert on public.notifications to authenticated;
+
+-- Notification recipients may read their own inbox and mark only read_at.
+-- Revoke the earlier broad table-level grants, including the previous INSERT grant.
+revoke insert, update on public.notifications from public, anon, authenticated;
+grant select on public.notifications to authenticated;
+grant update (read_at) on public.notifications to authenticated;
+
 grant select, insert, update, delete on public.push_subscriptions to authenticated;
 
 commit;
