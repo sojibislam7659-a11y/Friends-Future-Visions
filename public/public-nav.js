@@ -4,17 +4,22 @@ const icon={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-
 const svg=n=>'<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+icon[n]+'</svg>';
 const item=(href,label,n)=>'<a href="'+href+'">'+svg(n)+'<span>'+label+'</span></a>';
 async function init(){
- let role="public",session=null;
- if(supabaseReady){const {data}=await supabase.auth.getSession();session=data?.session||null;if(session){home.href="dashboard.html";const {data:p}=await supabase.from("profiles").select("role").eq("id",session.user.id).maybeSingle();role=p?.role||"member"}}
- if(!session)home.href="index.html";
- const links=session?[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("member.html","MY PROFILE","members")]:[])]:[item("rules.html","RULES","rules"),item("data.html","DATA","data"),item("login.html","LOGIN","members")];
+ document.body.classList.add("auth-pending");
+ if(!supabaseReady){location.replace("login.html");return}
+ const {data:s,error}=await supabase.auth.getSession();
+ const session=s?.session;
+ if(error||!session?.user?.id){location.replace("login.html");return}
+ const {data:profile,error:pe}=await supabase.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+ if(pe||!profile||!["super_admin","admin","member"].includes(profile.role)){await supabase.auth.signOut();location.replace("login.html");return}
+ home.href="dashboard.html";
+ const role=profile.role;
+ const links=[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("member.html","MY PROFILE","members")]:[])];
  nav.innerHTML=links.join("");
  menu.addEventListener("click",()=>{nav.hidden=!nav.hidden});
- if(session){
-  login.hidden=true;bell.hidden=false;
-  const {count}=await supabase.from("notifications").select("id",{count:"exact",head:true}).eq("user_id",session.user.id).is("read_at",null);
-  const badge=document.getElementById("siteUnread");if(count>0){badge.textContent=count>99?"99+":String(count);badge.hidden=false}
-  bell.addEventListener("click",()=>location.href="dashboard.html");
- }else bell.hidden=true;
+ login.hidden=true;bell.hidden=false;
+ const {count}=await supabase.from("notifications").select("id",{count:"exact",head:true}).eq("user_id",session.user.id).is("read_at",null);
+ const badge=document.getElementById("siteUnread");if(count>0){badge.textContent=count>99?"99+":String(count);badge.hidden=false}
+ bell.addEventListener("click",()=>location.href="dashboard.html");
+ document.body.classList.remove("auth-pending");
 }
-init();
+init().catch(()=>location.replace("login.html"));
