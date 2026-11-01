@@ -142,3 +142,43 @@ button:hover,.button:hover{background:linear-gradient(110deg,#104d42,#176653)}
 body.auth-pending .shell{visibility:hidden}
 
 .contribution-matrix .sticky-col{background:#eaf2e9}
+
+
+/* Contribution matrix editing and member profile directory */
+.matrix-editable{min-width:max-content}
+.matrix-editable th,.matrix-editable td{min-width:112px;vertical-align:top}
+.matrix-editable th.sticky-col,.matrix-editable td.sticky-col{min-width:120px}
+.matrix-editable .name-col{min-width:170px}
+.matrix-cell{display:grid;justify-items:start;gap:5px;min-width:88px}
+.matrix-toggle{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#285c4d;cursor:pointer}
+.matrix-check{width:17px;height:17px;accent-color:#176653;cursor:pointer}
+.matrix-check:disabled{cursor:not-allowed;opacity:.65}
+.matrix-amount{width:92px;min-height:34px;padding:6px 7px;border:1px solid #b9d2c1;border-radius:8px;background:#e5efe7;color:#173d36;font:600 12px Inter,"Noto Sans Bengali",sans-serif}
+.matrix-amount:disabled{opacity:.8;cursor:not-allowed}
+.matrix-cell .cell-date{max-width:110px;white-space:normal;line-height:1.35;font-size:9px;color:#58766c}
+.matrix-save-actions{position:sticky;bottom:8px;z-index:5;padding:12px;background:#e4efe5;border:1px solid #bfd5c6;border-radius:12px;box-shadow:0 5px 18px rgba(15,65,48,.12)}
+.matrix-year-section .section-head{margin-bottom:10px}
+.member-directory-list{display:grid;gap:9px}
+.member-directory-item{display:flex;align-items:center;gap:13px;padding:12px 15px;border:1px solid #c5d9cb;border-radius:13px;background:#edf4e9;color:#173d36;text-decoration:none;min-height:76px}
+.member-directory-item:hover{background:#e0eee3;border-color:#91bba0}
+.member-directory-avatar{width:50px;height:50px;flex:0 0 50px;border-radius:50%;object-fit:cover;display:grid;place-items:center}
+.member-directory-fallback{background:#d5e9db;color:#176653;font-weight:800;font-size:15px}
+.member-directory-text{display:grid;gap:3px;min-width:0}
+.member-directory-text strong{overflow-wrap:anywhere}
+.member-directory-text small{color:#58766c}
+.member-directory-arrow{margin-left:auto;font-size:24px;color:#568071}
+.member-profile-header{display:flex;align-items:center;gap:18px;padding:16px 0 8px}
+.member-profile-header h1{margin:0 0 5px}
+.member-profile-photo{width:104px;height:104px;flex:0 0 104px;border-radius:50%;object-fit:cover;display:grid;place-items:center}
+.member-profile-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px}
+.member-profile-field{display:grid;gap:5px;padding:13px;border:1px solid #c5d9cb;border-radius:11px;background:#edf4e9;min-width:0}
+.member-profile-field small{color:#58766c}
+.member-profile-field strong{overflow-wrap:anywhere;color:#17483e}
+@media(max-width:640px){
+ .matrix-editable th,.matrix-editable td{min-width:100px}
+ .matrix-editable .name-col{min-width:135px}
+ .matrix-amount{width:82px}
+ .member-directory-item{padding:10px 12px}
+ .member-profile-header{align-items:flex-start;gap:12px}
+ .member-profile-photo{width:78px;height:78px;flex-basis:78px}
+}
