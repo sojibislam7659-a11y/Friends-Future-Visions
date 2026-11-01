@@ -64,6 +64,7 @@ function monthCount(start){
 async function renderDue(){
  let q=supabase.from("members").select("id,member_no,full_name,monthly_contribution,contribution_start_date,joined_at,status");
  if(access.role==="member")q=q.eq("auth_user_id",access.session.user.id);
+ else if(access.role==="super_admin")q=q.eq("status","active");
  const {data:members,error}=await q.order("member_no");
  if(error)throw error;
  if(access.role==="admin"){setPage('<h1>Personal Due</h1>'+empty(t("এই Admin অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই।","This read-only Admin account is not linked to a member record.")));return}
@@ -71,7 +72,8 @@ async function renderDue(){
  const ids=members.map(m=>m.id);
  const tx=await supabase.from("financial_transactions").select("member_id,transaction_type,amount,transaction_date").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in");
  if(tx.error)throw tx.error;
- const paid={};(tx.data||[]).forEach(x=>paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount));
+ const starts=Object.fromEntries(members.map(m=>[m.id,m.contribution_start_date]));
+ const paid={};(tx.data||[]).forEach(x=>{const start=starts[x.member_id];if(start&&x.transaction_date>=start)paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount)});
  const body=members.map(m=>{
   const start=m.contribution_start_date;
   const months=monthCount(start);
