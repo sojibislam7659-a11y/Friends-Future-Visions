@@ -137,3 +137,5 @@ button:hover,.button:hover{background:linear-gradient(110deg,#104d42,#176653)}
   .topbar{background:linear-gradient(145deg,#e1efe4,#e8edf7)}
   .page{background:#e8f1e8}
 }
+
+body.auth-pending .shell{visibility:hidden}
