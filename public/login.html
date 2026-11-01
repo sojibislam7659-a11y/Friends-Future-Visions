@@ -141,7 +141,7 @@ else{
  if(data.session){
   const {data:profile}=await supabase.from("profiles").select("role").eq("id",data.session.user.id).maybeSingle();
   if(isPasswordRecovery){ /* Keep the recovery session active for updateUser(). */ }
-  else if(profile&&["super_admin","admin","member"].includes(profile.role))location.replace("dashboard.html");
+  else if(profile&&["super_admin","member"].includes(profile.role))location.replace("dashboard.html");
   else{
    await supabase.auth.signOut();
    if(profile?.role==="pending")showKey("pending");
@@ -158,7 +158,7 @@ form.addEventListener("submit",async e=>{
   const {data:p,error:pe}=await supabase.from("profiles").select("role").eq("id",data.user.id).maybeSingle();
   if(!pe&&p?.role==="pending"){await supabase.auth.signOut();showKey("pendingVerified")}
   else if(!pe&&p?.role==="rejected"){await supabase.auth.signOut();showKey("rejected")}
-  else if(pe||!p||!["super_admin","admin","member"].includes(p.role)){await supabase.auth.signOut();showKey("noAccess")}
+  else if(pe||!p||!["super_admin","member"].includes(p.role)){await supabase.auth.signOut();showKey("noAccess")}
   else location.replace("dashboard.html")
  }
  btn.disabled=false;btn.textContent=tr("loginButton");document.getElementById("password").value="";
