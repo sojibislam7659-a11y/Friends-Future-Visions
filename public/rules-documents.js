@@ -18,13 +18,13 @@ async function load(){
    content=d.mime_type==="application/pdf"?'<iframe class="deed-pdf" src="'+esc(u.signedUrl)+'" title="Committee deed PDF"></iframe><p><a class="button secondary" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">Open PDF</a></p>':'<div class="deed-image-tools"><button class="secondary" id="zoomOut" type="button">−</button><button class="secondary" id="zoomReset" type="button">Reset</button><button class="secondary" id="zoomIn" type="button">+</button></div><div class="deed-image-frame"><img id="deedImage" src="'+esc(u.signedUrl)+'" alt="Committee deed" loading="lazy"></div>';
   }
  }
- root.innerHTML=content+(isSuper?'<form id="deedUploadForm" class="section"><h3>Upload / Replace deed</h3><div class="form-grid"><div class="field"><label>Title</label><input name="title" value="Committee deed" required></div><div class="field"><label>Photo or PDF (max 10MB)</label><input name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></div></div><button type="submit">Upload deed</button></form>':"");
+ root.innerHTML=content+(isSuper?'<form id="deedUploadForm" class="section"><h3>Upload / Replace deed</h3><div class="form-grid"><div class="field"><label>Title</label><input name="title" value="Committee deed" required></div><div class="field"><label>Image max 5MB · PDF max 10MB</label><input name="file" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required></div></div><button type="submit">Upload deed</button></form>':"");
  const image=document.getElementById("deedImage");
  if(image){let scale=1;document.getElementById("zoomIn").onclick=()=>{scale=Math.min(2.5,scale+.2);image.style.transform="scale("+scale+")"};document.getElementById("zoomOut").onclick=()=>{scale=Math.max(.6,scale-.2);image.style.transform="scale("+scale+")"};document.getElementById("zoomReset").onclick=()=>{scale=1;image.style.transform="scale(1)"}}
  const form=document.getElementById("deedUploadForm");
  if(form)form.addEventListener("submit",async e=>{
   e.preventDefault();const fd=new FormData(form),file=fd.get("file"),title=String(fd.get("title")||"").trim();
-  if(!file?.size||file.size>10*1024*1024||!["image/jpeg","image/png","image/webp","application/pdf"].includes(file.type)){alert("PDF/JPG/PNG/WEBP ফাইল সর্বোচ্চ 10MB হতে হবে।");return}
+  if(!file?.size||!["image/jpeg","image/png","image/webp","application/pdf"].includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024)){alert("PDF/JPG/PNG/WEBP ফাইল সর্বোচ্চ 10MB হতে হবে।");return}
   const ext=(file.name.split(".").pop()||"pdf").toLowerCase(),path="deed/"+crypto.randomUUID()+"."+ext;
   const {error:upError}=await supabase.storage.from("committee-documents").upload(path,file,{upsert:false,contentType:file.type});
   if(upError){alert(upError.message);return}
