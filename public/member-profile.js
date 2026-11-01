@@ -72,12 +72,12 @@ async function main(){
     const key=input.dataset.memberField;
     const value=input.value.trim();
     if(key==="full_name"&&!value){alert("পূর্ণ নাম খালি রাখা যাবে না।");input.focus();return}
-    if(input.type==="date"&&value&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)){alert("তারিখের Format সঠিক নয়।");input.focus();return}
+    if(input.type==="date"&&value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert("তারিখের Format সঠিক নয়।");input.focus();return}
     if(value!==String(m[key]??""))changes[key]=value===""?null:value;
    }
    if(!Object.keys(changes).length){alert("কোনো পরিবর্তন করা হয়নি।");return}
    const labels=Object.keys(changes).map(key=>editableMemberFields.find(field=>field[0]===key)?.[1]||key);
-   if(!confirm("নিচের "+Object.keys(changes).length+"টি Field পরিবর্তন করে Save করবেন?\\n\\n"+labels.join(", ")))return;
+   if(!confirm("নিচের "+Object.keys(changes).length+"টি Field পরিবর্তন করে Save করবেন?\n\n"+labels.join(", ")))return;
    const button=document.getElementById("saveMemberFields");
    button.disabled=true;
    const {error}=await supabase.from("members").update(changes).eq("id",m.id);
