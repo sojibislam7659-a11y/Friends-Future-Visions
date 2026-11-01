@@ -339,3 +339,39 @@ body.login-theme .member-profile-header .lead{color:#c5d3eb}
 @media(prefers-reduced-motion:reduce){
   .nav a{transition:none}
 }
+
+/* Compact navigation and photo-first member directory */
+@media(max-width:760px){
+ .topbar{gap:9px}.actions{gap:6px}
+ .actions button,.actions .button{min-height:34px;padding:6px 10px;font-size:11px;border-radius:9px}
+ .icon-button{width:36px;min-width:36px;min-height:36px;padding:6px}
+ .menu-button .ui-icon{width:15px;height:15px}
+ .nav:not([hidden]){grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:8px}
+ .nav a{min-height:40px;justify-content:center;padding:7px 5px;gap:5px;font-size:10px;border-radius:9px}
+ .nav a .ui-icon{width:15px;height:15px;flex-basis:15px}
+}
+@media(max-width:380px){
+ .nav:not([hidden]){gap:5px;padding:7px}.nav a{font-size:9px;padding:6px 3px;gap:4px}
+ .nav a .ui-icon{width:14px;height:14px;flex-basis:14px}
+ .actions button,.actions .button{padding:5px 8px;font-size:10px}
+}
+.member-directory-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(126px,1fr));gap:20px 12px;margin-top:20px}
+.member-directory-person{min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:9px;padding:10px 6px 12px;border:1px solid transparent;border-radius:14px;background:transparent;color:inherit;text-align:center;text-decoration:none}
+a.member-directory-person{cursor:pointer}
+a.member-directory-person:hover{background:rgba(120,140,255,.08);border-color:rgba(145,169,255,.25)}
+.member-directory-avatar{width:92px;height:92px;flex:0 0 92px;border-radius:50%;object-fit:cover;display:grid;place-items:center;margin:0;border:2px solid rgba(185,205,255,.24)}
+.member-directory-fallback{font-size:28px;font-weight:700}
+.member-directory-name{display:block;max-width:100%;font-size:13px;line-height:1.4;overflow-wrap:anywhere;text-align:center}
+body.login-theme .member-directory-person{background:transparent;border-color:transparent;color:#edf3ff}
+body.login-theme a.member-directory-person:hover{background:rgba(65,91,139,.38);border-color:rgba(145,169,255,.35)}
+.member-profile-summary>.card{background:rgba(37,59,97,.72)!important;border:1px solid rgba(185,205,255,.16)!important;box-shadow:none!important}
+.member-profile-summary>.card .label,.member-profile-summary>.card small{color:#b4c2dc!important}
+.member-profile-summary>.card .value{color:#f0f4ff!important}
+@media(max-width:640px){
+ .member-directory-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 5px}
+ .member-directory-person{padding:8px 3px 10px;gap:7px}
+ .member-directory-avatar{width:76px;height:76px;flex-basis:76px}
+ .member-directory-name{font-size:11px}
+ .member-profile-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:360px){.member-directory-avatar{width:68px;height:68px;flex-basis:68px}}
