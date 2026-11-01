@@ -8,15 +8,49 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="portal.css">
 <style>
-*{box-sizing:border-box}body{min-height:100vh;margin:0;padding:22px;display:grid;place-items:center;background:linear-gradient(135deg,#101a39,#192d55 55%,#204b68);color:#edf3ff}
-.signup{width:min(100%,480px);padding:clamp(24px,5vw,40px);background:#1e3056;border:1px solid rgba(185,205,255,.22);border-radius:22px;box-shadow:0 25px 75px rgba(3,12,34,.4)}
-.brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}.brand img{width:46px;height:46px;filter:brightness(0) invert(1)}.brand strong{display:block}.brand small{color:#b4c2dc}
-h1{margin:0 0 8px;font-size:26px}.muted{color:#b4c2dc;line-height:1.65}.signup form{display:grid;gap:9px}.signup label{margin-top:8px;font-size:13px;font-weight:600}.signup input{width:100%;min-height:50px;padding:12px 14px;border-radius:11px;background:#263e66;border:1px solid rgba(181,202,242,.25);color:#fff}.signup button{min-height:50px;margin-top:14px;border:0;border-radius:11px;background:linear-gradient(105deg,#788cff,#43a9c1);color:white;font-weight:700}.signup button:disabled{opacity:.65}.message{display:none;margin-top:14px;padding:12px;border-radius:10px;background:#33496c;color:#fff;line-height:1.6}.small{font-size:12px;color:#b4c2dc;line-height:1.65;margin-top:18px}
-a{color:#c8d7ff;font-weight:700}
+*{box-sizing:border-box}
+body{min-height:100vh;margin:0;padding:24px;display:grid;place-items:center;overflow-x:hidden;font-family:Inter,"Noto Sans Bengali",sans-serif;
+ background:radial-gradient(ellipse at 14% 12%,rgba(112,117,255,.32),transparent 36%),
+ radial-gradient(ellipse at 88% 84%,rgba(30,191,188,.22),transparent 34%),
+ linear-gradient(135deg,#101a39 0%,#192d55 48%,#204b68 100%);color:#edf3ff}
+body:before,body:after{content:"";position:fixed;border-radius:50%;pointer-events:none}
+body:before{width:320px;height:320px;top:-170px;right:-100px;border:1px solid rgba(190,205,255,.14);box-shadow:0 0 0 38px rgba(190,205,255,.025)}
+body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48,190,190,.07);filter:blur(35px)}
+.login{position:relative;z-index:1;width:min(100%,460px);padding:clamp(26px,5vw,42px);
+ background:linear-gradient(145deg,rgba(30,48,86,.94),rgba(23,43,75,.92));
+ border:1px solid rgba(185,205,255,.22);border-radius:24px;
+ box-shadow:0 28px 90px rgba(3,12,34,.42),inset 0 1px rgba(255,255,255,.08);backdrop-filter:blur(18px)}
+.language-row{display:flex;justify-content:flex-end;margin:-10px 0 18px}
+.language-toggle{border:1px solid rgba(190,205,255,.28);border-radius:9px;background:rgba(255,255,255,.08);color:#eaf1ff;padding:7px 12px;min-height:36px;font:600 12px Inter,"Noto Sans Bengali",sans-serif;cursor:pointer}
+.language-toggle:hover{background:rgba(255,255,255,.15)}
+.login .brand{display:flex;align-items:center;gap:14px;margin-bottom:30px}
+.login .brand img{width:52px;height:52px;object-fit:contain;filter:brightness(0) invert(1);opacity:.95}
+.login .brand strong{display:block;font-size:16px;color:#f0f4ff}
+.login .brand small{display:block;font-size:12px;color:#aebfdf}
+.login h1{margin:0 0 7px;color:#f4f6ff;font-size:clamp(25px,5vw,31px);letter-spacing:-.035em}
+.login .muted{color:#b4c2dc}
+.login .intro{margin:0 0 26px;font-size:14px}
+.login form{display:grid;gap:9px}
+.login label{margin-top:8px;color:#dce6fa;font-size:13px;font-weight:600}
+.login input{width:100%;min-height:52px;padding:13px 15px;border-radius:12px;background:#263e66;border:1px solid rgba(181,202,242,.25);color:#f5f7ff;outline:none;font:inherit}
+.login input:focus{border-color:#91a9ff;box-shadow:0 0 0 3px rgba(126,151,255,.17)}
+.login input::placeholder{color:#9eb0d0}
+.login button.submit{width:100%;min-height:52px;margin-top:16px;border:0;border-radius:12px;background:linear-gradient(105deg,#788cff,#5a75ed 58%,#43a9c1);color:#fff;font-weight:700;box-shadow:0 10px 26px rgba(74,107,218,.26);cursor:pointer}
+.login button.submit:hover{filter:brightness(1.08)}
+.login button.submit:disabled{opacity:.65;cursor:not-allowed}
+.login .message{display:none;padding:12px;border-radius:10px;background:#553a50;color:#ffd9dd;border:1px solid #a86b7b;font-size:13px}
+.login .small{margin-top:22px;color:#aebfdf;line-height:1.7;font-size:13px}
+.login .security-note{display:flex;align-items:center;gap:9px;margin-top:20px;color:#b6c8e4;font-size:12px}
+.login .security-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#70dfb1;box-shadow:0 0 12px #70dfb1}
+.login a{color:#c8d7ff;font-weight:700;text-decoration:none}
+.login a:hover{text-decoration:underline}
+@media(max-width:480px){body{padding:14px}.login{border-radius:20px}.login .brand{margin-bottom:26px}}
+
+.signup .message{margin-top:14px}.signup .small{margin-top:18px}.signup .signup-links{text-align:center;margin-top:14px}
 </style>
 </head>
 <body>
-<main class="signup">
+<main class="login signup">
  <div class="brand"><img src="friends-future-vision-logo.svg" alt=""><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div>
  <h1>নিজের অ্যাকাউন্ট তৈরি করুন</h1>
  <p class="muted">Google Form-এ দেওয়া একই ইমেইল ব্যবহার করুন। ইমেইল যাচাই এবং Super Admin-এর অনুমোদন না হওয়া পর্যন্ত ওয়েবসাইটে প্রবেশ করা যাবে না।</p>
@@ -25,11 +59,11 @@ a{color:#c8d7ff;font-weight:700}
   <label for="email">ইমেইল</label><input id="email" type="email" autocomplete="email" required placeholder="আপনার ইমেইল">
   <label for="password">পাসওয়ার্ড</label><input id="password" type="password" autocomplete="new-password" minlength="8" required placeholder="কমপক্ষে ৮ অক্ষর">
   <label for="confirmPassword">পাসওয়ার্ড আবার লিখুন</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="একই পাসওয়ার্ড">
-  <button id="signupButton" type="submit">অ্যাকাউন্ট তৈরি করুন</button>
+  <button class="submit" id="signupButton" type="submit">অ্যাকাউন্ট তৈরি করুন</button>
  </form>
  <div class="message" id="message" role="status" aria-live="polite"></div>
  <p class="small">ইমেইলটি Google Form/সদস্য রেকর্ডের ইমেইলের সঙ্গে মিলতে হবে। ভুল ইমেইল দিয়ে অ্যাকাউন্ট খুললে Super Admin সেটি অনুমোদন করতে পারবেন না। পাসওয়ার্ড শুধু Supabase Auth-এ নিরাপদভাবে সংরক্ষিত হবে।</p>
- <p class="small"><a href="login.html">আগে থেকেই অ্যাকাউন্ট আছে? Login করুন</a></p>
+ <p class="small signup-links"><a href="login.html">আগে থেকেই অ্যাকাউন্ট আছে? Login করুন</a></p>
 </main>
 <script type="module">
 import {supabase,supabaseReady} from "./supabase-client.js";
