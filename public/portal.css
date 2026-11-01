@@ -475,3 +475,74 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
  .upload-card{padding:12px}
  .profile-upload-preview{width:76px;height:96px}
 }
+
+
+/* 2026-11-01 mobile navigation contrast and alignment fix */
+@media(max-width:640px){
+  .topbar{
+    display:flex!important;
+    flex-direction:row!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+    min-height:58px;
+  }
+  .topbar .menu-button{
+    order:0!important;
+    flex:0 0 40px!important;
+    margin:0 auto 0 0!important;
+  }
+  .topbar-brand{display:none!important}
+  .topbar .actions{
+    order:1!important;
+    display:flex!important;
+    flex:0 0 auto!important;
+    width:auto!important;
+    margin:0 0 0 auto!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    flex-direction:row-reverse!important;
+    gap:9px!important;
+  }
+  .topbar-role{white-space:nowrap!important;font-size:12px!important;padding:6px 10px!important}
+  .topbar .notification-trigger{flex:0 0 40px!important}
+}
+/* Keep drawer navigation readable against its dark navy panel */
+.sidebar-panel .sidebar-nav{
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+}
+.sidebar-panel .sidebar-nav a{
+  color:#153f35!important;
+  background:#e5f0e5!important;
+  border:1px solid #c5d9cb!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  line-height:1.4!important;
+  min-height:54px!important;
+  padding:12px 14px!important;
+  gap:12px!important;
+  opacity:1!important;
+}
+.sidebar-panel .sidebar-nav a .ui-icon{
+  color:#176653!important;
+  width:21px!important;
+  height:21px!important;
+  flex:0 0 21px!important;
+}
+.sidebar-panel .sidebar-nav a:hover{
+  color:#103f34!important;
+  background:#d3e8d8!important;
+  border-color:#91bba0!important;
+}
+.sidebar-panel .sidebar-nav a.active{
+  color:#103f34!important;
+  background:linear-gradient(100deg,#cbdcfb,#ccebe2)!important;
+  border-color:#9bb9e8!important;
+  box-shadow:inset 4px 0 0 #5279dc!important;
+}
+@media(max-width:640px){
+  .sidebar-panel .sidebar-nav{display:flex!important;flex-direction:column!important;gap:7px!important;padding:14px 0!important}
+  .sidebar-panel .sidebar-nav a{width:100%!important;justify-content:flex-start!important;font-size:14px!important;min-height:52px!important}
+}
