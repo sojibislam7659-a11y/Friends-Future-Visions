@@ -82,14 +82,14 @@ async function renderDue(){
  const ids=members.map(m=>m.id);
  const [rr,tr]=await Promise.all([supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").in("member_id",ids).order("effective_from"),supabase.from("financial_transactions").select("member_id,transaction_type,amount,transaction_date,created_at").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in")]);
  if(rr.error)throw rr.error;if(tr.error)throw tr.error;
- const rates={};(rr.data||[]).forEach(r=>(rates[r.member_id]??=[]).push(r));const paid={};(tr.data||[]).forEach(x=>paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount));
+ const rates={};(rr.data||[]).forEach(r=>(rates[r.member_id]??=[]).push(r));const paid={};(tr.data||[]).forEach(x=>{const start=rates[x.member_id]?.[0]?.effective_from;if(start&&x.transaction_date>=start)paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount)});
  const now=new Date(),nowIndex=now.getFullYear()*12+now.getMonth(),rows=members.map(m=>{
   const list=rates[m.id]||[],start=list[0]?.effective_from;let expected=0,months=0;
   if(start){const [y,mo]=start.split("-").map(Number),first=y*12+mo-1;months=Math.max(0,nowIndex-first+1);for(let k=0;k<months;k++){const d=new Date(y,mo-1+k,1),from=localDate(d),next=new Date(d.getFullYear(),d.getMonth()+1,1),to=localDate(new Date(next.getTime()-86400000)),rate=list.find(r=>r.effective_from<=from&&(!r.effective_to||r.effective_to>=to));if(rate)expected+=Number(rate.monthly_amount)}}
   const received=paid[m.id]||0;return {m,received,due:list.length?Math.max(0,expected-received):null,configured:list.length>0,months};
  });
  const sumPaid=rows.reduce((n,r)=>n+r.received,0),sumDue=rows.reduce((n,r)=>n+(r.due||0),0);
- const head='<p class="lead">1 December, 2026 to '+esc(dateText(today()))+' · '+(access.role==="super_admin"?"Super Admin view":"শুধু আপনার নিজের হিসাব") +'</p>';
+ const head=today()<"2026-12-01"?'<p class="lead">হিসাব শুরু হবে ১ ডিসেম্বর ২০২৬ থেকে।</p>':'<p class="lead">1 December, 2026 to '+esc(dateText(today()))+' · '+(access.role==="super_admin"?"Super Admin view":"শুধু আপনার নিজের হিসাব")+'</p>';
  const deposits=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+money(r.received)+'</td></tr>').join("");
  const dues=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+esc(r.configured?money(r.due):"Not configured")+'</td></tr>').join("");
  setPage('<h1>'+t("ব্যক্তিগত জমা ও বকেয়া","Personal deposits and dues")+'</h1>'+head+'<section class="section"><h2>মোট জমা</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>'+deposits+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumPaid)+'</td></tr></tbody></table></div></section><section class="section"><h2>মোট বকেয়া</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>'+dues+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumDue)+'</td></tr></tbody></table></div></section><div class="notice">বকেয়া হিসাবের জন্য প্রত্যেক সদস্যের মাসিক জমার হার ও কার্যকর তারিখ Super Admin-কে নির্ধারণ করতে হবে।</div>');
