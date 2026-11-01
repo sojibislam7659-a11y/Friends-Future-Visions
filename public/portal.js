@@ -55,7 +55,10 @@ async function summary(){
  return data||{};
 }
 async async function renderDashboard(){
- const s=await summary();
+ const s=await Promise.race([
+  summary(),
+  new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
+ ]);
  setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p><div class="grid">'+
  card(t("মোট সম্পদ","Total assets"),money(s.total_assets),t("নগদ + ব্যাংক + বিনিয়োগ","Cash + bank + investments"))+
  card(t("ব্যাংক ব্যালেন্স","Bank balance"),money(s.bank_balance))+
