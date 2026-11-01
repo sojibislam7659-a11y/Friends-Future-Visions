@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#182b54"><meta name="robots" content="noindex,nofollow">
+<title>নতুন অ্যাকাউন্ট | Friends Future Vision Forever</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="portal.css">
+<style>
+*{box-sizing:border-box}body{min-height:100vh;margin:0;padding:22px;display:grid;place-items:center;background:linear-gradient(135deg,#101a39,#192d55 55%,#204b68);color:#edf3ff}
+.signup{width:min(100%,480px);padding:clamp(24px,5vw,40px);background:#1e3056;border:1px solid rgba(185,205,255,.22);border-radius:22px;box-shadow:0 25px 75px rgba(3,12,34,.4)}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:28px}.brand img{width:46px;height:46px;filter:brightness(0) invert(1)}.brand strong{display:block}.brand small{color:#b4c2dc}
+h1{margin:0 0 8px;font-size:26px}.muted{color:#b4c2dc;line-height:1.65}.signup form{display:grid;gap:9px}.signup label{margin-top:8px;font-size:13px;font-weight:600}.signup input{width:100%;min-height:50px;padding:12px 14px;border-radius:11px;background:#263e66;border:1px solid rgba(181,202,242,.25);color:#fff}.signup button{min-height:50px;margin-top:14px;border:0;border-radius:11px;background:linear-gradient(105deg,#788cff,#43a9c1);color:white;font-weight:700}.signup button:disabled{opacity:.65}.message{display:none;margin-top:14px;padding:12px;border-radius:10px;background:#33496c;color:#fff;line-height:1.6}.small{font-size:12px;color:#b4c2dc;line-height:1.65;margin-top:18px}
+a{color:#c8d7ff;font-weight:700}
+</style>
+</head>
+<body>
+<main class="signup">
+ <div class="brand"><img src="friends-future-vision-logo.svg" alt=""><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div>
+ <h1>নিজের অ্যাকাউন্ট তৈরি করুন</h1>
+ <p class="muted">Google Form-এ দেওয়া একই ইমেইল ব্যবহার করুন। ইমেইল যাচাই এবং Super Admin-এর অনুমোদন না হওয়া পর্যন্ত ওয়েবসাইটে প্রবেশ করা যাবে না।</p>
+ <form id="signupForm">
+  <label for="fullName">আপনার নাম</label><input id="fullName" autocomplete="name" maxlength="120" required placeholder="Google Form-এ দেওয়া নাম">
+  <label for="email">ইমেইল</label><input id="email" type="email" autocomplete="email" required placeholder="আপনার ইমেইল">
+  <label for="password">পাসওয়ার্ড</label><input id="password" type="password" autocomplete="new-password" minlength="8" required placeholder="কমপক্ষে ৮ অক্ষর">
+  <label for="confirmPassword">পাসওয়ার্ড আবার লিখুন</label><input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required placeholder="একই পাসওয়ার্ড">
+  <button id="signupButton" type="submit">অ্যাকাউন্ট তৈরি করুন</button>
+ </form>
+ <div class="message" id="message" role="status" aria-live="polite"></div>
+ <p class="small">ইমেইলটি Google Form/সদস্য রেকর্ডের ইমেইলের সঙ্গে মিলতে হবে। ভুল ইমেইল দিয়ে অ্যাকাউন্ট খুললে Super Admin সেটি অনুমোদন করতে পারবেন না। পাসওয়ার্ড শুধু Supabase Auth-এ নিরাপদভাবে সংরক্ষিত হবে।</p>
+ <p class="small"><a href="login.html">আগে থেকেই অ্যাকাউন্ট আছে? Login করুন</a></p>
+</main>
+<script type="module">
+import {supabase,supabaseReady} from "./supabase-client.js";
+const form=document.getElementById("signupForm"),button=document.getElementById("signupButton"),message=document.getElementById("message");
+const show=(text)=>{message.textContent=text;message.style.display="block"};
+form.addEventListener("submit",async event=>{
+ event.preventDefault();
+ if(!supabaseReady){show("Login service এখন প্রস্তুত নয়। পরে আবার চেষ্টা করুন।");return}
+ const fullName=document.getElementById("fullName").value.trim();
+ const email=document.getElementById("email").value.trim().toLowerCase();
+ const password=document.getElementById("password").value;
+ const confirmation=document.getElementById("confirmPassword").value;
+ if(password.length<8){show("পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।");return}
+ if(password!==confirmation){show("দুটি পাসওয়ার্ড এক নয়।");return}
+ button.disabled=true;button.textContent="অ্যাকাউন্ট তৈরি হচ্ছে…";message.style.display="none";
+ const {data,error}=await supabase.auth.signUp({
+  email,password,
+  options:{data:{full_name:fullName},emailRedirectTo:new URL("login.html",location.href).href}
+ });
+ if(error){show("অ্যাকাউন্ট তৈরি করা যায়নি। ইমেইলটি আগে ব্যবহার করা হয়েছে কি না বা তথ্য ঠিক আছে কি না পরীক্ষা করুন।")}
+ else{
+  if(data.session)await supabase.auth.signOut();
+  show("অ্যাকাউন্টের আবেদন তৈরি হয়েছে। আপনার ইমেইলে verification link পাঠানো হয়েছে (যদি Email Confirmation চালু থাকে)। ইমেইল যাচাইয়ের পর Super Admin অনুমোদন করলে Login করতে পারবেন।");
+  form.reset();
+ }
+ button.disabled=false;button.textContent="অ্যাকাউন্ট তৈরি করুন";
+});
+</script>
+</body>
+</html>
