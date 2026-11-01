@@ -39,7 +39,7 @@ async function loadMatrix() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (profileError || !profile || !["super_admin", "admin", "member"].includes(profile.role)) {
+  if (profileError || !profile || !["super_admin", "member"].includes(profile.role)) {
     root.innerHTML = empty("এই তথ্য দেখার অনুমতি নেই।");
     return;
   }
