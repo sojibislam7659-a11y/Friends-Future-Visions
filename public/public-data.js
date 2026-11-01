@@ -35,7 +35,7 @@ async function loadMemberMatrix(){
     const v=map[member.id+"|"+k];if(!v)return "<td>—</td>";
     const monthNo=Number(k.slice(5,7));if(monthNo<=6)h1+=v.amount;else h2+=v.amount;total+=v.amount;
     const tip=v.times.join(" | ");
-    return '<td><span title="Confirmed: '+esc(tip)+'">'+money(v.amount)+'</span><small class="cell-date">'+esc(new Date(v.latest).toLocaleDateString("en-GB"))+'</small></td>';
+    return '<td><span title="Confirmed: '+esc(tip)+'">'+money(v.amount)+'</span><small class="cell-date">'+esc(new Date(v.latest).toLocaleString("en-GB",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}))+'</small></td>';
    }).join("");
    const totalH1=months.some(k=>Number(k.slice(5,7))<=6)?money(h1):"—",totalH2=months.some(k=>Number(k.slice(5,7))>=7)?money(h2):"—";
    return '<tr><td class="sticky-col">'+esc(member.member_no||"—")+'</td><td class="sticky-col name-col">'+esc(member.full_name)+'</td>'+cells+'<td>'+totalH1+'</td><td>'+totalH2+'</td><td><strong>'+money(total)+'</strong></td></tr>';
