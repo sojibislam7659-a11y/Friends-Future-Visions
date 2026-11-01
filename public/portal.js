@@ -94,27 +94,38 @@ async function renderDue(){
  const dues=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+esc(r.configured?money(r.due):"Not configured")+'</td></tr>').join("");
  setPage('<h1>'+t("ব্যক্তিগত জমা ও বকেয়া","Personal deposits and dues")+'</h1>'+head+'<section class="section"><h2>মোট জমা</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>'+deposits+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumPaid)+'</td></tr></tbody></table></div></section><section class="section"><h2>মোট বকেয়া</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>'+dues+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumDue)+'</td></tr></tbody></table></div></section><div class="notice">বকেয়া হিসাবের জন্য প্রত্যেক সদস্যের মাসিক জমার হার ও কার্যকর তারিখ Super Admin-কে নির্ধারণ করতে হবে।</div>');
 }async function renderMembers(){
- const {data,error}=await supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no");
- if(error)throw error;
+ const {data,error}=await supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no");if(error)throw error;
  if(!data.length){setPage('<h1>Member Info</h1>'+empty(t("এখনো কোনো Active member নেই।","No active members yet.")));return}
- const cards=await Promise.all(data.map(async m=>{
-  let photo="";
-  if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,3600);if(u?.signedUrl)photo='<img src="'+esc(u.signedUrl)+'" alt="">'}
-  return '<article class="person">'+(photo||'<div class="avatar">FF</div>')+'<strong>'+esc(lang==="bn"?(m.full_name_bn||m.full_name):m.full_name)+'</strong><small>'+esc(m.member_no||"")+'</small></article>'
- }));
- setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("শুধু সদস্যের নাম, সদস্য নম্বর ও অনুমোদিত ছবি দেখা যাবে। ব্যক্তিগত তথ্য গোপন থাকবে।","Only member names, IDs and approved photos are shown. Personal details remain private.")+'</p><div class="members-grid">'+cards.join("")+'</div>');
+ const own=access.role==="member"?await supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle():{data:null};if(own.error)throw own.error;const ownId=own.data?.id||null;
+ const cards=await Promise.all(data.map(async m=>{let photo="";if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);if(u?.signedUrl)photo='<img loading="lazy" src="'+esc(u.signedUrl)+'" alt="">'}return '<button type="button" class="person person-button" data-member-id="'+esc(m.member_id)+'" data-member-name="'+esc(lang==="bn"?(m.full_name_bn||m.full_name):m.full_name)+'" data-member-no="'+esc(m.member_no||"")+'" data-member-photo="'+esc(photo)+'">'+(photo||'<div class="avatar">FF</div>')+'<strong>'+esc(lang==="bn"?(m.full_name_bn||m.full_name):m.full_name)+'</strong><small>'+esc(m.member_no||"")+'</small></button>'}));
+ setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("ছবি, নাম ও সদস্য নম্বর। ব্যক্তিগত তথ্য শুধু সংশ্লিষ্ট সদস্য ও Super Admin দেখতে পারবেন।","Photos, names and member numbers. Private details are restricted to the member and Super Admin.")+'</p><div class="members-grid">'+cards.join("")+'</div><div class="profile-backdrop" id="profileBackdrop" hidden><section class="profile-dialog" role="dialog" aria-modal="true"><button class="secondary profile-close" id="profileClose">Close</button><div id="profileDetails"></div></section></div>');
+ document.querySelectorAll("[data-member-id]").forEach(b=>b.addEventListener("click",()=>{const details=document.getElementById("profileDetails");details.innerHTML=(b.dataset.memberPhoto||'<div class="avatar">FF</div>')+'<h2>'+esc(b.dataset.memberName)+'</h2><p class="pill">'+esc(b.dataset.memberNo)+'</p><p class="muted">ব্যক্তিগত তথ্য গোপন রাখা হয়েছে। নিজের বিস্তারিত প্রোফাইল দেখতে My Profile ব্যবহার করুন।</p>'+(b.dataset.memberId===ownId?'<a class="button" href="member.html">My Profile</a>':"");document.getElementById("profileBackdrop").hidden=false}));
+ document.getElementById("profileClose").addEventListener("click",()=>{document.getElementById("profileBackdrop").hidden=true});
+ document.getElementById("profileBackdrop").addEventListener("click",e=>{if(e.target.id==="profileBackdrop")e.currentTarget.hidden=true});
+}async function renderProofs(){
+ const {data,error}=await supabase.from("committee_proofs").select("id,proof_month,title,storage_path,note,created_at").eq("published",true).order("proof_month",{ascending:true});if(error)throw error;
+ const counts={};(data||[]).forEach(p=>{const k=p.proof_month.slice(0,7);counts[k]=(counts[k]||0)+1});
+ const months=[];for(let i=0;i<60;i++){const d=new Date(2026,11+i,1);months.push(localDate(d).slice(0,7))}
+ const cards=months.map(k=>'<button type="button" class="proof-month-card" data-proof-month="'+k+'"><strong>'+esc(monthText(k))+'</strong><span>'+String(counts[k]||0)+' files</span></button>').join("");
+ setPage('<h1>'+t("মাসিক জমা ও বিনিয়োগের প্রমাণ","Monthly deposit and investment proofs")+'</h1><p class="lead">ডিসেম্বর ২০২৬ থেকে নভেম্বর ২০৩১ · প্রতি মাসে একটি বা একাধিক রসিদ। শুধু নির্বাচিত মাসের ফাইল লোড হবে।</p><div class="proof-month-grid">'+cards+'</div><section class="section" id="proofMonthDetail">'+empty("ফাইল দেখতে অথবা আপলোড করতে একটি মাস নির্বাচন করুন।")+'</section>');
+ document.querySelectorAll("[data-proof-month]").forEach(b=>b.addEventListener("click",()=>loadProofMonth(b.dataset.proofMonth,data)));
 }
-async function renderProofs(){
- const {data,error}=await supabase.from("committee_proofs").select("id,proof_month,title,storage_path,note,created_at").eq("published",true).order("proof_month",{ascending:false});
- if(error)throw error;
- const rows=await Promise.all((data||[]).map(async p=>{
-  const {data:u}=await supabase.storage.from("committee-proofs").createSignedUrl(p.storage_path,3600);
-  const link=u?.signedUrl?'<a class="button secondary" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">প্রমাণ দেখুন</a>':"";
-  return '<article class="list-item"><div class="row"><strong>'+esc(p.title)+'</strong><span class="pill">'+esc(monthText(p.proof_month.slice(0,7)))+'</span></div><p>'+esc(p.note||"")+'</p>'+link+'</article>'
- }));
- setPage('<h1>'+t("মাসিক জমা ও বিনিয়োগের প্রমাণ","Monthly deposit and investment proofs")+'</h1><p class="lead">'+t("প্রতি মাসের সামগ্রিক ব্যাংক জমা বা বিনিয়োগের রসিদ এখানে থাকবে। সদস্যরা শুধু দেখতে পারবেন।","Monthly committee-wide bank deposit or investment receipts. Members have view-only access.")+'</p>'+(rows.length?'<div class="list">'+rows.join("")+'</div>':empty(t("এখনো কোনো প্রমাণপত্র আপলোড করা হয়নি।","No proof documents have been uploaded yet."))));
-}
-async function renderProfile(){
+async function loadProofMonth(month,allProofs){
+ const root=document.getElementById("proofMonthDetail");if(!root)return;const rows=(allProofs||[]).filter(p=>p.proof_month.slice(0,7)===month);
+ root.innerHTML='<h2>'+esc(monthText(month))+'</h2><div class="muted small">'+rows.length+' file(s)</div><div id="proofFiles" class="list">'+empty("ফাইল লোড হচ্ছে…")+'</div>'+(access.role==="super_admin"?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">প্রতি ফাইল সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>':"");
+ const fileBox=document.getElementById("proofFiles");
+ if(rows.length){const rendered=await Promise.all(rows.map(async p=>{const {data:u,error:urlError}=await supabase.storage.from("committee-proofs").createSignedUrl(p.storage_path,1800);if(urlError||!u?.signedUrl)return '<article class="list-item"><strong>'+esc(p.title)+'</strong><span class="pill">File unavailable</span></article>';return '<article class="list-item"><div class="row"><strong>'+esc(p.title)+'</strong><span class="pill">'+esc(p.storage_path.toLowerCase().endsWith(".pdf")?"PDF":"Image")+'</span></div><p>'+esc(p.note||"")+'</p><a class="button secondary" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">Open proof</a></article>'}));fileBox.innerHTML=rendered.join("")}else fileBox.innerHTML=empty("এই মাসে এখনো কোনো রসিদ আপলোড করা হয়নি।");
+ if(access.role==="super_admin"){
+  const form=document.getElementById("proofUploadForm"),input=document.getElementById("proofFilesInput"),drop=document.getElementById("proofDropzone");
+  drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("dragover")});drop.addEventListener("dragleave",()=>drop.classList.remove("dragover"));
+  drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("dragover");if(e.dataTransfer?.files?.length){input.files=e.dataTransfer.files;drop.dataset.selected=e.dataTransfer.files.length+" file(s) selected"}});
+  input.addEventListener("change",()=>{drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
+  form.addEventListener("submit",async e=>{e.preventDefault();const files=Array.from(input.files||[]);if(!files.length){toast("কমপক্ষে একটি ফাইল নির্বাচন করুন।");return}const allowed=["image/jpeg","image/png","image/webp","application/pdf"],bad=files.find(f=>!allowed.includes(f.type)||f.size>10*1024*1024);if(bad){toast("ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+bad.name);return}const button=document.getElementById("proofUploadButton"),status=document.getElementById("proofUploadStatus");button.disabled=true;let success=0;
+   for(const file of files){status.textContent=(success+1)+" / "+files.length+" uploading…";const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-80),path=month+"/"+crypto.randomUUID()+"-"+safeName;const {error:upError}=await supabase.storage.from("committee-proofs").upload(path,file,{upsert:false,contentType:file.type});if(upError){toast(file.name+": "+upError.message);continue}const {error:rowError}=await supabase.from("committee_proofs").insert({proof_month:month+"-01",title:file.name,note:String(new FormData(form).get("note")||"").trim()||null,storage_path:path,published:true,uploaded_by:access.session.user.id});if(rowError){await supabase.storage.from("committee-proofs").remove([path]);toast(file.name+": "+rowError.message);continue}success++}
+   toast(success+"টি ফাইল আপলোড হয়েছে।");renderProofs();
+  });
+ }
+}async function renderProfile(){
  const {data:m,error}=await supabase.from("members").select("*").eq("auth_user_id",access.session.user.id).maybeSingle();
  if(error)throw error;
  if(!m){setPage('<h1>My Profile</h1>'+empty(t("এই অ্যাকাউন্টের সঙ্গে কোনো সদস্য প্রোফাইল যুক্ত নেই। Super Admin-কে তোমার Auth account-এর সঙ্গে Member record link করতে হবে।","No member profile is linked to this account. The Super Admin must link your Auth account to your member record.")));return}
