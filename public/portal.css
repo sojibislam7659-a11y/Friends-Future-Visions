@@ -72,3 +72,68 @@
 [hidden]{display:none!important}
 
 @media(max-width:640px){.actions{flex-wrap:wrap;gap:8px}}
+
+
+/* FFV design system — Wise-inspired member experience */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Bengali:wght@400;500;600;700;800&display=swap');
+:root{
+  font-family:Inter,"Noto Sans Bengali",system-ui,sans-serif;
+  color:#173d36;background:#eaf2e9;font-synthesis:none;
+  --green:#176653;--green-dark:#104d42;--line:#c5d9cb;--muted:#54736a;
+  --surface:#f1f5e9;--soft:#dcece0;
+}
+*{box-sizing:border-box}
+body{background:#eaf2e9;color:#173d36;font-family:Inter,"Noto Sans Bengali",system-ui,sans-serif}
+h1,h2,h3,h4,strong,th,label{color:#17483e}
+p,li,td,small,.muted,.lead{color:#496b61}
+a{color:#176653}
+.topbar,.nav,.page,.card,.person,.list-item,.payment-method-card,.profile-dialog,.proof-month-card{
+  background-color:#f0f5e9;border-color:#c5d9cb;color:#173d36;
+}
+.topbar{background:linear-gradient(115deg,#e4f1e6,#e8edf7 55%,#f2eedf);box-shadow:0 8px 26px rgba(27,75,60,.06)}
+.nav{background:#e1eee3}
+.nav a{color:#315e51}
+.nav a.active,.nav a:hover{background:#c8e5d1;color:#124d40}
+.page{background:#e8f1e8;box-shadow:0 10px 30px rgba(27,75,60,.045)}
+.card{background:linear-gradient(145deg,#f3f6e9,#e5f0e9);border-radius:16px}
+.grid>.card:nth-child(3n+2){background:linear-gradient(145deg,#e5edf7,#e4f0ed)}
+.grid>.card:nth-child(3n){background:linear-gradient(145deg,#f4eadc,#e8f0e4)}
+.card .label,.card small{color:#55746b}
+.card .value{color:#155b49}
+.section h2{color:#205d4c}
+th{background:#cfe6d6;color:#205748}
+td{background:#edf3e9;color:#345e52}
+tr:nth-child(even) td{background:#e6f0e8}
+.total-row td{background:#cce5d3;color:#164e40}
+.table-wrap{border-color:#bfd5c6}
+.field label{color:#315f51}
+.field input,.field select,.field textarea,input,select,textarea{
+  background:#e5efe7;color:#173d36;border-color:#bfd5c6;
+}
+input::placeholder,textarea::placeholder{color:#718c82}
+button,.button{background:linear-gradient(110deg,#176653,#21836a);color:#f2f7ed;border-radius:11px;box-shadow:0 4px 12px rgba(17,91,70,.12)}
+button:hover,.button:hover{background:linear-gradient(110deg,#104d42,#176653)}
+.button.secondary,button.secondary,.icon-button,.home-icon{
+  background:#d8e9dd;color:#175746;border:1px solid #b9d2c1;box-shadow:none
+}
+.button.secondary:hover,button.secondary:hover,.icon-button:hover,.home-icon:hover{background:#c9e2d1}
+.role,.pill{background:#d5e9db;color:#1c5b49}
+.notice{background:#f1e9d5;border-color:#ddcda5;color:#705a2c}
+.success{background:#dcefe0;border-color:#b9d9c1;color:#286344}
+.error{background:#f2e0dc;border-color:#e0bcb4;color:#8c433a}
+.empty{background:#e6efe6;border-color:#b9d2c1;color:#58766c}
+.list-item,.person{background:#eaf2e9}
+.person-button:hover{background:#e1eee3}
+.profile-backdrop{background:rgba(14,48,42,.84)}
+.profile-dialog{background:#eaf2e9}
+.dropzone{background:#e1eee3;border-color:#9ebfa9;color:#245b49}
+.dropzone.dragover{background:#d1e9d8}
+.payment-number{color:#155b49}
+.deed-pdf,.deed-image-frame{background:#e2ece4;border-color:#bfd5c6}
+.toast{background:#123f38;color:#eaf4e9}
+.unread-count{border-color:#eaf2e9}
+.footer{color:#58766c}
+@media(max-width:640px){
+  .topbar{background:linear-gradient(145deg,#e1efe4,#e8edf7)}
+  .page{background:#e8f1e8}
+}
