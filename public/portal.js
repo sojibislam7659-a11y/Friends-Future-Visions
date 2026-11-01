@@ -8,7 +8,8 @@ const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{minimumFractionDigits:
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dateText=v=>v?new Date(v+"T00:00:00").toLocaleDateString("en-GB"):"—";
 const monthText=v=>v?new Date(v+"-01T00:00:00").toLocaleDateString("bn-BD",{month:"long",year:"numeric"}):"—";
-const today=()=>new Date().toISOString().slice(0,10);
+const localDate=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const today=()=>localDate(new Date());
 let access=null,lang="bn";
 const t=(bn,en)=>lang==="bn"?bn:en;
 function toast(message){let n=document.createElement("div");n.className="toast";n.textContent=message;document.body.append(n);setTimeout(()=>n.remove(),4200)}
@@ -87,9 +88,9 @@ async function renderDue(){
   let expected=0;
   for(let k=0;k<months;k++){
    const monthStart=new Date(start+"T00:00:00");monthStart.setMonth(monthStart.getMonth()+k);
-   const from=monthStart.toISOString().slice(0,10);
+   const from=localDate(monthStart);
    const next=new Date(monthStart);next.setMonth(next.getMonth()+1);
-   const to=new Date(next.getTime()-86400000).toISOString().slice(0,10);
+   const to=localDate(new Date(next.getTime()-86400000));
    const rate=rateList.find(r=>r.effective_from<=from&&(!r.effective_to||r.effective_to>=to));
    if(rate)expected+=Number(rate.monthly_amount);
   }
