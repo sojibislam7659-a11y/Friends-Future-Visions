@@ -127,7 +127,7 @@ async function renderDue(){
   const received=paid[m.id]||0;return {m,received,due:list.length?Math.max(0,expected-received):null,configured:list.length>0,months};
  });
  const sumPaid=rows.reduce((n,r)=>n+r.received,0),sumDue=rows.reduce((n,r)=>n+(r.due||0),0);
- const head=today()<"2026-12-01"?'<p class="lead">হিসাব শুরু হবে ১ ডিসেম্বর ২০২৬ থেকে।</p>':'<p class="lead">1 December, 2026 to '+esc(dateText(today()))+' · '+(access.role==="super_admin"?"Super Admin view":"শুধু আপনার নিজের হিসাব")+'</p>';
+ const head='<p class="lead">বকেয়া হিসাব প্রত্যেক সদস্যের অনুমোদিত মাসিক জমার হার ও কার্যকর তারিখ অনুযায়ী গণনা করা হয়েছে।</p>';
  const deposits=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+money(r.received)+'</td></tr>').join("");
  const dues=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+esc(r.configured?money(r.due):"Not configured")+'</td></tr>').join("");
  setPage('<h1>'+t("ব্যক্তিগত জমা ও বকেয়া","Personal deposits and dues")+'</h1>'+head+'<section class="section"><h2>মোট জমা</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>'+deposits+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumPaid)+'</td></tr></tbody></table></div></section><section class="section"><h2>মোট বকেয়া</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>'+dues+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumDue)+'</td></tr></tbody></table></div></section><div class="notice">বকেয়া হিসাবের জন্য প্রত্যেক সদস্যের মাসিক জমার হার ও কার্যকর তারিখ Super Admin-কে নির্ধারণ করতে হবে।</div>');
