@@ -13,7 +13,7 @@ async function init(){
  if(pe||!profile||!["super_admin","admin","member"].includes(profile.role)){await supabase.auth.signOut();location.replace("login.html");return}
  home.href="dashboard.html";
  const role=profile.role;
- const links=[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("member.html","MY PROFILE","members")]:[])];
+ const links=[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),...(["super_admin","member"].includes(role)?[item("personal-due.html","PERSONAL DUE","due")]:[]),item("proof.html","PROOF","proof"),...(role==="member"?[item("payment.html","PAYMENT","payment"),item("member.html","MY PROFILE","members")]:[]),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[])];
  nav.innerHTML=links.join("");
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
  login.hidden=true;bell.hidden=false;
