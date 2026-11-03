@@ -55,7 +55,7 @@
 - The DATA page now routes through the role-guarded portal and its aggregate-summary RPC rather than that matrix module.
 - Admin Personal Due navigation and page access are blocked in the portal UI; Members see their own due and Super Admin sees the committee-wide due view.
 - The Admin transaction form still contains direct transaction INSERT logic and non-atomic transfer logic. Do not enable it against a live database until a trusted posting RPC exists and is tested.
-- Contribution due calculation contains a hard-coded start date and needs to be reconciled with approved member-specific contribution-rate history before operational use.
+- The hard-coded 2026-12-01 display boundary has been removed from the due page. The underlying month-counting rule still needs owner approval (including whether the current month is due immediately) and reconciliation against each member's approved rate history.
 - The Development database is empty, so none of the application queries, policies, RPCs, or role isolation can currently be end-to-end tested there.
 - Old SQL drafts marked superseded must not be executed.
 
