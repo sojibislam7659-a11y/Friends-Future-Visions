@@ -20,7 +20,7 @@ No Production data rows were queried. No Production writes, migrations, or deplo
 
 ## Confirmed code findings
 1. `public/portal.js` uses `get_financial_summary` for the aggregate dashboard and DATA page.
-2. Member due calculation reads only the signed-in member's row for Member role and all active member rows for Super Admin. It uses contribution rate history and financial transaction rows, but its date calculation contains a hard-coded 2026-12-01 start boundary that must be checked against the approved committee start dates.
+2. Member due calculation reads only the signed-in member's row for Member role and all active member rows for Super Admin. It uses contribution-rate history and financial transaction rows. The hard-coded 2026-12-01 display boundary has now been removed. The month-counting rule (including whether the current month counts as due) still needs owner approval before the due amount is treated as official.
 3. Super Admin transaction form currently writes directly to `financial_transactions`.
 4. Transfer posting currently sends two separate INSERT operations. A failure between the two requests can leave only one side of a transfer posted.
 5. The portal's financial transaction entry form does not yet use a single trusted database posting RPC.
