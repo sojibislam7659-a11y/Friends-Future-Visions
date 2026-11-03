@@ -35,7 +35,7 @@ No Production data rows were queried. No Production writes, migrations, or deplo
 4. Aggregate financial summary is served by a SECURITY DEFINER function with an empty search_path and authenticated EXECUTE on the public wrapper; the private summary helper is not directly executable by authenticated users.
 5. Workflow functions inspected include Super Admin checks for payment approval, contribution-rate changes, and member signup approval.
 6. Critical accounting gap: Super Admin UPDATE and DELETE policies exist on `financial_transactions`. Audit triggers record modifications, but do not prevent them. This is not strict immutability.
-7. Production policy set currently grants authenticated users EXECUTE on the public payment-review wrapper and contribution-rate wrapper; the reviewed workflow function includes an internal Super Admin check for payment review. The public contribution-rate wrapper must be reviewed separately for its exact authorization path before it is considered safe.
+7. Production policy set grants authenticated users EXECUTE on the public payment-review and contribution-rate wrappers. Both delegate to private SECURITY DEFINER functions. The payment-review helper explicitly checks `private.is_super_admin()`; the contribution-rate helper also explicitly checks `private.is_super_admin()` before changing rates. The wrappers use an empty search_path and are not SECURITY DEFINER themselves.
 8. Storage policies restrict private object access by portal approval, ownership path, or Super Admin role. Policy simulation with real user accounts remains outstanding.
 
 ## Required remediation before operational use
