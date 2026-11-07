@@ -22,6 +22,7 @@
 ## Current Production metadata observations (read-only)
 
 - 15 public tables were found and all 15 have RLS enabled.
+- Read-only inspection of `supabase_migrations.schema_migrations` returned 37 Production migration records. The Development repository tree currently has no versioned `supabase/migrations` directory; only legacy SQL drafts marked superseded are present. Do not execute those drafts or assume they reproduce the current Production schema.
 - 47 public policies were previously counted. Targeted policy review confirms member-owned access for key member data and Super Admin-only write policies for sensitive workflows.
 - Five Storage buckets were found; all are private. Separate Storage policies exist for committee proofs, member documents, member photos, committee documents, and payment QR images.
 - The financial summary is exposed through a SECURITY DEFINER function with an empty search_path and an authenticated EXECUTE grant. Its underlying private helper is not directly executable by authenticated users.
