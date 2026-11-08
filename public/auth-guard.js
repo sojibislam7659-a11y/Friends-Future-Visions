@@ -57,7 +57,7 @@ export async function requireRole(allowedRoles) {
   );
   if (profileError) throw profileError;
 
-  if (!profile || !["super_admin", "admin", "member"].includes(profile.role)) {
+  if (!profile || !["super_admin", "member"].includes(profile.role)) {
    await supabase.auth.signOut();
    location.replace("login.html");
    return null;
