@@ -220,146 +220,76 @@ CREATE TABLE public.push_subscriptions (
   updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
 
-ALTER TABLE ONLY committee_documents ADD CONSTRAINT committee_documents_doc_type_check CHECK (doc_type = 'deed'::text);
-
 ALTER TABLE ONLY committee_documents ADD CONSTRAINT committee_documents_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY committee_documents ADD CONSTRAINT committee_documents_storage_path_key UNIQUE (storage_path);
-
-ALTER TABLE ONLY committee_documents ADD CONSTRAINT committee_documents_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES auth.users(id);
-
 ALTER TABLE ONLY committee_proofs ADD CONSTRAINT committee_proofs_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY committee_proofs ADD CONSTRAINT committee_proofs_storage_path_key UNIQUE (storage_path);
-
-ALTER TABLE ONLY committee_proofs ADD CONSTRAINT committee_proofs_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY financial_transaction_audit ADD CONSTRAINT financial_transaction_audit_action_check CHECK (action = ANY (ARRAY['UPDATE'::text, 'DELETE'::text]));
-
 ALTER TABLE ONLY financial_transaction_audit ADD CONSTRAINT financial_transaction_audit_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_account_type_check CHECK (account_type = ANY (ARRAY['cash'::text, 'bank'::text, 'investment'::text]));
-
-ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_amount_check CHECK (amount > 0::numeric);
-
-ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_direction_check CHECK (direction = ANY (ARRAY['in'::text, 'out'::text]));
-
-ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id);
-
 ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_transaction_type_check CHECK (transaction_type = ANY (ARRAY['opening_balance'::text, 'contribution'::text, 'withdrawal'::text, 'expense'::text, 'other_income'::text, 'investment_profit'::text, 'investment_loss'::text, 'transfer'::text]));
-
-ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT contribution_rate_date_range CHECK (effective_to IS NULL OR effective_to >= effective_from);
-
-ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT contribution_rate_starts_month CHECK (EXTRACT(day FROM effective_from) = 1::numeric);
-
-ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_member_id_effective_from_key UNIQUE (member_id, effective_from);
-
-ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_monthly_amount_check CHECK (monthly_amount > 0::numeric);
-
 ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY member_directory ADD CONSTRAINT member_directory_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
-
 ALTER TABLE ONLY member_directory ADD CONSTRAINT member_directory_pkey PRIMARY KEY (member_id);
-
-ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_document_type_check CHECK (document_type = ANY (ARRAY['member_nid'::text, 'nominee_nid'::text, 'nominee_photo'::text]));
-
-ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES auth.users(id);
-
 ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_status_check CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]));
-
-ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_storage_path_key UNIQUE (storage_path);
-
-ALTER TABLE ONLY members ADD CONSTRAINT members_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
-
-ALTER TABLE ONLY members ADD CONSTRAINT members_auth_user_id_key UNIQUE (auth_user_id);
-
-ALTER TABLE ONLY members ADD CONSTRAINT members_form_response_id_key UNIQUE (form_response_id);
-
-ALTER TABLE ONLY members ADD CONSTRAINT members_member_no_key UNIQUE (member_no);
-
 ALTER TABLE ONLY members ADD CONSTRAINT members_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY members ADD CONSTRAINT members_status_check CHECK (status = ANY (ARRAY['pending'::text, 'active'::text, 'inactive'::text]));
-
-ALTER TABLE ONLY notices ADD CONSTRAINT meeting_notice_requires_time CHECK (notice_type <> 'meeting'::text OR meeting_at IS NOT NULL);
-
-ALTER TABLE ONLY notices ADD CONSTRAINT notices_body_check CHECK (char_length(TRIM(BOTH FROM body)) >= 1 AND char_length(TRIM(BOTH FROM body)) <= 5000);
-
-ALTER TABLE ONLY notices ADD CONSTRAINT notices_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY notices ADD CONSTRAINT notices_notice_type_check CHECK (notice_type = ANY (ARRAY['general'::text, 'meeting'::text, 'reminder'::text]));
-
 ALTER TABLE ONLY notices ADD CONSTRAINT notices_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY notices ADD CONSTRAINT notices_title_check CHECK (char_length(TRIM(BOTH FROM title)) >= 1 AND char_length(TRIM(BOTH FROM title)) <= 180);
-
-ALTER TABLE ONLY notifications ADD CONSTRAINT notifications_notice_id_fkey FOREIGN KEY (notice_id) REFERENCES notices(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY notifications ADD CONSTRAINT notifications_notification_type_check CHECK (notification_type = ANY (ARRAY['general'::text, 'monthly_due'::text, 'meeting_reminder'::text]));
-
 ALTER TABLE ONLY notifications ADD CONSTRAINT notifications_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY notifications ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY payment_methods ADD CONSTRAINT payment_methods_method_check CHECK (method = ANY (ARRAY['bkash'::text, 'nagad'::text]));
-
-ALTER TABLE ONLY payment_methods ADD CONSTRAINT payment_methods_method_key UNIQUE (method);
-
 ALTER TABLE ONLY payment_methods ADD CONSTRAINT payment_methods_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY payment_methods ADD CONSTRAINT payment_methods_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_amount_check CHECK (amount > 0::numeric);
-
-ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id);
-
 ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_status_check CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]));
-
-ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_nonempty CHECK (requested_changes <> '{}'::jsonb OR requested_photo_path IS NOT NULL);
-
 ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_status_check CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]));
-
-ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES auth.users(id);
-
-ALTER TABLE ONLY profiles ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
-
 ALTER TABLE ONLY profiles ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
-
-ALTER TABLE ONLY profiles ADD CONSTRAINT profiles_role_check CHECK (role = ANY (ARRAY['super_admin'::text, 'member'::text, 'pending'::text, 'rejected'::text]));
-
-ALTER TABLE ONLY push_subscriptions ADD CONSTRAINT push_subscriptions_endpoint_key UNIQUE (endpoint);
-
 ALTER TABLE ONLY push_subscriptions ADD CONSTRAINT push_subscriptions_pkey PRIMARY KEY (id);
-
+ALTER TABLE ONLY committee_documents ADD CONSTRAINT committee_documents_storage_path_key UNIQUE (storage_path);
+ALTER TABLE ONLY committee_proofs ADD CONSTRAINT committee_proofs_storage_path_key UNIQUE (storage_path);
+ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_member_id_effective_from_key UNIQUE (member_id, effective_from);
+ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_storage_path_key UNIQUE (storage_path);
+ALTER TABLE ONLY members ADD CONSTRAINT members_auth_user_id_key UNIQUE (auth_user_id);
+ALTER TABLE ONLY members ADD CONSTRAINT members_form_response_id_key UNIQUE (form_response_id);
+ALTER TABLE ONLY members ADD CONSTRAINT members_member_no_key UNIQUE (member_no);
+ALTER TABLE ONLY payment_methods ADD CONSTRAINT payment_methods_method_key UNIQUE (method);
+ALTER TABLE ONLY push_subscriptions ADD CONSTRAINT push_subscriptions_endpoint_key UNIQUE (endpoint);
+ALTER TABLE ONLY committee_documents ADD CONSTRAINT committee_documents_doc_type_check CHECK (doc_type = 'deed'::text);
+ALTER TABLE ONLY financial_transaction_audit ADD CONSTRAINT financial_transaction_audit_action_check CHECK (action = ANY (ARRAY['UPDATE'::text, 'DELETE'::text]));
+ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_account_type_check CHECK (account_type = ANY (ARRAY['cash'::text, 'bank'::text, 'investment'::text]));
+ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_amount_check CHECK (amount > 0::numeric);
+ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_direction_check CHECK (direction = ANY (ARRAY['in'::text, 'out'::text]));
+ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_transaction_type_check CHECK (transaction_type = ANY (ARRAY['opening_balance'::text, 'contribution'::text, 'withdrawal'::text, 'expense'::text, 'other_income'::text, 'investment_profit'::text, 'investment_loss'::text, 'transfer'::text]));
+ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT contribution_rate_date_range CHECK (effective_to IS NULL OR effective_to >= effective_from);
+ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT contribution_rate_starts_month CHECK (EXTRACT(day FROM effective_from) = 1::numeric);
+ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_monthly_amount_check CHECK (monthly_amount > 0::numeric);
+ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_document_type_check CHECK (document_type = ANY (ARRAY['member_nid'::text, 'nominee_nid'::text, 'nominee_photo'::text]));
+ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_status_check CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]));
+ALTER TABLE ONLY members ADD CONSTRAINT members_status_check CHECK (status = ANY (ARRAY['pending'::text, 'active'::text, 'inactive'::text]));
+ALTER TABLE ONLY notices ADD CONSTRAINT meeting_notice_requires_time CHECK (notice_type <> 'meeting'::text OR meeting_at IS NOT NULL);
+ALTER TABLE ONLY notices ADD CONSTRAINT notices_body_check CHECK (char_length(TRIM(BOTH FROM body)) >= 1 AND char_length(TRIM(BOTH FROM body)) <= 5000);
+ALTER TABLE ONLY notices ADD CONSTRAINT notices_notice_type_check CHECK (notice_type = ANY (ARRAY['general'::text, 'meeting'::text, 'reminder'::text]));
+ALTER TABLE ONLY notices ADD CONSTRAINT notices_title_check CHECK (char_length(TRIM(BOTH FROM title)) >= 1 AND char_length(TRIM(BOTH FROM title)) <= 180);
+ALTER TABLE ONLY notifications ADD CONSTRAINT notifications_notification_type_check CHECK (notification_type = ANY (ARRAY['general'::text, 'monthly_due'::text, 'meeting_reminder'::text]));
+ALTER TABLE ONLY payment_methods ADD CONSTRAINT payment_methods_method_check CHECK (method = ANY (ARRAY['bkash'::text, 'nagad'::text]));
+ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_amount_check CHECK (amount > 0::numeric);
+ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_status_check CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]));
+ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_nonempty CHECK (requested_changes <> '{}'::jsonb OR requested_photo_path IS NOT NULL);
+ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_status_check CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text]));
+ALTER TABLE ONLY profiles ADD CONSTRAINT profiles_role_check CHECK (role = ANY (ARRAY['super_admin'::text, 'member'::text, 'pending'::text, 'rejected'::text]));
+ALTER TABLE ONLY committee_documents ADD CONSTRAINT committee_documents_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY committee_proofs ADD CONSTRAINT committee_proofs_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id);
+ALTER TABLE ONLY financial_transactions ADD CONSTRAINT financial_transactions_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY member_contribution_rates ADD CONSTRAINT member_contribution_rates_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
+ALTER TABLE ONLY member_directory ADD CONSTRAINT member_directory_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
+ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
+ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES auth.users(id);
+ALTER TABLE ONLY member_private_documents ADD CONSTRAINT member_private_documents_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY members ADD CONSTRAINT members_auth_user_id_fkey FOREIGN KEY (auth_user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE ONLY notices ADD CONSTRAINT notices_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY notifications ADD CONSTRAINT notifications_notice_id_fkey FOREIGN KEY (notice_id) REFERENCES notices(id) ON DELETE CASCADE;
+ALTER TABLE ONLY notifications ADD CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+ALTER TABLE ONLY payment_methods ADD CONSTRAINT payment_methods_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id);
+ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY payment_submissions ADD CONSTRAINT payment_submissions_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_member_id_fkey FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE;
+ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY profile_change_requests ADD CONSTRAINT profile_change_requests_submitted_by_fkey FOREIGN KEY (submitted_by) REFERENCES auth.users(id);
+ALTER TABLE ONLY profiles ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
 ALTER TABLE ONLY push_subscriptions ADD CONSTRAINT push_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 CREATE UNIQUE INDEX committee_documents_one_current_per_type ON public.committee_documents USING btree (doc_type) WHERE (is_current = true);
