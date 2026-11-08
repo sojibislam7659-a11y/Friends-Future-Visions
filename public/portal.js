@@ -40,8 +40,8 @@ function icon(name){
 }
 function navItem(href,label,iconName){return '<a href="'+href+'" '+(page===href.replace(".html","")?'class="active"':'')+'>'+icon(iconName)+'<span>'+label+'</span></a>'}
 function shell(){
- const isSuper=access.role==="super_admin",isAdmin=access.role==="admin",isMember=access.role==="member",isPublic=access.role==="public";
- const roleLabel=isSuper?"Super Admin":isAdmin?"Admin":"Member";
+ const isSuper=access.role==="super_admin",isMember=access.role==="member",isPublic=access.role==="public";
+ const roleLabel=isSuper?"Super Admin":"Member";
  const nav=navItem("dashboard.html",t("হোম","Home"),"home")+navItem("rules.html","RULES","rules")+navItem("member-info.html","MEMBER INFO","members")+navItem("data.html","DATA","data")+(isPublic?"":((isSuper||isMember)?navItem("personal-due.html","PERSONAL DUE","due"):"")+navItem("proof.html","PROOF","proof")+(isMember?navItem("payment.html","PAYMENT","payment")+navItem("member.html","MY PROFILE","profile"):"")+(isSuper?navItem("admin.html","SUPER ADMIN","admin"):""));
  root.innerHTML='<div class="shell"><header class="topbar"><button class="icon-button menu-button" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebarPanel">'+icon("menu")+'</button><div class="brand topbar-brand"><img src="friends-future-vision-logo.svg" alt=""><div><strong>Friends Future Vision Forever</strong><small>Secure member portal</small></div></div><div class="actions">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<span class="role topbar-role">'+roleLabel+'</span><button class="icon-button notification-trigger" id="notificationBtn" aria-label="Notifications" title="Notifications">'+icon("bell")+'<span class="unread-count" id="unreadCount" hidden></span></button>')+'</div></header><div class="drawer-backdrop" id="drawerBackdrop" hidden></div><aside class="sidebar-panel" id="sidebarPanel" aria-label="Main navigation" hidden><div class="sidebar-head"><a class="sidebar-brand" href="dashboard.html"><img src="friends-future-vision-logo.svg" alt="Friends Future Vision Forever"><span><strong>Friends Future Vision</strong><small>Forever</small></span></a><button class="icon-button drawer-close" id="closeSidebar" aria-label="Close menu">×</button></div><nav class="nav sidebar-nav" id="mainNav">'+nav+'</nav><div class="sidebar-footer">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<div class="sidebar-account"><span class="account-role">'+roleLabel+'</span><span class="account-email">'+esc(access.session.user.email||"")+'</span></div><button class="secondary" id="languageBtn">'+(lang==="bn"?"English":"বাংলা")+'</button><button class="secondary" id="logoutBtn">লগআউট</button>')+'</div></aside><aside class="notification-panel" id="notificationPanel" aria-label="Notifications" hidden><div class="notification-head"><strong>'+t("নোটিফিকেশন","Notifications")+'</strong><button class="icon-button" id="closeNotifications" aria-label="Close notifications">×</button></div><div class="notification-list" id="notificationList">'+empty(t("লোড হচ্ছে…","Loading…"))+'</div></aside><main class="page" id="pageContent"><div class="empty">তথ্য লোড হচ্ছে…</div></main><footer class="footer">Friends Future Vision Forever · Secure member portal</footer></div>';
  if(!isPublic){
@@ -111,7 +111,6 @@ function monthCount(start){
  return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()+1);
 }
 async function renderDue(){
- if(access.role==="admin"){setPage('<h1>Personal Due</h1>'+empty("Admin role-এর Personal Due দেখার অনুমতি নেই।"));return}
  let q=supabase.from("members").select("id,member_no,full_name,monthly_contribution,contribution_start_date,joined_at,status");
  if(access.role==="member")q=q.eq("auth_user_id",access.session.user.id);else if(access.role==="super_admin")q=q.eq("status","active");
  const {data:members,error}=await q.order("member_no");if(error)throw error;
@@ -395,5 +394,5 @@ async function renderPage(){
   else if(page==="payment")await renderPayment();
  }catch(error){console.error(error);setPage('<h1>তথ্য লোড করা যায়নি</h1><div class="error">'+esc(error.message||"Unknown error")+'</div><p class="muted">Supabase connection, permissions and table setup পরীক্ষা করো।</p>')}
 }
-access=await requireRole(page==="admin"?["super_admin"]:["super_admin","admin","member"]);
+access=await requireRole(page==="admin"?["super_admin"]:["super_admin","member"]);
 if(access){shell();await renderPage();if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(e=>console.warn("Service worker registration failed",e))}}
