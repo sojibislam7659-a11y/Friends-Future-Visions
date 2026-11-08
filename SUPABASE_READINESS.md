@@ -28,7 +28,7 @@ Production is READ-ONLY. No Production rows were queried, no Production writes o
 - 50 public RLS policies.
 - 17 Storage policies and 5 private Storage buckets.
 - 7 versioned Development migrations applied.
-- 0 Development Edge Functions currently deployed.
+- 2 Development Edge Functions deployed: `invite-member` and `review-member-signup` (both require JWT and use the Development Preview origin). `google-sheets-sync` and `send-push` remain undeployed until separate Development-only secrets are configured.
 - 0 financial transaction rows, 0 posting headers, 0 audit rows, and 0 temporary test users after rollback-safe tests.
 - Security Advisor: 0 lints.
 - Performance Advisor: no unindexed-FK or multiple-permissive-policy findings. It reports 30 informational unused-index findings because the newly reconstructed Development database has not yet had a normal workload.
@@ -70,7 +70,7 @@ All test Auth users and financial entries were created inside transactions and r
 1. The Super Admin transaction form remains disabled in the UI. The new RPCs exist and have SQL-level tests, but the UI has not yet been connected to them.
 2. The Development Cloudflare Preview currently returns \`ERR_EMPTY_RESPONSE\`; no page title or menu renders. \`wrangler.jsonc\` now explicitly sets \`preview_urls: true\`, but a Cloudflare Preview deployment has not been confirmed.
 3. Cloudflare's current Worker Preview workflow uses \`npx wrangler preview\` on the feature branch; Worker Previews require Wrangler 4.135.0 or later. See Cloudflare's official Preview docs.
-4. Development has 0 Edge Functions. The four Production functions must be inspected, copied to Development, and configured with Development-only secrets before invite/signup/review workflows can be fully tested.
+4. `invite-member` and `review-member-signup` are deployed to Development with the Development Preview CORS/redirect origin and JWT verification. The invite function now verifies that the member-link update actually affected a row before reporting success. `google-sheets-sync` is not deployed until a new Development-only `OIKKO_SYNC_SECRET` is configured; `send-push` is not deployed until Development-only VAPID and cron-token secrets are configured. Production secrets were not copied.
 5. Storage buckets and policies exist, but real upload/download access has not yet been tested with separate authenticated users.
 6. The contribution due month-counting rule (especially whether the current month is immediately due) still needs owner approval and reconciliation against each member's approved rate history.
 7. The uploaded full Production dump has not been extracted in this runtime because \`pg_restore\` is unavailable. The schema baseline is based on live read-only catalog metadata, not a restore of that dump.
