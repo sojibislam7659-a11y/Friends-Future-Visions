@@ -80,7 +80,7 @@ Do not combine cash and bank into a single untraceable balance.
 - \`reverse_financial_posting\` creates a linked reversal. A posting can be reversed only once, and a reversal cannot itself be reversed.
 - Idempotency keys prevent retrying the same request from creating duplicate postings.
 - Financial posting and transaction rows are immutable. UPDATE/DELETE attempts are rejected; corrections use reversals.
-- Authenticated clients have SELECT but no direct INSERT/UPDATE/DELETE privilege on the ledger.
+- Authenticated clients and `service_role` have SELECT but no direct INSERT/UPDATE/DELETE privilege on the ledger. Ledger writes must pass through guarded private RPC helpers.
 - Payment approval calls the same trusted posting helper, so payment approval and ledger insertion succeed or fail together.
 - The financial transaction audit log records INSERT, UPDATE, and DELETE actions; the Development CHECK constraint permits all three.
 - Contribution due calculation subtracts reversal rows linked to original contribution entries.
