@@ -1161,7 +1161,7 @@ CREATE OR REPLACE FUNCTION public.review_profile_change_request(p_request_id uui
  RETURNS void
  LANGUAGE sql
  SET search_path TO ''
-AS $function$ select private.review_profile_change_request(p_request_id,p_approved,p_admin_note); $function$
+AS $function$ select private.review_profile_change_request(p_request_id,p_approved,p_admin_note); $function$;
 
 
 CREATE OR REPLACE FUNCTION public.rls_auto_enable()
@@ -1211,7 +1211,7 @@ CREATE OR REPLACE FUNCTION public.set_member_contribution_rate(p_member_id uuid,
  RETURNS void
  LANGUAGE sql
  SET search_path TO ''
-AS $function$ select private.set_member_contribution_rate(p_member_id,p_amount,p_effective_from); $function$
+AS $function$ select private.set_member_contribution_rate(p_member_id,p_amount,p_effective_from); $function$;
 
 
 CREATE OR REPLACE FUNCTION public.sync_auth_user_verification()
