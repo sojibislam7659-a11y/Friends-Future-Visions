@@ -27,7 +27,7 @@ Production is READ-ONLY. No Production rows were queried, no Production writes o
 - 16 public tables: the 15-table application schema plus \`financial_postings\`.
 - 50 public RLS policies.
 - 17 Storage policies and 5 private Storage buckets.
-- 7 versioned Development migrations applied.
+- 8 versioned Development migrations applied.
 - 2 Development Edge Functions deployed: `invite-member` and `review-member-signup` (both require JWT and use the Development Preview origin). `google-sheets-sync` and `send-push` remain undeployed until separate Development-only secrets are configured.
 - 0 financial transaction rows, 0 posting headers, 0 audit rows, and 0 temporary test users after rollback-safe tests.
 - Security Advisor: 0 lints.
@@ -40,7 +40,7 @@ Production is READ-ONLY. No Production rows were queried, no Production writes o
 - \`post_financial_transaction\` is the trusted posting path. A transfer creates its debit and credit rows in one database transaction.
 - A deferred constraint trigger validates each transfer group: exactly two rows, one \`out\`, one \`in\`, equal amounts, two different accounts, and one posting header.
 - \`reverse_financial_posting\` creates linked compensating entries. A posting can be reversed only once; a reversal cannot itself be reversed.
-- Financial transaction and posting rows have mutation-blocking UPDATE/DELETE triggers. Authenticated users have SELECT only on the ledger tables; direct browser-side ledger writes are not granted.
+- Financial transaction and posting rows have mutation-blocking UPDATE/DELETE triggers. Authenticated users and `service_role` have SELECT only on the ledger tables; direct INSERT/UPDATE/DELETE is not granted to either role. All ledger writes must pass through guarded private RPC helpers.
 - Payment approval now calls the same posting helper, so approval status, ledger posting, and insert-audit entry are committed together.
 - The audit action constraint now permits INSERT, UPDATE, and DELETE, matching the existing insert-audit trigger.
 - Public RPC wrappers use SECURITY INVOKER. Privileged work is in private SECURITY DEFINER helpers with explicit Super Admin checks and an empty search_path.
