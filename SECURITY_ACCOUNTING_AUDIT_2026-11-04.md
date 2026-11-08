@@ -29,7 +29,7 @@ Scope: Development schema reconstruction, code review, SQL-level tests, and read
 ## Development database state
 
 - 16 public tables, 50 public policies, 17 Storage policies, 5 private Storage buckets.
-- 7 Development migrations applied.
+- 8 Development migrations applied.
 - 2 Development Edge Functions deployed: `invite-member` and `review-member-signup`. The Google Sheets sync and push functions remain deferred until Development-only secrets are configured.
 - 0 financial transaction rows, posting rows, audit rows, or test Auth users after rollback-safe tests.
 - Security Advisor: 0 lints.
