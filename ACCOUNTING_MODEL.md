@@ -1,12 +1,12 @@
 # Oikko Committee — Accounting and Data Model
 
-This document defines the intended accounting behaviour. It is a specification, not a database migration. Do not execute it as SQL or use it to invent opening balances.
+This document defines the intended accounting behaviour and records the current Development implementation. It is not a Production migration. Do not execute this Markdown file as SQL or use it to invent opening balances.
 
 ## Core records
 
 ### Members
 - Stable internal UUID
-- Committee member number (administrative identifier)
+- Committee member number
 - Full name and optional photo
 - Registered email mapped to Supabase Auth UID through a protected profile relationship
 - Membership status: pending, active, suspended, or exited
@@ -15,16 +15,29 @@ This document defines the intended accounting behaviour. It is a specification, 
 
 A member must never be able to change their own role, approval status, member number, Auth UID link, or financial records.
 
+### Financial postings
+A posting is the atomic business event:
+- UUID
+- Unique idempotency key
+- Request fingerprint
+- Posting type: standard, transfer, or reversal
+- Creator and timestamp
+- Optional link to the posting being reversed
+- Optional memo
+
+One standard posting creates one ledger row. One transfer posting creates exactly two ledger rows. A reversal creates compensating ledger rows linked to the original posting.
+
 ### Financial transactions
-Recommended fields:
-- UUID, effective date, created timestamp
-- Type and subtype
-- Amount in BDT as a fixed-precision decimal or integer poisha; never floating-point arithmetic
-- From-account and to-account where applicable
+- UUID and posting UUID
+- Effective date and created timestamp
+- Type and direction
+- Amount in BDT as fixed-precision decimal \`numeric(14,2)\`; never floating-point arithmetic
+- Account type: cash, bank, or investment
 - Related member, project, or payment submission where applicable
 - Description and external reference
-- Created by, approved by, and audit metadata
-- Reversal/correction reference instead of silently erasing a posted transaction
+- Transfer group UUID where applicable
+- Reversal reference to the original ledger row
+- Created by and audit metadata
 
 ### Accounts
 Keep separate balances for:
@@ -49,26 +62,56 @@ Do not combine cash and bank into a single untraceable balance.
 
 ## Transaction semantics
 
-| Event | Cash/bank effect | Income/expense effect |
+| Event | Ledger effect | Reporting effect |
 |---|---|---|
-| Member deposits contribution | Receiving account increases | Contribution recorded in member ledger; classify according to approved reporting policy |
-| Cash-to-bank transfer | Cash decreases, bank increases | Neither income nor expense |
-| Bank-to-cash transfer | Bank decreases, cash increases | Neither income nor expense |
+| Member contribution | Receiving account increases; member-linked contribution row | Contribution, not profit |
+| Cash-to-bank transfer | Cash decreases and bank increases in one atomic posting | Neither income nor expense |
+| Bank-to-cash transfer | Bank decreases and cash increases in one atomic posting | Neither income nor expense |
 | Investment deployed | Cash/bank decreases, investment asset increases | Not an operating expense |
 | Return of invested principal | Cash/bank increases, investment asset decreases | Not income |
 | Realized project profit | Receiving account increases | Profit/income |
 | Realized project loss | Investment asset or receiving account decreases | Loss |
+| Reversal | New row(s) offset original row(s), linked to original | Original entry remains visible; no silent edit/delete |
+
+## Development implementation safeguards
+
+- \`post_financial_transaction\` is the only general-purpose posting path for authenticated Super Admins.
+- Transfer rows are inserted in one database transaction and validated by a deferred constraint trigger: exactly two rows, one incoming and one outgoing, equal amount, different accounts, same posting.
+- \`reverse_financial_posting\` creates a linked reversal. A posting can be reversed only once, and a reversal cannot itself be reversed.
+- Idempotency keys prevent retrying the same request from creating duplicate postings.
+- Financial posting and transaction rows are immutable. UPDATE/DELETE attempts are rejected; corrections use reversals.
+- Authenticated clients have SELECT but no direct INSERT/UPDATE/DELETE privilege on the ledger.
+- Payment approval calls the same trusted posting helper, so payment approval and ledger insertion succeed or fail together.
+- The financial transaction audit log records INSERT, UPDATE, and DELETE actions; the Development CHECK constraint permits all three.
+- Contribution due calculation subtracts reversal rows linked to original contribution entries.
+
+## Direction rules implemented in Development
+
+- \`opening_balance\`, \`contribution\`, \`other_income\`, \`investment_profit\`: incoming.
+- \`withdrawal\`, \`expense\`, \`investment_loss\`: outgoing.
+- \`transfer\`: generated as one outgoing source row and one incoming destination row.
+- \`reversal\`: generated by the reversal function; users cannot create a raw reversal row.
+
+These rules are implemented in Development only. They must be reviewed against the committee's approved written rules before any Production rollout.
 
 ## Reconciliation checks
+
 - Sum of cash and bank movements must reconcile to posted transactions.
 - Transfers must net to zero across the committee's cash/bank accounts.
 - Investment capital outstanding = deployed principal − returned principal, adjusted for documented write-offs.
-- Member contribution ledger must reconcile with received payment transactions.
+- Member contribution ledger must reconcile with received payment transactions, including linked reversals.
 - Monthly opening balance + period movements = monthly closing balance for each account.
 - No chart or summary should be shown as final if its source ledger does not reconcile.
+- Opening balances must come from owner-verified records; do not invent them.
 
 ## Access rules
+
 - Members: own personal ledger and own proof submissions only, plus safe aggregate figures.
-- Admin: member administration within approved scope and read-only financial reporting.
-- Super Admin: approved financial posting, correction, and member administration.
+- Super Admin: approved financial posting, reversal, and member administration.
+- Pending/Rejected: no committee data access.
+- There is no Admin role in the Development authorization model.
 - A browser-hidden element is not a security control. Enforce access in database grants, RLS, and trusted functions.
+
+## Scope warning
+
+This implementation is Development-only. Production remains unchanged and read-only. No Production migration or deployment is authorized by this document.
