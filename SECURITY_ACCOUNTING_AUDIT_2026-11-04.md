@@ -30,7 +30,7 @@ Scope: Development schema reconstruction, code review, SQL-level tests, and read
 
 - 16 public tables, 50 public policies, 17 Storage policies, 5 private Storage buckets.
 - 7 Development migrations applied.
-- 0 Edge Functions deployed.
+- 2 Development Edge Functions deployed: `invite-member` and `review-member-signup`. The Google Sheets sync and push functions remain deferred until Development-only secrets are configured.
 - 0 financial transaction rows, posting rows, audit rows, or test Auth users after rollback-safe tests.
 - Security Advisor: 0 lints.
 - Performance Advisor: only informational unused-index findings remain; no unindexed foreign keys or multiple permissive-policy findings.
@@ -66,7 +66,7 @@ The profiles role constraint already excludes \`admin\`, but older helper functi
 The Development Cloudflare Preview currently returns \`ERR_EMPTY_RESPONSE\`; no title or menu renders. Therefore browser-level UI tests are not complete. The Wrangler config now explicitly enables Preview URLs, but Cloudflare Preview deployment itself is not confirmed.
 
 ### Edge Functions and Storage
-Development has no Edge Functions deployed. The four Production Edge Functions have not yet been copied or configured with Development-only secrets. Storage buckets and policies were reconstructed, but authenticated upload/download flows remain untested.
+Development now has `invite-member` and `review-member-signup`, with JWT verification and Development Preview CORS/redirect URLs. The invite function verifies that the member-link update returned a row before reporting success. `google-sheets-sync` and `send-push` remain undeployed because their Development-only webhook/VAPID/cron secrets have not been configured; no Production secrets were copied. Storage buckets and policies were reconstructed, but authenticated upload/download flows remain untested.
 
 ### Backup extraction
 The active runtime contains the full Production custom-format backup, but \`pg_restore\` is unavailable here and the backup was not extracted. The Development schema was reconstructed from live read-only catalog metadata. No dump was restored.
