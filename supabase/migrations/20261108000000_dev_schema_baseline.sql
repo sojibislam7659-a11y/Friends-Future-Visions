@@ -362,69 +362,69 @@ ALTER TABLE ONLY push_subscriptions ADD CONSTRAINT push_subscriptions_pkey PRIMA
 
 ALTER TABLE ONLY push_subscriptions ADD CONSTRAINT push_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
-CREATE UNIQUE INDEX committee_documents_one_current_per_type ON public.committee_documents USING btree (doc_type) WHERE (is_current = true)
+CREATE UNIQUE INDEX committee_documents_one_current_per_type ON public.committee_documents USING btree (doc_type) WHERE (is_current = true);
 
-CREATE INDEX committee_proofs_published_month_idx ON public.committee_proofs USING btree (proof_month, created_at DESC) WHERE (published = true)
+CREATE INDEX committee_proofs_published_month_idx ON public.committee_proofs USING btree (proof_month, created_at DESC) WHERE (published = true);
 
-CREATE INDEX idx_committee_proofs_month ON public.committee_proofs USING btree (proof_month DESC)
+CREATE INDEX idx_committee_proofs_month ON public.committee_proofs USING btree (proof_month DESC);
 
-CREATE INDEX idx_committee_proofs_uploaded_by ON public.committee_proofs USING btree (uploaded_by)
+CREATE INDEX idx_committee_proofs_uploaded_by ON public.committee_proofs USING btree (uploaded_by);
 
-CREATE UNIQUE INDEX financial_contribution_reference_unique ON public.financial_transactions USING btree (lower(TRIM(BOTH FROM reference_no))) WHERE ((transaction_type = 'contribution'::text) AND (reference_no IS NOT NULL) AND (TRIM(BOTH FROM reference_no) <> ''::text))
+CREATE UNIQUE INDEX financial_contribution_reference_unique ON public.financial_transactions USING btree (lower(TRIM(BOTH FROM reference_no))) WHERE ((transaction_type = 'contribution'::text) AND (reference_no IS NOT NULL) AND (TRIM(BOTH FROM reference_no) <> ''::text));
 
-CREATE UNIQUE INDEX financial_transactions_matrix_reference_uidx ON public.financial_transactions USING btree (reference_no) WHERE (reference_no ~~ 'FFV_MATRIX|%'::text)
+CREATE UNIQUE INDEX financial_transactions_matrix_reference_uidx ON public.financial_transactions USING btree (reference_no) WHERE (reference_no ~~ 'FFV_MATRIX|%'::text);
 
-CREATE INDEX financial_transactions_member_contribution_idx ON public.financial_transactions USING btree (member_id, transaction_date) WHERE ((transaction_type = 'contribution'::text) AND (direction = 'in'::text))
+CREATE INDEX financial_transactions_member_contribution_idx ON public.financial_transactions USING btree (member_id, transaction_date) WHERE ((transaction_type = 'contribution'::text) AND (direction = 'in'::text));
 
-CREATE INDEX idx_financial_transactions_account_date ON public.financial_transactions USING btree (account_type, transaction_date DESC)
+CREATE INDEX idx_financial_transactions_account_date ON public.financial_transactions USING btree (account_type, transaction_date DESC);
 
-CREATE INDEX idx_financial_transactions_created_by ON public.financial_transactions USING btree (created_by)
+CREATE INDEX idx_financial_transactions_created_by ON public.financial_transactions USING btree (created_by);
 
-CREATE INDEX idx_financial_transactions_date ON public.financial_transactions USING btree (transaction_date DESC)
+CREATE INDEX idx_financial_transactions_date ON public.financial_transactions USING btree (transaction_date DESC);
 
-CREATE INDEX idx_financial_transactions_member_id ON public.financial_transactions USING btree (member_id)
+CREATE INDEX idx_financial_transactions_member_id ON public.financial_transactions USING btree (member_id);
 
-CREATE INDEX idx_financial_transactions_updated_by ON public.financial_transactions USING btree (updated_by)
+CREATE INDEX idx_financial_transactions_updated_by ON public.financial_transactions USING btree (updated_by);
 
-CREATE INDEX idx_contribution_rates_member_effective ON public.member_contribution_rates USING btree (member_id, effective_from DESC)
+CREATE INDEX idx_contribution_rates_member_effective ON public.member_contribution_rates USING btree (member_id, effective_from DESC);
 
-CREATE INDEX idx_member_contribution_rates_created_by ON public.member_contribution_rates USING btree (created_by)
+CREATE INDEX idx_member_contribution_rates_created_by ON public.member_contribution_rates USING btree (created_by);
 
-CREATE INDEX member_private_documents_owner_status_idx ON public.member_private_documents USING btree (owner_user_id, status, uploaded_at DESC)
+CREATE INDEX member_private_documents_owner_status_idx ON public.member_private_documents USING btree (owner_user_id, status, uploaded_at DESC);
 
-CREATE INDEX idx_members_auth_user_id ON public.members USING btree (auth_user_id) WHERE (auth_user_id IS NOT NULL)
+CREATE INDEX idx_members_auth_user_id ON public.members USING btree (auth_user_id) WHERE (auth_user_id IS NOT NULL);
 
-CREATE INDEX idx_notices_created_by ON public.notices USING btree (created_by)
+CREATE INDEX idx_notices_created_by ON public.notices USING btree (created_by);
 
-CREATE INDEX idx_notifications_notice_id ON public.notifications USING btree (notice_id)
+CREATE INDEX idx_notifications_notice_id ON public.notifications USING btree (notice_id);
 
-CREATE UNIQUE INDEX notifications_notice_once_idx ON public.notifications USING btree (user_id, notice_id, notification_type) WHERE (notice_id IS NOT NULL)
+CREATE UNIQUE INDEX notifications_notice_once_idx ON public.notifications USING btree (user_id, notice_id, notification_type) WHERE (notice_id IS NOT NULL);
 
-CREATE INDEX notifications_unread_by_user_idx ON public.notifications USING btree (user_id, created_at DESC) WHERE (read_at IS NULL)
+CREATE INDEX notifications_unread_by_user_idx ON public.notifications USING btree (user_id, created_at DESC) WHERE (read_at IS NULL);
 
-CREATE INDEX notifications_user_created_idx ON public.notifications USING btree (user_id, created_at DESC)
+CREATE INDEX notifications_user_created_idx ON public.notifications USING btree (user_id, created_at DESC);
 
-CREATE INDEX idx_payment_submissions_member_id ON public.payment_submissions USING btree (member_id)
+CREATE INDEX idx_payment_submissions_member_id ON public.payment_submissions USING btree (member_id);
 
-CREATE INDEX idx_payment_submissions_reviewed_by ON public.payment_submissions USING btree (reviewed_by)
+CREATE INDEX idx_payment_submissions_reviewed_by ON public.payment_submissions USING btree (reviewed_by);
 
-CREATE INDEX idx_payment_submissions_submitted_by ON public.payment_submissions USING btree (submitted_by)
+CREATE INDEX idx_payment_submissions_submitted_by ON public.payment_submissions USING btree (submitted_by);
 
-CREATE INDEX payment_submissions_owner_status_idx ON public.payment_submissions USING btree (submitted_by, status, created_at DESC)
+CREATE INDEX payment_submissions_owner_status_idx ON public.payment_submissions USING btree (submitted_by, status, created_at DESC);
 
-CREATE UNIQUE INDEX payment_submissions_reference_unique ON public.payment_submissions USING btree (lower(TRIM(BOTH FROM reference_no))) WHERE ((reference_no IS NOT NULL) AND (TRIM(BOTH FROM reference_no) <> ''::text))
+CREATE UNIQUE INDEX payment_submissions_reference_unique ON public.payment_submissions USING btree (lower(TRIM(BOTH FROM reference_no))) WHERE ((reference_no IS NOT NULL) AND (TRIM(BOTH FROM reference_no) <> ''::text));
 
-CREATE INDEX idx_profile_change_requests_member_id ON public.profile_change_requests USING btree (member_id)
+CREATE INDEX idx_profile_change_requests_member_id ON public.profile_change_requests USING btree (member_id);
 
-CREATE INDEX idx_profile_change_requests_reviewed_by ON public.profile_change_requests USING btree (reviewed_by)
+CREATE INDEX idx_profile_change_requests_reviewed_by ON public.profile_change_requests USING btree (reviewed_by);
 
-CREATE INDEX idx_profile_change_requests_submitted_by ON public.profile_change_requests USING btree (submitted_by)
+CREATE INDEX idx_profile_change_requests_submitted_by ON public.profile_change_requests USING btree (submitted_by);
 
-CREATE INDEX profile_change_requests_owner_created_idx ON public.profile_change_requests USING btree (submitted_by, created_at DESC)
+CREATE INDEX profile_change_requests_owner_created_idx ON public.profile_change_requests USING btree (submitted_by, created_at DESC);
 
-CREATE UNIQUE INDEX profiles_email_lower_uidx ON public.profiles USING btree (lower(email)) WHERE (email IS NOT NULL)
+CREATE UNIQUE INDEX profiles_email_lower_uidx ON public.profiles USING btree (lower(email)) WHERE (email IS NOT NULL);
 
-CREATE INDEX idx_push_subscriptions_user_id ON public.push_subscriptions USING btree (user_id)
+CREATE INDEX idx_push_subscriptions_user_id ON public.push_subscriptions USING btree (user_id);
 
 CREATE OR REPLACE FUNCTION private.has_portal_access()
  RETURNS boolean
@@ -438,7 +438,7 @@ AS $function$
     where p.id = (select auth.uid())
       and p.role in ('super_admin','admin','member')
   );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.is_super_admin()
@@ -453,7 +453,7 @@ AS $function$
     where p.id = (select auth.uid())
       and p.role = 'super_admin'
   );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.audit_financial_transaction()
@@ -477,7 +477,7 @@ begin
   new.updated_by := (select auth.uid());
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.audit_financial_transaction_insert()
@@ -492,7 +492,7 @@ begin
   values (new.id,'INSERT',null,to_jsonb(new),(select auth.uid()));
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.get_financial_summary()
@@ -559,7 +559,7 @@ select jsonb_build_object(
   ) order by h.yr,h.half) from halves h),'[]'::jsonb)
 )
 from totals t;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.issue_meeting_reminders()
@@ -576,7 +576,7 @@ AS $function$
   where n.published=true and n.notice_type='meeting'
     and n.meeting_at > now() and n.meeting_at <= now()+interval '5 minutes'
   on conflict do nothing;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.issue_monthly_due_reminders()
@@ -602,7 +602,7 @@ AS $function$
       where n.user_id=m.auth_user_id and n.notification_type='monthly_due'
         and date_trunc('month',n.created_at)=date_trunc('month',now())
     );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.notify_notice_recipients()
@@ -620,7 +620,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.notify_payment_workflow()
@@ -645,7 +645,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.notify_private_document_workflow()
@@ -670,7 +670,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.notify_profile_workflow()
@@ -695,7 +695,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.review_payment_submission(p_submission_id uuid, p_approved boolean, p_admin_note text DEFAULT NULL::text, p_account_type text DEFAULT 'cash'::text)
@@ -738,7 +738,7 @@ begin
       reviewed_at = now()
   where id = p_submission_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.review_profile_change_request(p_request_id uuid, p_approved boolean, p_admin_note text DEFAULT NULL::text)
@@ -798,7 +798,7 @@ begin
     reviewed_at=now()
   where id=p_request_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.set_current_committee_document(p_document_id uuid)
@@ -817,7 +817,7 @@ begin
   update public.committee_documents set is_current=false where doc_type=d.doc_type and is_current=true;
   update public.committee_documents set is_current=true where id=p_document_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.set_member_contribution_rate(p_member_id uuid, p_amount numeric, p_effective_from date)
@@ -871,7 +871,7 @@ begin
       contribution_start_date=coalesce(contribution_start_date,p_effective_from)
   where id=p_member_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.sync_member_directory()
@@ -903,7 +903,7 @@ begin
 
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.approve_member_signup(p_user_id uuid, p_admin_user_id uuid)
@@ -971,7 +971,7 @@ begin
 
   return query select v_member.id, v_member.full_name, lower(v_email);
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.assign_member_no_when_active()
@@ -986,7 +986,7 @@ begin
   end if;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_financial_summary()
@@ -1012,7 +1012,7 @@ BEGIN
 
   RETURN private.get_financial_summary();
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_push_config()
@@ -1027,7 +1027,7 @@ AS $function$
     'vapid_subject',(select decrypted_secret from vault.decrypted_secrets where name='ffvf_vapid_subject' order by created_at desc limit 1),
     'cron_token',(select decrypted_secret from vault.decrypted_secrets where name='ffvf_cron_token' order by created_at desc limit 1)
   );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.handle_new_auth_user()
@@ -1050,7 +1050,7 @@ begin
         email_verified_at = excluded.email_verified_at;
   return new;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.is_committee_admin()
@@ -1065,7 +1065,7 @@ AS $function$
         where id = auth.uid()
           and role in ('super_admin', 'admin')
     );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.is_super_admin()
@@ -1080,7 +1080,7 @@ AS $function$
         where id = auth.uid()
           and role = 'super_admin'
     );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.reject_member_signup(p_user_id uuid, p_admin_user_id uuid, p_reopen boolean DEFAULT false)
@@ -1105,7 +1105,7 @@ begin
     raise exception 'Signup is not pending or rejected';
   end if;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.review_payment_submission(p_submission_id uuid, p_approved boolean, p_admin_note text DEFAULT NULL::text, p_account_type text DEFAULT 'cash'::text)
@@ -1115,7 +1115,7 @@ CREATE OR REPLACE FUNCTION public.review_payment_submission(p_submission_id uuid
  SET search_path TO ''
 AS $function$
   select private.review_payment_submission(p_submission_id,p_approved,p_admin_note,p_account_type);
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.review_private_document(p_document_id uuid, p_approved boolean, p_admin_note text DEFAULT NULL::text)
@@ -1154,7 +1154,7 @@ begin
         reviewed_at = now()
     where id = p_document_id;
 end;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.review_profile_change_request(p_request_id uuid, p_approved boolean, p_admin_note text DEFAULT NULL::text)
@@ -1194,7 +1194,7 @@ BEGIN
      END IF;
   END LOOP;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_current_committee_document(p_document_id uuid)
@@ -1204,7 +1204,7 @@ CREATE OR REPLACE FUNCTION public.set_current_committee_document(p_document_id u
  SET search_path TO ''
 AS $function$
   select private.set_current_committee_document(p_document_id);
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.set_member_contribution_rate(p_member_id uuid, p_amount numeric, p_effective_from date)
@@ -1227,7 +1227,7 @@ begin
   where id = new.id;
   return new;
 end;
-$function$
+$function$;
 
 
 ALTER TABLE public.committee_documents ENABLE ROW LEVEL SECURITY;
@@ -1260,25 +1260,25 @@ ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
-CREATE TRIGGER on_auth_user_created_pending_profile AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_auth_user()
+CREATE TRIGGER on_auth_user_created_pending_profile AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_auth_user();
 
-CREATE TRIGGER on_auth_user_email_verification_updated AFTER UPDATE OF email_confirmed_at ON auth.users FOR EACH ROW WHEN (old.email_confirmed_at IS DISTINCT FROM new.email_confirmed_at) EXECUTE FUNCTION sync_auth_user_verification()
+CREATE TRIGGER on_auth_user_email_verification_updated AFTER UPDATE OF email_confirmed_at ON auth.users FOR EACH ROW WHEN (old.email_confirmed_at IS DISTINCT FROM new.email_confirmed_at) EXECUTE FUNCTION sync_auth_user_verification();
 
-CREATE TRIGGER audit_financial_transaction_changes BEFORE DELETE OR UPDATE ON financial_transactions FOR EACH ROW EXECUTE FUNCTION private.audit_financial_transaction()
+CREATE TRIGGER audit_financial_transaction_changes BEFORE DELETE OR UPDATE ON financial_transactions FOR EACH ROW EXECUTE FUNCTION private.audit_financial_transaction();
 
-CREATE TRIGGER audit_financial_transaction_insert AFTER INSERT ON financial_transactions FOR EACH ROW EXECUTE FUNCTION private.audit_financial_transaction_insert()
+CREATE TRIGGER audit_financial_transaction_insert AFTER INSERT ON financial_transactions FOR EACH ROW EXECUTE FUNCTION private.audit_financial_transaction_insert();
 
-CREATE TRIGGER private_document_notifications AFTER INSERT OR UPDATE OF status ON member_private_documents FOR EACH ROW EXECUTE FUNCTION private.notify_private_document_workflow()
+CREATE TRIGGER private_document_notifications AFTER INSERT OR UPDATE OF status ON member_private_documents FOR EACH ROW EXECUTE FUNCTION private.notify_private_document_workflow();
 
-CREATE TRIGGER sync_member_directory_after_member_change AFTER INSERT OR DELETE OR UPDATE OF member_no, full_name, full_name_bn, profile_photo_path, status ON members FOR EACH ROW EXECUTE FUNCTION private.sync_member_directory()
+CREATE TRIGGER sync_member_directory_after_member_change AFTER INSERT OR DELETE OR UPDATE OF member_no, full_name, full_name_bn, profile_photo_path, status ON members FOR EACH ROW EXECUTE FUNCTION private.sync_member_directory();
 
-CREATE TRIGGER trg_assign_member_no_when_active BEFORE INSERT OR UPDATE OF status, member_no ON members FOR EACH ROW EXECUTE FUNCTION assign_member_no_when_active()
+CREATE TRIGGER trg_assign_member_no_when_active BEFORE INSERT OR UPDATE OF status, member_no ON members FOR EACH ROW EXECUTE FUNCTION assign_member_no_when_active();
 
-CREATE TRIGGER notices_notify_recipients AFTER INSERT OR UPDATE OF published ON notices FOR EACH ROW EXECUTE FUNCTION private.notify_notice_recipients()
+CREATE TRIGGER notices_notify_recipients AFTER INSERT OR UPDATE OF published ON notices FOR EACH ROW EXECUTE FUNCTION private.notify_notice_recipients();
 
-CREATE TRIGGER payment_submission_notifications AFTER INSERT OR UPDATE OF status ON payment_submissions FOR EACH ROW EXECUTE FUNCTION private.notify_payment_workflow()
+CREATE TRIGGER payment_submission_notifications AFTER INSERT OR UPDATE OF status ON payment_submissions FOR EACH ROW EXECUTE FUNCTION private.notify_payment_workflow();
 
-CREATE TRIGGER profile_change_notifications AFTER INSERT OR UPDATE OF status ON profile_change_requests FOR EACH ROW EXECUTE FUNCTION private.notify_profile_workflow()
+CREATE TRIGGER profile_change_notifications AFTER INSERT OR UPDATE OF status ON profile_change_requests FOR EACH ROW EXECUTE FUNCTION private.notify_profile_workflow();
 
 CREATE POLICY "Committee documents: Super Admin manage" ON public.committee_documents AS permissive FOR ALL TO authenticated USING (( SELECT private.is_super_admin() AS is_super_admin)) WITH CHECK (( SELECT private.is_super_admin() AS is_super_admin));
 
