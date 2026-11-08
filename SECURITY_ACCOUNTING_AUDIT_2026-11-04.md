@@ -1,52 +1,83 @@
 # Oikko — Security and Accounting Audit
-Date: 2026-11-04
-Scope: Development code review plus read-only Production metadata inspection.
-Branch under development: `dev-superadmin-field-editor`.
-No Production data rows were queried. No Production writes, migrations, or deployments were performed.
 
-## Development environment
-- Supabase project `tvdxbyzvkjiebwslmnvj` was previously verified ACTIVE_HEALTHY.
-- Public schema was empty at the previous metadata audit: no tables, views, policies, functions, or triggers; no migrations, Edge Functions, or Storage buckets.
-- This empty Development database blocks meaningful login, RLS, RPC, Storage, and end-to-end application tests.
+Updated: 2026-11-08  
+Scope: Development schema reconstruction, code review, SQL-level tests, and read-only Production catalog inspection.
 
-## Changes already committed on Development
-- Public homepage now presents a landing page rather than auto-redirecting to login.
-- A static public rules page was added.
-- DATA page routes through `portal.js`, not the former contribution-matrix module.
-- The direct-write `public/public-data.js` contribution matrix module was removed.
-- Admin Personal Due is blocked in the portal renderer.
-- Portal and legacy navigation now show role-appropriate links.
-- Latest verified branch commit at the time of this audit: see the Development branch HEAD in GitHub.
+## Safety boundary
 
-## Confirmed code findings
-1. `public/portal.js` uses `get_financial_summary` for the aggregate dashboard and DATA page.
-2. Member due calculation reads only the signed-in member's row for Member role and all active member rows for Super Admin. It uses contribution-rate history and financial transaction rows. The hard-coded 2026-12-01 display boundary has now been removed. The month-counting rule (including whether the current month counts as due) still needs owner approval before the due amount is treated as official.
-3. Super Admin transaction form currently writes directly to `financial_transactions`.
-4. Transfer posting currently sends two separate INSERT operations. A failure between the two requests can leave only one side of a transfer posted.
-5. The portal's financial transaction entry form does not yet use a single trusted database posting RPC.
-6. Admin UI and Admin read-only reporting role need to remain separate from Super Admin transaction posting.
-7. Legacy login helper uses Supabase email/password correctly, but successful Auth sign-in alone is not proof of approved committee membership; the profile role lookup and RLS remain mandatory.
-8. Client-side role guards are not security controls by themselves.
+- All writes in this audit were limited to Development Supabase project \`tvdxbyzvkjiebwslmnvj\` and Git branch \`dev-superadmin-field-editor\`.
+- Production Supabase project \`ugtzmtmsfaajclftfeuz\` was queried for catalog metadata only.
+- No Production data rows were queried, no Production writes/migrations were run, and no Production deployment was performed.
+- No credentials or service-role secrets were placed in browser code or GitHub.
 
-## Confirmed Production metadata findings (read-only)
-1. 15 public tables; RLS enabled on all 15.
-2. Five Storage buckets; all are private.
-3. Member-scoped RLS policies exist for own member record, own transaction rows, own contribution-rate history, own payment submissions, own profile requests, and own private documents. Super Admin policies cover designated management operations.
-4. Aggregate financial summary is served by a SECURITY DEFINER function with an empty search_path and authenticated EXECUTE on the public wrapper; the private summary helper is not directly executable by authenticated users.
-5. Workflow functions inspected include Super Admin checks for payment approval, contribution-rate changes, and member signup approval.
-6. Critical accounting gap: Super Admin UPDATE and DELETE policies exist on `financial_transactions`. Audit triggers record modifications, but do not prevent them. This is not strict immutability.
-7. Production policy set grants authenticated users EXECUTE on the public payment-review and contribution-rate wrappers. Both delegate to private SECURITY DEFINER functions. The payment-review helper explicitly checks `private.is_super_admin()`; the contribution-rate helper also explicitly checks `private.is_super_admin()` before changing rates. The wrappers use an empty search_path and are not SECURITY DEFINER themselves.
-8. Storage policies restrict private object access by portal approval, ownership path, or Super Admin role. Policy simulation with real user accounts remains outstanding.
+## Development changes
 
-## Required remediation before operational use
-- Create the Development schema only from a verified, approved migration sequence.
-- Implement one atomic posting RPC for ordinary ledger entries and transfers.
-- Add reversal/correction transactions and remove ordinary UPDATE/DELETE capability for posted financial transactions after the correction path is proven.
-- Inspect and harden the public contribution-rate RPC authorization.
-- Replace hard-coded contribution start assumptions with member-specific approved rate history.
-- Test RLS and Storage access with separate Super Admin, Admin, and two Member accounts.
-- Test transfer rollback and cross-member data access denial.
-- Do not apply any of these changes to Production without explicit owner approval.
+1. Reconstructed the 15-table application schema from read-only Production catalog metadata and committed a versioned Development baseline migration.
+2. Added the \`financial_postings\` parent table, posting idempotency, linked reversals, fixed-precision amounts, and two-sided transfer validation.
+3. Added trusted \`post_financial_transaction\` and \`reverse_financial_posting\` helpers. Transfers are inserted as a pair in one database transaction.
+4. Added UPDATE/DELETE mutation guards for financial postings and financial transaction rows.
+5. Removed authenticated direct INSERT/UPDATE/DELETE privileges on \`financial_transactions\`; client writes must use the trusted RPC.
+6. Changed payment approval to use the trusted posting helper, preserving one transaction for approval state and ledger insertion.
+7. Corrected the Development audit action constraint to permit INSERT, matching its insert-audit trigger.
+8. Restricted authenticated function execution to the required RPC wrappers and RLS helpers. Public wrappers now use SECURITY INVOKER; privileged logic remains in private SECURITY DEFINER functions with explicit role checks and empty search_path.
+9. Removed the legacy Admin role from Development portal authorization helpers, navigation, and route guards.
+10. Updated member due calculation to subtract linked reversals of contribution transactions.
+11. Removed the stale \`transactionMember\` reference after disabling the unsafe transaction form.
+12. Added foreign-key indexes and consolidated overlapping permissive RLS policies.
+13. Set \`preview_urls: true\` in Development \`wrangler.jsonc\`.
 
-## Release boundary
-Development-only code changes are permitted within the current branch. Production remains read-only. No deployment is authorized by this audit.
+## Development database state
+
+- 16 public tables, 50 public policies, 17 Storage policies, 5 private Storage buckets.
+- 7 Development migrations applied.
+- 0 Edge Functions deployed.
+- 0 financial transaction rows, posting rows, audit rows, or test Auth users after rollback-safe tests.
+- Security Advisor: 0 lints.
+- Performance Advisor: only informational unused-index findings remain; no unindexed foreign keys or multiple permissive-policy findings.
+
+## SQL-level tests passed
+
+- Contribution posting and idempotent retry.
+- Two-row transfer posting and deferred pair validation.
+- Two-row transfer reversal, idempotent retry, and rejection of a second reversal.
+- Contribution reversal linkage.
+- Forced rollback leaves no posting behind.
+- Payment approval, posting header, ledger row, and INSERT audit record succeed together.
+- Member A and Member B cannot read each other's ledger rows.
+- Members cannot post transactions.
+- Pending accounts cannot read member records or financial summary.
+- Legacy Admin role is rejected.
+- Public SECURITY INVOKER wrappers successfully call guarded private helpers.
+
+These tests used temporary Auth/member fixtures inside database transactions. All fixtures were rolled back and absence was rechecked.
+
+## Important findings
+
+### Audit schema mismatch
+The Production audit table's action CHECK constraint was observed to allow only UPDATE/DELETE while the insert-audit trigger writes INSERT. That can cause ledger inserts to fail when the audit trigger fires. Development now allows all three actions. Production was not changed.
+
+### Ledger integrity
+Production's existing financial transaction table permits Super Admin UPDATE/DELETE. Its audit trigger records modifications but does not prevent them. Development now uses immutable ledger entries and linked reversals instead.
+
+### Role model
+The profiles role constraint already excludes \`admin\`, but older helper functions still recognized it. Development authorization now recognizes only \`super_admin\` and \`member\` for portal access and financial summary access. Pending/Rejected remain signup states.
+
+### Runtime status
+The Development Cloudflare Preview currently returns \`ERR_EMPTY_RESPONSE\`; no title or menu renders. Therefore browser-level UI tests are not complete. The Wrangler config now explicitly enables Preview URLs, but Cloudflare Preview deployment itself is not confirmed.
+
+### Edge Functions and Storage
+Development has no Edge Functions deployed. The four Production Edge Functions have not yet been copied or configured with Development-only secrets. Storage buckets and policies were reconstructed, but authenticated upload/download flows remain untested.
+
+### Backup extraction
+The active runtime contains the full Production custom-format backup, but \`pg_restore\` is unavailable here and the backup was not extracted. The Development schema was reconstructed from live read-only catalog metadata. No dump was restored.
+
+## Remaining work before release
+
+- Connect the disabled Super Admin transaction UI to the tested RPCs.
+- Test the new posting and reversal flows through the actual browser session.
+- Deploy and test the four Edge Functions against Development-only secrets.
+- Test private Storage access with Super Admin and Member accounts.
+- Resolve Cloudflare Preview deployment and verify the homepage, login, menu, and authenticated pages.
+- Obtain owner approval for the due-month counting rule and reconcile member rate histories.
+- Complete a full financial reconciliation and test backup/restore of Development.
+- Keep Production read-only until the owner explicitly approves a specific release.
