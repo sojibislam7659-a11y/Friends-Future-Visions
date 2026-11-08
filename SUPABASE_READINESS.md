@@ -1,79 +1,84 @@
-# Supabase integration readiness
+# Oikko Supabase and Release Readiness
 
-## Verified environment (2026-11-04)
+Updated: 2026-11-08  
+Scope: Development-only implementation and read-only Production metadata inspection.
 
-- Development Git branch: `dev-superadmin-field-editor`.
-- Development Supabase project: `tvdxbyzvkjiebwslmnvj`.
-- Development Cloudflare preview: `https://dev-superadmin-field-editor-friends-future-visions.workers.dev/`.
-- Production Supabase project: `ugtzmtmsfaajclftfeuz`.
-- Production website: `https://friends-future-visions.sojibislam7659.workers.dev`.
-- The browser client on the Development branch is configured for the Development Supabase project and uses a publishable key only.
-- Development database audit previously found zero public tables, views, policies, functions, triggers, migrations, Edge Functions, and Storage buckets. Therefore the current app cannot complete an authenticated end-to-end test against Development.
-- Production inspection in this review was metadata-only. No production rows were queried or changed, and no Production writes, migrations, or deployment were performed.
+## Environments
 
-## Security boundary
+- Development Git branch: \`dev-superadmin-field-editor\`
+- Development Supabase project: \`tvdxbyzvkjiebwslmnvj\`
+- Development Cloudflare Preview URL: \`https://dev-superadmin-field-editor-friends-future-visions.workers.dev/\`
+- Production Supabase project: \`ugtzmtmsfaajclftfeuz\`
+- Production website: \`https://friends-future-visions.sojibislam7659.workers.dev\`
 
-- Browser code may contain only the public anon/publishable key.
-- Never add a service-role key, secret key, database password, or privileged credential to browser files or GitHub.
-- Client-side page guards are navigation safeguards only. Database grants, RLS, and trusted functions are the actual data-security boundary.
-- RLS enabled does not by itself prove policies are correct.
-- Keep all Development work isolated from Production. Do not point a Preview build at Production.
+Production is READ-ONLY. No Production rows were queried, no Production writes or migrations were run, and no Production deployment was performed.
 
-## Current Production metadata observations (read-only)
+## Backup and schema provenance
 
-- 15 public tables were found and all 15 have RLS enabled.
-- Read-only inspection of `supabase_migrations.schema_migrations` returned 36 Production migration records. The Development repository tree currently has no versioned `supabase/migrations` directory; only legacy SQL drafts marked superseded are present. Do not execute those drafts or assume they reproduce the current Production schema.
-- 47 public policies were previously counted. Targeted policy review confirms member-owned access for key member data and Super Admin-only write policies for sensitive workflows.
-- Five Storage buckets were found; all are private. Separate Storage policies exist for committee proofs, member documents, member photos, committee documents, and payment QR images.
-- The financial summary is exposed through a SECURITY DEFINER function with an empty search_path and an authenticated EXECUTE grant. Its underlying private helper is not directly executable by authenticated users.
-- Several workflow functions perform explicit Super Admin checks.
-- Important unresolved accounting issue: Production currently has Super Admin UPDATE and DELETE policies on `financial_transactions`. An audit trigger records UPDATE/DELETE events but does not prohibit them. This is not a strictly immutable ledger.
-- Important unresolved application issue: the Admin transaction form directly inserts ledger rows. Account transfers are sent as two separate INSERT statements, so the pair is not guaranteed to be atomic.
-- These observations are not permission to change Production. They are a list of issues to resolve in Development first.
+- The active runtime contains \`oikko-production-full-20261103(1).dump\` (625,485 bytes) and \`oikko-development-20261103.dump\` (368,656 bytes).
+- The separate \`oikko-production-schema-20261103.dump\` is not mounted in the current runtime.
+- \`pg_restore\` is not installed in this runtime. The uploaded Production full dump was not extracted or restored.
+- Instead, the Development baseline was reconstructed from read-only catalog queries against the live Production database: table columns, constraints, indexes, functions, triggers, RLS policies, Storage policies, bucket metadata, and migration history.
+- No Production data rows, Auth users, Storage objects, or Vault secrets were copied.
+- Production metadata at the time of inspection: 15 public tables, 36 migration records, 47 public policies, 17 Storage policies, and 5 private Storage buckets.
 
-## Role model
+## Current Development database
 
-- `super_admin`: committee administration and approved financial posting.
-- `admin`: member administration within approved scope and read-only financial reporting; no transaction posting, editing, deletion, role changes, or settings changes.
-- `member`: safe aggregate dashboard plus own personal and financial summary; no other member's private data.
-- Overall financial dashboard values must be served through a safe aggregate view/RPC. Do not expose raw committee-wide transaction rows to ordinary members.
-- A member must never change their own role, approval status, member number, Auth UID link, or financial records.
+- 16 public tables: the 15-table application schema plus \`financial_postings\`.
+- 50 public RLS policies.
+- 17 Storage policies and 5 private Storage buckets.
+- 7 versioned Development migrations applied.
+- 0 Development Edge Functions currently deployed.
+- 0 financial transaction rows, 0 posting headers, 0 audit rows, and 0 temporary test users after rollback-safe tests.
+- Security Advisor: 0 lints.
+- Performance Advisor: no unindexed-FK or multiple-permissive-policy findings. It reports 30 informational unused-index findings because the newly reconstructed Development database has not yet had a normal workload.
 
-## Accounting model
+## Accounting implementation in Development
 
-- Track cash in hand, bank balances, and investment assets separately.
-- Cash-to-bank and bank-to-cash transfers are balance movements, not income or expenses.
-- Investment deployment is an asset movement, not an operating expense.
-- Record realized project profit/loss separately.
-- Use fixed-precision numeric or integer poisha; never use floating-point arithmetic for money.
-- Posted transactions should be immutable. Corrections should use linked reversal/correction entries, not silent UPDATE or DELETE.
-- Account transfers must be posted atomically by one trusted database function.
-- Opening balances must come from owner-verified records; do not invent them.
+- \`financial_transactions.amount\` uses fixed precision \`numeric(14,2)\`.
+- Each new ledger entry belongs to a \`financial_postings\` header with a unique idempotency key.
+- \`post_financial_transaction\` is the trusted posting path. A transfer creates its debit and credit rows in one database transaction.
+- A deferred constraint trigger validates each transfer group: exactly two rows, one \`out\`, one \`in\`, equal amounts, two different accounts, and one posting header.
+- \`reverse_financial_posting\` creates linked compensating entries. A posting can be reversed only once; a reversal cannot itself be reversed.
+- Financial transaction and posting rows have mutation-blocking UPDATE/DELETE triggers. Authenticated users have SELECT only on the ledger tables; direct browser-side ledger writes are not granted.
+- Payment approval now calls the same posting helper, so approval status, ledger posting, and insert-audit entry are committed together.
+- The audit action constraint now permits INSERT, UPDATE, and DELETE, matching the existing insert-audit trigger.
+- Public RPC wrappers use SECURITY INVOKER. Privileged work is in private SECURITY DEFINER helpers with explicit Super Admin checks and an empty search_path.
+- The Development due calculation now subtracts linked reversals of contribution entries.
+- Legacy Admin role access was removed from Development authorization helpers and browser navigation. Supported roles are Super Admin and Member; Pending/Rejected remain signup states.
 
-## Current Development code limitations
+## Verified Development checks
 
-- The old contribution matrix module that directly edited financial transactions has been removed from the Development branch.
-- The DATA page now routes through the role-guarded portal and its aggregate-summary RPC rather than that matrix module.
-- Admin Personal Due navigation and page access are blocked in the portal UI; Members see their own due and Super Admin sees the committee-wide due view.
-- The Admin transaction form still contains direct transaction INSERT logic and non-atomic transfer logic. Do not enable it against a live database until a trusted posting RPC exists and is tested.
-- The hard-coded 2026-12-01 display boundary has been removed from the due page. The underlying month-counting rule still needs owner approval (including whether the current month is due immediately) and reconciliation against each member's approved rate history.
-- The Development database is empty, so none of the application queries, policies, RPCs, or role isolation can currently be end-to-end tested there.
-- Old SQL drafts marked superseded must not be executed.
+Rollback-safe SQL tests passed for:
+- Super Admin contribution posting and idempotent retry.
+- Atomic two-row transfer posting.
+- Two-row transfer reversal and idempotent retry.
+- Rejection of a second reversal.
+- Contribution reversal linked to its original entry.
+- Forced rollback leaving no posting behind.
+- Payment approval producing an approved submission, one posting, one contribution row, and one INSERT audit row.
+- Member A sees only their own member/ledger rows; Member B cannot see Member A's ledger.
+- Members cannot post transactions.
+- Pending accounts cannot read member records or the financial summary.
+- Legacy \`admin\` role is rejected by the profiles role constraint.
+- Public SECURITY INVOKER wrappers successfully delegate to guarded private helpers.
 
-## Required next steps (Development only)
+All test Auth users and financial entries were created inside transactions and rolled back. The Development database was rechecked afterward and contains no test data.
 
-1. Prepare a complete Development schema from the verified, approved migration history—not from superseded SQL drafts.
-2. Add and test trusted atomic financial-posting and reversal functions; remove direct UPDATE/DELETE rights for posted transactions once a safe correction path exists.
-3. Align the Admin UI with the Admin read-only role and Super Admin-only posting role.
-4. Verify every SECURITY DEFINER function: explicit authorization, fixed search_path, minimal EXECUTE grants, and safe object qualification.
-5. Verify RLS and Storage policies with separate Super Admin, Admin, and two Member test accounts.
-6. Test cross-member access denial, pending-account denial, expired sessions, proof access, and account-transfer rollback.
-7. Reconcile contribution due calculations against the approved rate history and member start dates.
-8. Only after Development tests pass, request explicit approval before any Production migration or deployment.
+## Remaining blockers
+
+1. The Super Admin transaction form remains disabled in the UI. The new RPCs exist and have SQL-level tests, but the UI has not yet been connected to them.
+2. The Development Cloudflare Preview currently returns \`ERR_EMPTY_RESPONSE\`; no page title or menu renders. \`wrangler.jsonc\` now explicitly sets \`preview_urls: true\`, but a Cloudflare Preview deployment has not been confirmed.
+3. Cloudflare's current Worker Preview workflow uses \`npx wrangler preview\` on the feature branch; Worker Previews require Wrangler 4.135.0 or later. See Cloudflare's official Preview docs.
+4. Development has 0 Edge Functions. The four Production functions must be inspected, copied to Development, and configured with Development-only secrets before invite/signup/review workflows can be fully tested.
+5. Storage buckets and policies exist, but real upload/download access has not yet been tested with separate authenticated users.
+6. The contribution due month-counting rule (especially whether the current month is immediately due) still needs owner approval and reconciliation against each member's approved rate history.
+7. The uploaded full Production dump has not been extracted in this runtime because \`pg_restore\` is unavailable. The schema baseline is based on live read-only catalog metadata, not a restore of that dump.
 
 ## Release policy
 
-- All implementation and testing must occur on `dev-superadmin-field-editor`, Development Supabase, and the Development Cloudflare preview.
-- Production remains read-only unless the owner explicitly authorizes a specific change.
-- No Production deployment without explicit approval.
-- The website must not be called complete until the live database schema, RLS, Storage access, accounting reconciliation, and role-isolation tests have passed.
+- Continue only on \`dev-superadmin-field-editor\`, Development Supabase, and the Development Cloudflare Preview.
+- Never point Development browser code at Production.
+- Do not deploy Production or run Production migrations without explicit approval.
+- Do not enable financial entry UI until browser-level tests pass against the Development RPCs.
+- Do not call the website complete until authenticated browser flows, Storage access, accounting reconciliation, and role isolation are verified.
