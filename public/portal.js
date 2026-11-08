@@ -118,9 +118,20 @@ async function renderDue(){
  
  if(!members.length){setPage('<h1>Personal Due</h1>'+empty("এই লগইন অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই।"));return}
  const ids=members.map(m=>m.id);
- const [rr,tr]=await Promise.all([supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").in("member_id",ids).order("effective_from"),supabase.from("financial_transactions").select("member_id,transaction_type,amount,transaction_date,created_at").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in").lte("transaction_date",today())]);
- if(rr.error)throw rr.error;if(tr.error)throw tr.error;
- const rates={};(rr.data||[]).forEach(r=>(rates[r.member_id]??=[]).push(r));const paid={};(tr.data||[]).forEach(x=>{const start=rates[x.member_id]?.[0]?.effective_from;if(start&&x.transaction_date>=start)paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount)});
+ const [rr,tr,rv]=await Promise.all([
+  supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").in("member_id",ids).order("effective_from"),
+  supabase.from("financial_transactions").select("id,member_id,transaction_type,amount,transaction_date").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in").lte("transaction_date",today()),
+  supabase.from("financial_transactions").select("member_id,amount,transaction_date,reversal_of_id").in("member_id",ids).eq("transaction_type","reversal").eq("direction","out").not("reversal_of_id","is",null).lte("transaction_date",today())
+ ]);
+ if(rr.error)throw rr.error;if(tr.error)throw tr.error;if(rv.error)throw rv.error;
+ const reversedIds=[...new Set((rv.data||[]).map(x=>x.reversal_of_id).filter(Boolean))];
+ const originals=reversedIds.length?await supabase.from("financial_transactions").select("id,member_id,transaction_type,transaction_date").in("id",reversedIds):{data:[],error:null};
+ if(originals.error)throw originals.error;
+ const originalById=new Map((originals.data||[]).map(x=>[x.id,x]));
+ const rates={};(rr.data||[]).forEach(r=>(rates[r.member_id]??=[]).push(r));
+ const paid={};
+ (tr.data||[]).forEach(x=>{const start=rates[x.member_id]?.[0]?.effective_from;if(start&&x.transaction_date>=start)paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount)});
+ (rv.data||[]).forEach(x=>{const original=originalById.get(x.reversal_of_id),start=rates[x.member_id]?.[0]?.effective_from;if(original&&original.transaction_type==="contribution"&&original.member_id===x.member_id&&start&&original.transaction_date>=start)paid[x.member_id]=(paid[x.member_id]||0)-Number(x.amount)});
  const now=new Date(),nowIndex=now.getFullYear()*12+now.getMonth(),rows=members.map(m=>{
   const list=rates[m.id]||[],start=list[0]?.effective_from;let expected=0,months=0;
   if(start){const [y,mo]=start.split("-").map(Number),first=y*12+mo-1;months=Math.max(0,nowIndex-first+1);for(let k=0;k<months;k++){const d=new Date(y,mo-1+k,1),from=localDate(d),next=new Date(d.getFullYear(),d.getMonth()+1,1),to=localDate(new Date(next.getTime()-86400000)),rate=list.find(r=>r.effective_from<=from&&(!r.effective_to||r.effective_to>=to));if(rate)expected+=Number(rate.monthly_amount)}}
