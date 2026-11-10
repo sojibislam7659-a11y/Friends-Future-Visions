@@ -216,12 +216,19 @@ async function loadMatrix() {
       return {
         memberId: input.dataset.member,
         month: input.dataset.month,
+        selected,
         amount: selected ? Number(input.value) : 0,
         original: Number(input.dataset.originalAmount || 0)
       };
     }).filter(entry => Math.abs(entry.amount - entry.original) > 0.000001);
 
-    const invalid = entries.find(entry => entry.amount < 0 || !Number.isFinite(entry.amount) || (entry.amount > 0 && entry.amount > 999999999999.99));
+    const invalid = entries.find(entry =>
+      !Number.isFinite(entry.amount) ||
+      entry.amount < 0 ||
+      !Number.isInteger(entry.amount) ||
+      entry.amount > 999999999999.99 ||
+      (entry.selected && !(entry.amount > 0))
+    );
     if (invalid) { toast("প্রতিটি Amount শূন্য বা বৈধ ধনাত্মক সংখ্যা হতে হবে।", true); return; }
     if (!entries.length) {
       status.textContent = "কোনো পরিবর্তন নেই।";
