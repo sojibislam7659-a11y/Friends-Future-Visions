@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS contribution_matrix_operations_created_by_idx ON private.contribution_matrix_operations(created_by);
