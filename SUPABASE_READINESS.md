@@ -27,11 +27,11 @@ Production is READ-ONLY. No Production rows were queried, no Production writes o
 - 16 public tables: the 15-table application schema plus \`financial_postings\`.
 - 50 public RLS policies.
 - 17 Storage policies and 5 private Storage buckets.
-- 11 versioned Development migrations applied, including the secure matrix batch RPC and its follow-up fixes.
+- 12 versioned Development migrations applied, including the secure matrix batch RPC, unique-reference correction, payload validation, and supporting index.
 - 2 Development Edge Functions deployed: `invite-member` and `review-member-signup` (both require JWT and use the Development Preview origin). `google-sheets-sync` and `send-push` remain undeployed until separate Development-only secrets are configured.
 - 0 financial transaction rows, 0 posting headers, 0 audit rows, and 0 temporary test users after rollback-safe tests.
 - Security Advisor: 0 lints.
-- Performance Advisor: no unindexed-FK or multiple-permissive-policy findings. It reports 30 informational unused-index findings because the newly reconstructed Development database has not yet had a normal workload.
+- Performance Advisor: no unindexed-FK or multiple-permissive-policy findings. It reports 29 informational unused-index findings because the reconstructed Development database has not yet had a normal workload.
 
 ## Accounting implementation in Development
 
@@ -60,6 +60,7 @@ Rollback-safe SQL tests passed for:
 - Contribution reversal linked to its original entry.
 - Forced rollback leaving no posting behind.
 - Payment approval producing an approved submission, one posting, one contribution row, and one INSERT audit row.
+- Contribution Matrix: new posting, correction through reversal + replacement, zeroing through reversal, idempotent retries, duplicate-cell rejection, and full transaction rollback.
 - Member A sees only their own member/ledger rows; Member B cannot see Member A's ledger.
 - Members cannot post transactions.
 - Pending accounts cannot read member records or the financial summary.
