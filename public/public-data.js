@@ -209,7 +209,7 @@ async function loadMatrix() {
   const status = document.getElementById("matrixSaveStatus");
   saveButton.addEventListener("click", async () => {
     const cells = Array.from(root.querySelectorAll(".matrix-amount:not(:disabled)"));
-    const entries = cells.map(input => {
+    const allEntries = cells.map(input => {
       const selector = '.matrix-check[data-member="' + input.dataset.member + '"][data-month="' + input.dataset.month + '"]';
       const check = root.querySelector(selector);
       const selected = Boolean(check?.checked);
@@ -220,16 +220,17 @@ async function loadMatrix() {
         amount: selected ? Number(input.value) : 0,
         original: Number(input.dataset.originalAmount || 0)
       };
-    }).filter(entry => Math.abs(entry.amount - entry.original) > 0.000001);
+    });
 
-    const invalid = entries.find(entry =>
+    const invalid = allEntries.find(entry =>
       !Number.isFinite(entry.amount) ||
       entry.amount < 0 ||
       !Number.isInteger(entry.amount) ||
       entry.amount > 999999999999.99 ||
       (entry.selected && !(entry.amount > 0))
     );
-    if (invalid) { toast("প্রতিটি Amount শূন্য বা বৈধ ধনাত্মক সংখ্যা হতে হবে।", true); return; }
+    if (invalid) { toast("টিক দেওয়া প্রতিটি সদস্যের Amount শূন্যের বেশি পূর্ণসংখ্যা হতে হবে।", true); return; }
+    const entries = allEntries.filter(entry => Math.abs(entry.amount - entry.original) > 0.000001);
     if (!entries.length) {
       status.textContent = "কোনো পরিবর্তন নেই।";
       toast("সংরক্ষণের জন্য নতুন পরিবর্তন পাওয়া যায়নি।");
