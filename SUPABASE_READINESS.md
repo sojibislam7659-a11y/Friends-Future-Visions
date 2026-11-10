@@ -1,6 +1,6 @@
 # Oikko Supabase and Release Readiness
 
-Updated: 2026-11-08  
+Updated: 2026-11-10  
 Scope: Development-only implementation and read-only Production metadata inspection.
 
 ## Environments
@@ -27,13 +27,16 @@ Production is READ-ONLY. No Production rows were queried, no Production writes o
 - 16 public tables: the 15-table application schema plus \`financial_postings\`.
 - 50 public RLS policies.
 - 17 Storage policies and 5 private Storage buckets.
-- 8 versioned Development migrations applied.
+- 11 versioned Development migrations applied, including the secure matrix batch RPC and its follow-up fixes.
 - 2 Development Edge Functions deployed: `invite-member` and `review-member-signup` (both require JWT and use the Development Preview origin). `google-sheets-sync` and `send-push` remain undeployed until separate Development-only secrets are configured.
 - 0 financial transaction rows, 0 posting headers, 0 audit rows, and 0 temporary test users after rollback-safe tests.
 - Security Advisor: 0 lints.
 - Performance Advisor: no unindexed-FK or multiple-permissive-policy findings. It reports 30 informational unused-index findings because the newly reconstructed Development database has not yet had a normal workload.
 
 ## Accounting implementation in Development
+
+- The Main Contribution Matrix page has been restored in Development through a Development-only `save_contribution_matrix` RPC. It uses immutable ledger postings and compensating reversals for corrections, preserves manual ledger entries by locking those cells, and saves all changed cells atomically with batch idempotency.
+- The Super Admin transaction-entry form has been restored and calls the guarded `post_financial_transaction` RPC; no direct browser-side ledger INSERT/UPDATE/DELETE is used.
 
 - \`financial_transactions.amount\` uses fixed precision \`numeric(14,2)\`.
 - Each new ledger entry belongs to a \`financial_postings\` header with a unique idempotency key.
@@ -67,7 +70,7 @@ All test Auth users and financial entries were created inside transactions and r
 
 ## Remaining blockers
 
-1. The Super Admin transaction form remains disabled in the UI. The new RPCs exist and have SQL-level tests, but the UI has not yet been connected to them.
+1. Browser-level testing of the restored Contribution Matrix and Super Admin transaction-entry form is pending because the Development Preview currently returns `ERR_EMPTY_RESPONSE`.
 2. The Development Cloudflare Preview currently returns \`ERR_EMPTY_RESPONSE\`; no page title or menu renders. \`wrangler.jsonc\` now explicitly sets \`preview_urls: true\`, but a Cloudflare Preview deployment has not been confirmed.
 3. Cloudflare's current Worker Preview workflow uses \`npx wrangler preview\` on the feature branch; Worker Previews require Wrangler 4.135.0 or later. See Cloudflare's official Preview docs.
 4. `invite-member` and `review-member-signup` are deployed to Development with the Development Preview CORS/redirect origin and JWT verification. The invite function now verifies that the member-link update actually affected a row before reporting success. `google-sheets-sync` is not deployed until a new Development-only `OIKKO_SYNC_SECRET` is configured; `send-push` is not deployed until Development-only VAPID and cron-token secrets are configured. Production secrets were not copied.
@@ -80,5 +83,5 @@ All test Auth users and financial entries were created inside transactions and r
 - Continue only on \`dev-superadmin-field-editor\`, Development Supabase, and the Development Cloudflare Preview.
 - Never point Development browser code at Production.
 - Do not deploy Production or run Production migrations without explicit approval.
-- Do not enable financial entry UI until browser-level tests pass against the Development RPCs.
+- Keep financial entry UI available only through the guarded Development RPCs; do not release until browser-level tests pass.
 - Do not call the website complete until authenticated browser flows, Storage access, accounting reconciliation, and role isolation are verified.
