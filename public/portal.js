@@ -381,7 +381,7 @@ async function renderAdmin(){
   const type=String(d.get("type")||""),amount=Number(d.get("amount")),account=String(d.get("account")||""),date=String(d.get("date")||"");
   const memberId=String(d.get("member_id")||"")||null,desc=String(d.get("description")||"").trim(),reference=String(d.get("reference_no")||"").trim()||null;
   const destination=String(d.get("destination")||"");
-  if(!(amount>0)||!Number.isFinite(amount)||Math.round(amount*100)!==amount*100){toast("Amount অবশ্যই 0-এর বেশি এবং সর্বোচ্চ দুই decimal হতে হবে।");return}
+  if(!(amount>0)||!Number.isFinite(amount)||Math.abs(amount*100-Math.round(amount*100))>0.000001){toast("Amount অবশ্যই 0-এর বেশি এবং সর্বোচ্চ দুই decimal হতে হবে।");return}
   if(!date){toast("লেনদেনের তারিখ দিতে হবে।");return}
   if(type==="contribution"&&!memberId){toast("Contribution-এর জন্য সদস্য নির্বাচন করো।");return}
   if(type==="transfer"&&(!destination||destination===account)){toast("Source ও destination account আলাদা হতে হবে।");return}
