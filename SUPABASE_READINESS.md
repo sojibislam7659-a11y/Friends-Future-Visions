@@ -84,7 +84,7 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 
 ## Super Admin Member Profile Editor
 
-- GitHub Actions workflow `Development Static Checks` latest verified run `43043133903` completed successfully. Both jobs passed: every public JavaScript module passed Node syntax checking, and all three Development Edge Functions passed Deno type checking. The workflow actions were upgraded to Node 24-compatible releases; the latest run has no Node 20 deprecation warning. This is a source-level check, not a substitute for authenticated browser testing.
+- GitHub Actions workflow `Development Static Checks` latest verified run `43043511006` completed successfully. Both jobs passed: every public JavaScript module passed Node syntax checking, and all three Development Edge Functions passed Deno type checking. The workflow actions were upgraded to Node 24-compatible releases; the latest run has no Node 20 deprecation warning. This is a source-level check, not a substitute for authenticated browser testing.
 
 - Development's member profile editor now opens from a bottom-right pencil button; all Super Admin edit controls are hidden until that button is used.
 - Editable business fields include member identity/contact/address/emergency/nominee details, consent text, joining dates, and Google Form response ID.
