@@ -8,9 +8,9 @@ const card=(label,value)=>'<article class="card"><div class="label">'+esc(label)
 const empty=m=>'<div class="empty">'+esc(m)+'</div>';
 const dateText=v=>v?new Date(v+"T00:00:00").toLocaleDateString("en-GB"):"—";
 
-async function compressMemberImage(file){
+async function compressMemberImage(file,maxBytes){
  if(!file||!["image/jpeg","image/png","image/webp"].includes(file.type))throw new Error("শুধু JPG, PNG অথবা WebP ছবি আপলোড করা যাবে।");
- if(file.size>10*1024*1024)throw new Error("ছবির সাইজ ১০ MB-এর বেশি।");
+ if(file.size>20*1024*1024)throw new Error("মূল ছবির সাইজ ২০ MB-এর বেশি।");
  if(typeof createImageBitmap!=="function")return file;
  const bitmap=await createImageBitmap(file);
  const scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));
@@ -21,8 +21,12 @@ async function compressMemberImage(file){
  if(!ctx)throw new Error("ছবি প্রস্তুত করা যায়নি।");
  ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
  bitmap.close?.();
- const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",0.82));
- if(!blob)throw new Error("ছবি compress করা যায়নি।");
+ let blob=null;
+ for(const quality of [0.82,0.72,0.62,0.52]){
+  blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",quality));
+  if(blob&&blob.size<=maxBytes*0.9)break;
+ }
+ if(!blob||blob.size>maxBytes)throw new Error("Compress করার পরও ছবির সাইজ Storage সীমার মধ্যে আনা যায়নি।");
  return new File([blob],"member-photo.webp",{type:"image/webp",lastModified:Date.now()});
 }
 
@@ -142,8 +146,8 @@ async function main(){
     }
     const uploadPhoto=async(file,bucket,field,prefix)=>{
      if(!file)return;
-     const prepared=await compressMemberImage(file);
      const maxBytes=bucket==="member-profile-photos"?5*1024*1024:10*1024*1024;
+     const prepared=await compressMemberImage(file,maxBytes);
      if(prepared.size>maxBytes)throw new Error("Compress করার পরও ছবির সাইজ এই Storage bucket-এর সীমার বেশি।");
      const ownerFolder=m.auth_user_id||access.session.user.id;
      const extension=prepared.type==="image/png"?"png":prepared.type==="image/jpeg"?"jpg":"webp";
