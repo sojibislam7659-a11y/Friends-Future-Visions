@@ -122,7 +122,7 @@ async function main(){
    if(monthlyChanged)actions.push("মাসিক জমার হার");
    if(profileFile)actions.push("Profile Photo");
    if(nomineeFile)actions.push("Nominee Photo");
-   if(!confirm("নিচের "+actions.length+"টি পরিবর্তন Save করবেন?\\n\\n"+actions.join(", ")))return;
+   if(!confirm("নিচের "+actions.length+"টি পরিবর্তন Save করবেন?\n\n"+actions.join(", ")))return;
    const button=document.getElementById("saveMemberFields");
    button.disabled=true;
    try{
@@ -139,6 +139,8 @@ async function main(){
     const uploadPhoto=async(file,bucket,field,prefix)=>{
      if(!file)return;
      const prepared=await compressMemberImage(file);
+     const maxBytes=bucket==="member-profile-photos"?5*1024*1024:10*1024*1024;
+     if(prepared.size>maxBytes)throw new Error("Compress করার পরও ছবির সাইজ এই Storage bucket-এর সীমার বেশি।");
      const ownerFolder=m.auth_user_id||access.session.user.id;
      const extension=prepared.type==="image/png"?"png":prepared.type==="image/jpeg"?"jpg":"webp";
      const path=ownerFolder+"/"+m.id+"/"+prefix+"-"+Date.now()+"."+extension;
