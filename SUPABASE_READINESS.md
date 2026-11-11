@@ -19,7 +19,7 @@ Production remains READ-ONLY. This audit queried Production catalog metadata onl
 
 - Development is 67 commits ahead of `main`, 0 behind.
 - Development contains intentional security/accounting architecture changes. Do not blindly copy Main files over Development or merge without review and owner approval.
-- Latest Development Preview browser smoke test failed with `ERR_EMPTY_RESPONSE`. No page title, login form, or menu could be verified at that URL. Browser-level feature QA is blocked until the Worker Preview responds.
+- Cloudflare dashboard inspection found no deployment for `dev-superadmin-field-editor`; the visible deployment history is for `main` only. The configured Development Preview URL also failed the browser smoke test with `ERR_EMPTY_RESPONSE`. No page title, login form, or menu could be verified. Browser-level feature QA is blocked until a Development deployment exists and the Preview responds.
 
 ## Live schema comparison
 
