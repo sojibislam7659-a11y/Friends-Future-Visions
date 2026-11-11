@@ -98,7 +98,7 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 
 - Current Development Security Advisor: one warning — `pg_net` is installed in the `public` schema. Review relocation/remediation carefully because scheduled jobs currently call `net.http_post`; do not move the extension without updating and testing dependent cron SQL.
 - Read-only Production Security Advisor additionally reports four authenticated-callable `SECURITY DEFINER` functions in the exposed `public` schema (`get_financial_summary`, `review_payment_submission`, `review_private_document`, `set_current_committee_document`) and disabled leaked-password protection. These findings require separate Production-owner approval to remediate; Production was not changed.
-- Current Development Performance Advisor: 29 informational unused-index findings. Do not drop these based only on an unused-index report from an empty Development database.
+- Current Development Performance Advisor: 28 informational unused-index findings. Do not drop these based only on an unused-index report from an empty Development database.
 - Development Auth redirect allow-list has not yet been verified for the new Worker URL. Signup, invite, and password-recovery redirects may fail until `https://friends-future-visions-dev.sojibislam7659.workers.dev/**` is allowed in the Development Supabase Auth URL configuration.
 
 ## Remaining release blockers
