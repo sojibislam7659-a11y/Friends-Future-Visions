@@ -10,20 +10,24 @@ Scope: Development-only implementation and read-only Production metadata inspect
 - Production branch: `main`
 - Development Supabase project: `tvdxbyzvkjiebwslmnvj`
 - Production Supabase project: `ugtzmtmsfaajclftfeuz`
-- Production website: `https://friends-future-visions.sojibislam7659.workers.dev`
-- Development Preview URL listed in prior project configuration: `https://dev-superadmin-field-editor-friends-future-visions.workers.dev/`
+- Production Worker: `friends-future-visions` — `https://friends-future-visions.sojibislam7659.workers.dev`
+- Separate Development Worker: `friends-future-visions-dev` — `https://friends-future-visions-dev.sojibislam7659.workers.dev`
 
-Production remains READ-ONLY. This audit queried Production catalog metadata only. No Production rows, Auth users, Storage objects, Vault secrets, or deployment settings were changed.
+Production remains READ-ONLY. No Production rows, Auth users, Storage objects, Vault secrets, schema, Edge Functions, or deployment settings were changed.
 
-## Current branch comparison
+## Branch and Cloudflare deployment
 
-- Development is 70 commits ahead of `main`, 0 behind at the time of the 2026-11-11 audit. A follow-up Dev-only login-role fix was committed after that comparison; re-check the live ahead count before release.
-- Development contains intentional security/accounting architecture changes. Do not blindly copy Main files over Development or merge without review and owner approval.
-- Cloudflare evidence is inconsistent and the Dev deployment is NOT certified. One dashboard inspection listed 15 Ready deployments for `dev-superadmin-field-editor`; a later inspection of the same service showed only `main` deployments. The branch Preview alias responded with a login page, but the exact deployment preview `https://a8fa05c4-friends-future-visions.sojibislam7659.workers.dev/` served a static/placeholder login page whose source did not match the current GitHub `public/login.html` (the repository version contains an active Supabase module script). The live preview therefore cannot yet be treated as the current Dev branch build. Inspect Cloudflare Git integration, branch build configuration, and asset routing before further browser QA. No deployment/settings were changed.
+- Development is 85 commits ahead of `main`, 0 behind at the latest comparison on 2026-11-11. Main has not been changed.
+- The original Cloudflare project `friends-future-visions` tracks `main` only. Cloudflare's global Preview-branches switch cannot select one branch; it would build all non-production branches, including backups.
+- To avoid touching Production, a separate Cloudflare Worker project `friends-future-visions-dev` was created and connected directly to GitHub branch `dev-superadmin-field-editor`.
+- The Dev branch `wrangler.jsonc` Worker name was changed to `friends-future-visions-dev`, preventing `npx wrangler deploy` from overwriting the Production Worker.
+- Initial Dev deployment completed successfully and uploaded 28 files. Build command is empty, deploy command is `npx wrangler deploy`, root directory is `/`.
+- IMPORTANT: only the initial deployment is confirmed. Later Dev commits have been pushed after project creation; the latest deployment status and live asset/source parity still need a fresh browser verification. Do not treat the Dev Worker as release-certified until its live `/login.html`, `/member-profile.js`, and `/portal.js` are confirmed to match the current Git branch.
+- The old `dev-superadmin-field-editor-friends-future-visions.workers.dev` alias is legacy and must not be treated as the canonical Development URL.
 
 ## Live schema comparison
 
-Counts from read-only catalog queries:
+Latest read-only catalog counts:
 
 | Component | Production | Development |
 |---|---:|---:|
@@ -32,20 +36,30 @@ Counts from read-only catalog queries:
 | Public/private functions | 31 | 41 |
 | Public/private triggers | 8 | 11 |
 | Storage buckets | 5 | 5 |
-| Storage policies | 17 | 17 |
+| Storage policies | 17 | 18 |
 
-Development's additional table is `financial_postings`, used for immutable posting headers and idempotency. The 15 Development migration-history records are present. The recorded database migration version timestamps do not exactly match the prefixes of the SQL filenames in the repository; reconcile migration history before using CLI migration push/pull or attempting a release.
+Development's additional table is `financial_postings`, used for immutable posting headers and idempotency. Development also has additional financial posting/reversal columns and private helper functions. These are intentional accounting/security improvements; do not remove them merely to match object counts.
 
-Development currently has zero rows in `members`, `profiles`, `financial_transactions`, `financial_postings`, `notifications`, `push_subscriptions`, and `payment_submissions`. No production user or financial data was copied.
+Development currently has zero rows in `members`, `profiles`, `financial_transactions`, `financial_postings`, `notifications`, `push_subscriptions`, and `payment_submissions`. No Production user or financial data was copied.
+
+## Migration history
+
+- Development has 16 applied migrations.
+- A previous mismatch between database migration versions and SQL filename prefixes was corrected on the Dev branch.
+- Latest check confirms all 16 repository migration filename prefixes exactly match the 16 applied Development migration versions.
+- The newest migration `20261111144057_add_super_admin_private_document_upload_policy.sql` is applied and committed to the Dev branch.
+- Do not run migration push/pull or rebase until the exact migration list is rechecked.
 
 ## Development Edge Functions and scheduled jobs
 
-- Active Development Edge Functions: `invite-member`, `review-member-signup`, and `send-push`.
+- Active Development Edge Functions: `invite-member` (v2), `review-member-signup` (v2), and `send-push` (v1).
+- `invite-member` and `review-member-signup` CORS origins now point to the isolated Dev Worker URL. The invite redirect also points to the Dev Worker.
+- Source files for all three Dev Edge Functions are now stored in the repository.
 - Production additionally has `google-sheets-sync`; it is not deployed to Development.
-- Development `google-sheets-sync` remains blocked on a separately configured Development-only webhook secret and confirmation of the intended Google Form/Sheet integration. `public/signup.html` currently only tells applicants to use the same email as the Google Form; it contains no actual Google Form URL. The exact prior form URL has not been recovered. Never reuse Production secrets.
+- Development `google-sheets-sync` remains blocked on a separate Development-only webhook secret and the exact Google Form/Sheet source URL. Prior conversation retrieval did not find a Form URL, response Sheet URL, webhook URL, or field mapping. Never reuse Production secrets.
 - Three Development cron jobs are active: meeting reminders (every minute), monthly due reminders (03:00 on the first day of each month), and push delivery (every minute).
 - Recent push-delivery HTTP requests returned status 200 and cron runs succeeded. This confirms the scheduled endpoint call is accepted; it does NOT prove a real browser push notification was delivered. Development currently has no test users or push subscriptions.
-- Development VAPID key pair and cron token were freshly rotated; the public key in `public/push-config.js` matches the Vault public key. The VAPID subject is configured. `get_push_config()` is SECURITY DEFINER but its execute ACL is restricted to `service_role`; it does not grant access to `anon` or `authenticated`.
+- Development VAPID key pair and cron token were freshly rotated; the public key in `public/push-config.js` matches the Vault public key. The VAPID subject is configured. `get_push_config()` is SECURITY DEFINER but its execute ACL is restricted to `service_role`.
 
 ## Accounting and Contribution Matrix
 
@@ -54,29 +68,42 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 - Manual contribution rows are locked in the matrix. Duplicate active matrix rows are surfaced for reconciliation rather than overwritten.
 - Super Admin transaction-entry UI calls guarded `post_financial_transaction`; transfers are atomic pairs.
 - Financial posting headers and transaction rows are mutation-protected. Private SECURITY DEFINER helpers enforce Super Admin authorization and use an empty search_path. Public RPC wrappers are SECURITY INVOKER.
+- The monthly contribution editor calls `set_member_contribution_rate`, preserving effective-date history rather than directly overwriting the contribution-rate history.
 - Rollback-safe SQL tests previously passed for posting, idempotency, transfer pairs, reversals, payment approval atomicity, matrix corrections/rollback, member isolation, pending-account restrictions, and denial of legacy Admin role access. Re-run these after further schema changes.
+
+## Super Admin Member Profile Editor
+
+- Development's member profile editor now opens from a bottom-right pencil button; all Super Admin edit controls are hidden until that button is used.
+- Editable business fields include member identity/contact/address/emergency/nominee details, consent text, joining dates, and Google Form response ID.
+- Monthly contribution changes use the guarded rate-history RPC and require an effective date on the first day of a month.
+- Profile and nominee photos can be uploaded from the same editor. Images are resized to a maximum 1600px edge and converted to WebP when browser support is available. Storage size limits are checked before upload.
+- A Development-only Storage INSERT policy was added for Super Admin uploads to `member-private-documents`; Development Storage policy count is now 18.
+- System identity fields such as row ID, Auth user link, and creation timestamp are not directly editable. Account linking remains through the invitation workflow.
+- These changes have been committed to the Dev branch but still require live browser testing with a real Development Super Admin and member accounts. Do not claim upload/edit flows verified until that test passes.
 
 ## Security and performance findings
 
 - Current Development Security Advisor: one warning — `pg_net` is installed in the `public` schema. Review relocation/remediation carefully because scheduled jobs currently call `net.http_post`; do not move the extension without updating and testing dependent cron SQL.
-- Read-only Production Security Advisor additionally reports four authenticated-callable `SECURITY DEFINER` functions in the exposed `public` schema (`get_financial_summary`, `review_payment_submission`, `review_private_document`, `set_current_committee_document`) and disabled leaked-password protection. These findings require separate Production-owner approval to remediate; Production was not changed. Development has moved the privileged logic behind private helpers, but exact functional parity and end-to-end authorization still require test accounts.
-- Current Performance Advisor: 29 informational unused-index findings. Do not drop these based only on an unused-index report from an empty Development database.
-- Storage buckets and policies exist, but upload/download authorization still needs separate-user browser testing.
+- Read-only Production Security Advisor additionally reports four authenticated-callable `SECURITY DEFINER` functions in the exposed `public` schema (`get_financial_summary`, `review_payment_submission`, `review_private_document`, `set_current_committee_document`) and disabled leaked-password protection. These findings require separate Production-owner approval to remediate; Production was not changed.
+- Current Development Performance Advisor: 29 informational unused-index findings. Do not drop these based only on an unused-index report from an empty Development database.
+- Development Auth redirect allow-list has not yet been verified for the new Worker URL. Signup, invite, and password-recovery redirects may fail until `https://friends-future-visions-dev.sojibislam7659.workers.dev/**` is allowed in the Development Supabase Auth URL configuration.
 
 ## Remaining release blockers
 
-1. Resolve the Cloudflare Dev deployment mismatch: confirm the correct Git-connected project, branch, build root/output directory and static asset routing; deploy only the Dev branch; verify live `/login.html` matches GitHub source before browser QA.
-2. Deploy/configure Google Sheets Sync with a separate Development-only secret and confirm the actual Google Form/Sheet source URL.
-3. Create isolated Development test accounts for Super Admin, Member A, Member B, and Pending signup; test every public/private page and cross-member data isolation in the browser. The two legacy `admin` role allow-list entries were removed in a Dev-only commit, and the visible login copy now names only Member and Super Admin; this is not verified live until the correct build is deployed.
-4. Test Storage upload/download with separate authenticated users and verify private document isolation.
-5. Verify real push delivery with a Development test subscription; cron HTTP 200 alone is not an end-to-end push test.
-6. Confirm contribution due-month counting and reconcile monthly rates with the owner.
-7. Reconcile migration history timestamps with repository migration filenames and inspect the full schema/function/policy diff before any release.
-8. Review the `pg_net` schema warning and run three independent QA passes after fixes.
+1. Verify the latest Dev Worker deployment and compare its live assets against the current Dev branch source.
+2. Verify/add the new Dev Worker URL to Development Supabase Auth redirect allow-list; test signup confirmation and password reset.
+3. Create isolated Development test accounts for Super Admin, Member A, Member B, and Pending signup; test every public/private page and cross-member data isolation.
+4. Test the Super Admin pencil editor, every editable field, monthly rate history, profile photo upload, nominee photo upload, and old-file cleanup.
+5. Test Storage upload/download with separate authenticated users and verify private document isolation.
+6. Deploy/configure Google Sheets Sync with a separate Development-only secret and the actual Google Form/Sheet URL and field mapping. The exact historical Form URL has not been recovered.
+7. Verify real push delivery with a Development test subscription; cron HTTP 200 alone is not an end-to-end push test.
+8. Confirm contribution due-month counting and reconcile monthly rates with the owner.
+9. Re-run accounting SQL tests and three independent QA passes after the remaining fixes.
+10. Review the `pg_net` warning. Production security remediation and exact schema parity require separate Production approval.
 
 ## Release policy
 
-- Continue only on `dev-superadmin-field-editor`, Development Supabase, and Development Cloudflare Preview.
+- Continue only on `dev-superadmin-field-editor`, Development Supabase, and the separate Development Worker.
 - Never point Development browser code at Production.
 - Never write to Production, run Production migrations, or deploy Production without explicit approval.
-- Do not call the project complete until browser flows, Storage access, accounting reconciliation, role isolation, Google Sheets integration, and end-to-end push delivery are verified.
+- Development is not complete or release-certified until latest live code, Auth redirects, role isolation, profile editing, Storage, accounting, Google Sheets integration, and end-to-end push delivery are verified.
