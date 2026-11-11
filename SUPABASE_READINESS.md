@@ -15,6 +15,8 @@ Scope: Development-only implementation and read-only Production metadata inspect
 
 Production remains READ-ONLY. No Production rows, Auth users, Storage objects, Vault secrets, schema, Edge Functions, or deployment settings were changed.
 
+Read-only Production data snapshot (aggregate counts only, 2026-11-11): 6 member rows; 3 profile rows (2 `member`, 1 `super_admin`); 0 financial transaction rows; 0 financial audit rows; 0 payment submissions; 0 private document rows; 0 contribution-rate rows; 0 committee document/proof rows; 0 notices; 4 notifications; 0 push subscriptions. These records were not modified. This suggests no existing `financial_transactions` rows need posting-header backfill, but member fields and the 4 notifications still require preservation during any future approved Production migration.
+
 ## Branch and Cloudflare deployment
 
 - Development remains ahead of `main`, 0 behind at the latest comparison on 2026-11-11. Main has not been changed; re-check the exact ahead count before release.
