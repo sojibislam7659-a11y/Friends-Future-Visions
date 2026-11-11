@@ -1,0 +1,44 @@
+name: Development Static Checks
+
+on:
+  push:
+    branches:
+      - dev-superadmin-field-editor
+  pull_request:
+    branches:
+      - dev-superadmin-field-editor
+
+permissions:
+  contents: read
+
+jobs:
+  browser-javascript:
+    name: Browser JavaScript syntax
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check every public JavaScript module
+        shell: bash
+        run: |
+          set -euo pipefail
+          while IFS= read -r -d '' file; do
+            echo "Checking $file"
+            node --input-type=module --check < "$file"
+          done < <(find public -type f -name '*.js' -print0)
+
+  edge-functions:
+    name: Supabase Edge Function type checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Check Development Edge Functions
+        run: |
+          deno check supabase/functions/invite-member/index.ts
+          deno check supabase/functions/review-member-signup/index.ts
+          deno check supabase/functions/send-push/index.ts
