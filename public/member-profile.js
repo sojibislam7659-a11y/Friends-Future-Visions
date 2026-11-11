@@ -27,7 +27,9 @@ async function compressMemberImage(file,maxBytes){
   if(blob&&blob.size<=maxBytes*0.9)break;
  }
  if(!blob||blob.size>maxBytes)throw new Error("Compress করার পরও ছবির সাইজ Storage সীমার মধ্যে আনা যায়নি।");
- return new File([blob],"member-photo.webp",{type:"image/webp",lastModified:Date.now()});
+ const outputType=blob.type||"image/webp";
+ const extension=outputType==="image/png"?"png":outputType==="image/jpeg"?"jpg":"webp";
+ return new File([blob],"member-photo."+extension,{type:outputType,lastModified:Date.now()});
 }
 
 async function main(){
