@@ -1,88 +1,81 @@
-# Oikko Supabase and Release Readiness
+# Friends Future Vision Forever — Development Readiness
 
-Updated: 2026-11-10  
+Updated: 2026-11-11  
 Scope: Development-only implementation and read-only Production metadata inspection.
 
-## Environments
+## Environment boundaries
 
-- Development Git branch: \`dev-superadmin-field-editor\`
-- Development Supabase project: \`tvdxbyzvkjiebwslmnvj\`
-- Development Cloudflare Preview URL: \`https://dev-superadmin-field-editor-friends-future-visions.workers.dev/\`
-- Production Supabase project: \`ugtzmtmsfaajclftfeuz\`
-- Production website: \`https://friends-future-visions.sojibislam7659.workers.dev\`
+- GitHub repository: `sojibislam7659-a11y/Friends-Future-Visions`
+- Development branch: `dev-superadmin-field-editor`
+- Production branch: `main`
+- Development Supabase project: `tvdxbyzvkjiebwslmnvj`
+- Production Supabase project: `ugtzmtmsfaajclftfeuz`
+- Production website: `https://friends-future-visions.sojibislam7659.workers.dev`
+- Development Preview URL listed in prior project configuration: `https://dev-superadmin-field-editor-friends-future-visions.workers.dev/`
 
-Production is READ-ONLY. No Production rows were queried, no Production writes or migrations were run, and no Production deployment was performed.
+Production remains READ-ONLY. This audit queried Production catalog metadata only. No Production rows, Auth users, Storage objects, Vault secrets, or deployment settings were changed.
 
-## Backup and schema provenance
+## Current branch comparison
 
-- The active runtime contains \`oikko-production-full-20261103(1).dump\` (625,485 bytes) and \`oikko-development-20261103.dump\` (368,656 bytes).
-- The separate \`oikko-production-schema-20261103.dump\` is not mounted in the current runtime.
-- \`pg_restore\` is not installed in this runtime. The uploaded Production full dump was not extracted or restored.
-- Instead, the Development baseline was reconstructed from read-only catalog queries against the live Production database: table columns, constraints, indexes, functions, triggers, RLS policies, Storage policies, bucket metadata, and migration history.
-- No Production data rows, Auth users, Storage objects, or Vault secrets were copied.
-- Production metadata at the time of inspection: 15 public tables, 36 migration records, 47 public policies, 17 Storage policies, and 5 private Storage buckets.
+- Development is 67 commits ahead of `main`, 0 behind.
+- Development contains intentional security/accounting architecture changes. Do not blindly copy Main files over Development or merge without review and owner approval.
+- Latest Development Preview browser smoke test failed with `ERR_EMPTY_RESPONSE`. No page title, login form, or menu could be verified at that URL. Browser-level feature QA is blocked until the Worker Preview responds.
 
-## Current Development database
+## Live schema comparison
 
-- 16 public tables: the 15-table application schema plus \`financial_postings\`.
-- 50 public RLS policies.
-- 17 Storage policies and 5 private Storage buckets.
-- 12 versioned Development migrations applied, including the secure matrix batch RPC, unique-reference correction, payload validation, and supporting index.
-- 2 Development Edge Functions deployed: `invite-member` and `review-member-signup` (both require JWT and use the Development Preview origin). `google-sheets-sync` and `send-push` remain undeployed until separate Development-only secrets are configured.
-- 0 financial transaction rows, 0 posting headers, 0 audit rows, and 0 temporary test users after rollback-safe tests.
-- Security Advisor: 0 lints.
-- Performance Advisor: no unindexed-FK or multiple-permissive-policy findings. It reports 29 informational unused-index findings because the reconstructed Development database has not yet had a normal workload.
+Counts from read-only catalog queries:
 
-## Accounting implementation in Development
+| Component | Production | Development |
+|---|---:|---:|
+| Public base tables | 15 | 16 |
+| Public RLS policies | 47 | 50 |
+| Public/private functions | 31 | 41 |
+| Public/private triggers | 8 | 11 |
+| Storage buckets | 5 | 5 |
+| Storage policies | 17 | 17 |
 
-- The Main Contribution Matrix page has been restored in Development through a Development-only `save_contribution_matrix` RPC. It uses immutable ledger postings and compensating reversals for corrections, preserves manual ledger entries by locking those cells, and saves all changed cells atomically with batch idempotency.
-- The Super Admin transaction-entry form has been restored and calls the guarded `post_financial_transaction` RPC; no direct browser-side ledger INSERT/UPDATE/DELETE is used.
+Development's additional table is `financial_postings`, used for immutable posting headers and idempotency. The 15 Development migration-history records are present. The recorded database migration version timestamps do not exactly match the prefixes of the SQL filenames in the repository; reconcile migration history before using CLI migration push/pull or attempting a release.
 
-- \`financial_transactions.amount\` uses fixed precision \`numeric(14,2)\`.
-- Each new ledger entry belongs to a \`financial_postings\` header with a unique idempotency key.
-- \`post_financial_transaction\` is the trusted posting path. A transfer creates its debit and credit rows in one database transaction.
-- A deferred constraint trigger validates each transfer group: exactly two rows, one \`out\`, one \`in\`, equal amounts, two different accounts, and one posting header.
-- \`reverse_financial_posting\` creates linked compensating entries. A posting can be reversed only once; a reversal cannot itself be reversed.
-- Financial transaction and posting rows have mutation-blocking UPDATE/DELETE triggers. Authenticated users and `service_role` have SELECT only on the ledger tables; direct INSERT/UPDATE/DELETE is not granted to either role. All ledger writes must pass through guarded private RPC helpers.
-- Payment approval now calls the same posting helper, so approval status, ledger posting, and insert-audit entry are committed together.
-- The audit action constraint now permits INSERT, UPDATE, and DELETE, matching the existing insert-audit trigger.
-- Public RPC wrappers use SECURITY INVOKER. Privileged work is in private SECURITY DEFINER helpers with explicit Super Admin checks and an empty search_path.
-- The Development due calculation now subtracts linked reversals of contribution entries.
-- Legacy Admin role access was removed from Development authorization helpers and browser navigation. Supported roles are Super Admin and Member; Pending/Rejected remain signup states.
+Development currently has zero rows in `members`, `profiles`, `financial_transactions`, `financial_postings`, `notifications`, `push_subscriptions`, and `payment_submissions`. No production user or financial data was copied.
 
-## Verified Development checks
+## Development Edge Functions and scheduled jobs
 
-Rollback-safe SQL tests passed for:
-- Super Admin contribution posting and idempotent retry.
-- Atomic two-row transfer posting.
-- Two-row transfer reversal and idempotent retry.
-- Rejection of a second reversal.
-- Contribution reversal linked to its original entry.
-- Forced rollback leaving no posting behind.
-- Payment approval producing an approved submission, one posting, one contribution row, and one INSERT audit row.
-- Contribution Matrix: new posting, correction through reversal + replacement, zeroing through reversal, idempotent retries, duplicate-cell rejection, and full transaction rollback.
-- Member A sees only their own member/ledger rows; Member B cannot see Member A's ledger.
-- Members cannot post transactions.
-- Pending accounts cannot read member records or the financial summary.
-- Legacy \`admin\` role is rejected by the profiles role constraint.
-- Public SECURITY INVOKER wrappers successfully delegate to guarded private helpers.
+- Active Development Edge Functions: `invite-member`, `review-member-signup`, and `send-push`.
+- Production additionally has `google-sheets-sync`; it is not deployed to Development.
+- Development `google-sheets-sync` remains blocked on a separately configured Development-only webhook secret and confirmation of the intended Google Form/Sheet integration. Never reuse Production secrets.
+- Three Development cron jobs are active: meeting reminders (every minute), monthly due reminders (03:00 on the first day of each month), and push delivery (every minute).
+- Recent push-delivery HTTP requests returned status 200 and cron runs succeeded. This confirms the scheduled endpoint call is accepted; it does NOT prove a real browser push notification was delivered. Development currently has no test users or push subscriptions.
+- Development VAPID key pair and cron token were freshly rotated; the public key in `public/push-config.js` matches the Vault public key. The VAPID subject is configured. `get_push_config()` is SECURITY DEFINER but its execute ACL is restricted to `service_role`; it does not grant access to `anon` or `authenticated`.
 
-All test Auth users and financial entries were created inside transactions and rolled back. The Development database was rechecked afterward and contains no test data.
+## Accounting and Contribution Matrix
 
-## Remaining blockers
+- Main Contribution Matrix UI is restored in Development using `save_contribution_matrix`.
+- Matrix changes are submitted in one atomic batch with idempotency; corrections use compensating reversals. The browser does not directly insert/update/delete financial ledger rows.
+- Manual contribution rows are locked in the matrix. Duplicate active matrix rows are surfaced for reconciliation rather than overwritten.
+- Super Admin transaction-entry UI calls guarded `post_financial_transaction`; transfers are atomic pairs.
+- Financial posting headers and transaction rows are mutation-protected. Private SECURITY DEFINER helpers enforce Super Admin authorization and use an empty search_path. Public RPC wrappers are SECURITY INVOKER.
+- Rollback-safe SQL tests previously passed for posting, idempotency, transfer pairs, reversals, payment approval atomicity, matrix corrections/rollback, member isolation, pending-account restrictions, and denial of legacy Admin role access. Re-run these after further schema changes.
 
-1. Browser-level testing of the restored Contribution Matrix and Super Admin transaction-entry form is pending because the Development Preview currently returns `ERR_EMPTY_RESPONSE`.
-2. The Development Cloudflare Preview currently returns \`ERR_EMPTY_RESPONSE\`; no page title or menu renders. \`wrangler.jsonc\` now explicitly sets \`preview_urls: true\`, but a Cloudflare Preview deployment has not been confirmed.
-3. Cloudflare's current Worker Preview workflow uses \`npx wrangler preview\` on the feature branch; Worker Previews require Wrangler 4.135.0 or later. See Cloudflare's official Preview docs.
-4. `invite-member` and `review-member-signup` are deployed to Development with the Development Preview CORS/redirect origin and JWT verification. The invite function now verifies that the member-link update actually affected a row before reporting success. `google-sheets-sync` is not deployed until a new Development-only `OIKKO_SYNC_SECRET` is configured; `send-push` is not deployed until Development-only VAPID and cron-token secrets are configured. Production secrets were not copied.
-5. Storage buckets and policies exist, but real upload/download access has not yet been tested with separate authenticated users.
-6. The contribution due month-counting rule (especially whether the current month is immediately due) still needs owner approval and reconciliation against each member's approved rate history.
-7. The uploaded full Production dump has not been extracted in this runtime because \`pg_restore\` is unavailable. The schema baseline is based on live read-only catalog metadata, not a restore of that dump.
+## Security and performance findings
+
+- Current Development Security Advisor: one warning — `pg_net` is installed in the `public` schema. Review relocation/remediation carefully because scheduled jobs currently call `net.http_post`; do not move the extension without updating and testing dependent cron SQL.
+- Current Performance Advisor: 29 informational unused-index findings. Do not drop these based only on an unused-index report from an empty Development database.
+- Storage buckets and policies exist, but upload/download authorization still needs separate-user browser testing.
+
+## Remaining release blockers
+
+1. Fix the Development Cloudflare Worker Preview so it returns a valid response; then run complete browser QA.
+2. Deploy/configure Google Sheets Sync with a separate Development-only secret and confirm the actual Google Form/Sheet source URL.
+3. Create isolated Development test accounts for Super Admin, Member A, Member B, and Pending signup; test every public/private page and cross-member data isolation in the browser.
+4. Test Storage upload/download with separate authenticated users and verify private document isolation.
+5. Verify real push delivery with a Development test subscription; cron HTTP 200 alone is not an end-to-end push test.
+6. Confirm contribution due-month counting and reconcile monthly rates with the owner.
+7. Reconcile migration history timestamps with repository migration filenames and inspect the full schema/function/policy diff before any release.
+8. Review the `pg_net` schema warning and run three independent QA passes after fixes.
 
 ## Release policy
 
-- Continue only on \`dev-superadmin-field-editor\`, Development Supabase, and the Development Cloudflare Preview.
+- Continue only on `dev-superadmin-field-editor`, Development Supabase, and Development Cloudflare Preview.
 - Never point Development browser code at Production.
-- Do not deploy Production or run Production migrations without explicit approval.
-- Keep financial entry UI available only through the guarded Development RPCs; do not release until browser-level tests pass.
-- Do not call the website complete until authenticated browser flows, Storage access, accounting reconciliation, and role isolation are verified.
+- Never write to Production, run Production migrations, or deploy Production without explicit approval.
+- Do not call the project complete until browser flows, Storage access, accounting reconciliation, role isolation, Google Sheets integration, and end-to-end push delivery are verified.
