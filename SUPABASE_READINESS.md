@@ -17,7 +17,7 @@ Production remains READ-ONLY. No Production rows, Auth users, Storage objects, V
 
 ## Branch and Cloudflare deployment
 
-- Development is 85 commits ahead of `main`, 0 behind at the latest comparison on 2026-11-11. Main has not been changed.
+- Development remains ahead of `main`, 0 behind at the latest comparison on 2026-11-11. Main has not been changed; re-check the exact ahead count before release.
 - The original Cloudflare project `friends-future-visions` tracks `main` only. Cloudflare's global Preview-branches switch cannot select one branch; it would build all non-production branches, including backups.
 - To avoid touching Production, a separate Cloudflare Worker project `friends-future-visions-dev` was created and connected directly to GitHub branch `dev-superadmin-field-editor`.
 - The Dev branch `wrangler.jsonc` Worker name was changed to `friends-future-visions-dev`, preventing `npx wrangler deploy` from overwriting the Production Worker.
@@ -44,10 +44,10 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 
 ## Migration history
 
-- Development has 16 applied migrations.
+- Development has 17 applied migrations.
 - A previous mismatch between database migration versions and SQL filename prefixes was corrected on the Dev branch.
-- Latest check confirms all 16 repository migration filename prefixes exactly match the 16 applied Development migration versions.
-- The newest migration `20261111144057_add_super_admin_private_document_upload_policy.sql` is applied and committed to the Dev branch.
+- Latest check confirms all 17 repository migration filename prefixes exactly match the 17 applied Development migration versions.
+- The newest migrations `20261111144057_add_super_admin_private_document_upload_policy.sql` and `20261111144731_allow_linked_member_nominee_photo_read.sql` are applied and committed to the Dev branch. The latter lets a linked member read only the nominee photo path stored on their own member row, including photos initially uploaded before their account was linked.
 - Do not run migration push/pull or rebase until the exact migration list is rechecked.
 
 ## Development Edge Functions and scheduled jobs
@@ -76,7 +76,7 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 - Development's member profile editor now opens from a bottom-right pencil button; all Super Admin edit controls are hidden until that button is used.
 - Editable business fields include member identity/contact/address/emergency/nominee details, consent text, joining dates, and Google Form response ID.
 - Monthly contribution changes use the guarded rate-history RPC and require an effective date on the first day of a month.
-- Profile and nominee photos can be uploaded from the same editor. Images are resized to a maximum 1600px edge and converted to WebP when browser support is available. Storage size limits are checked before upload.
+- Profile and nominee photos can be uploaded from the same editor. Images up to 20 MB are resized to a maximum 1600px edge and converted to WebP when browser support is available; quality steps down automatically to fit the selected bucket's 5 MB/10 MB limit. Storage size limits are checked before upload.
 - A Development-only Storage INSERT policy was added for Super Admin uploads to `member-private-documents`; Development Storage policy count is now 18.
 - System identity fields such as row ID, Auth user link, and creation timestamp are not directly editable. Account linking remains through the invitation workflow.
 - These changes have been committed to the Dev branch but still require live browser testing with a real Development Super Admin and member accounts. Do not claim upload/edit flows verified until that test passes.
