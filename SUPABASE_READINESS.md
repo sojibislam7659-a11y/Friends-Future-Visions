@@ -48,6 +48,7 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 - A previous mismatch between database migration versions and SQL filename prefixes was corrected on the Dev branch.
 - Latest check confirms all 17 repository migration filename prefixes exactly match the 17 applied Development migration versions.
 - The newest migrations `20261111144057_add_super_admin_private_document_upload_policy.sql` and `20261111144731_allow_linked_member_nominee_photo_read.sql` are applied and committed to the Dev branch. The latter lets a linked member read only the nominee photo path stored on their own member row, including photos initially uploaded before their account was linked.
+- Rollback-only Development authorization tests passed: Super Admin sees and edits both test members; Member A sees only their own member row, cannot directly update even their own base member row or another member, and cannot change monthly contribution (the RPC raises its Super Admin guard); anon sees zero member rows. Super Admin can insert a private nominee-photo object; the linked owner can read that exact nominee-photo path, while another member sees zero rows. All test Auth users, profiles, members, rates, and Storage object rows were rolled back; a follow-up query confirmed zero QA fixtures remain.
 - Do not run migration push/pull or rebase until the exact migration list is rechecked.
 
 ## Development Edge Functions and scheduled jobs
