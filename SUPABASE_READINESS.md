@@ -40,6 +40,14 @@ Latest read-only catalog counts:
 
 Development's additional table is `financial_postings`, used for immutable posting headers and idempotency. Development also has additional financial posting/reversal columns and private helper functions. These are intentional accounting/security improvements; do not remove them merely to match object counts.
 
+### Detailed parity differences
+
+- Development has two additional tables: `public.financial_postings` and `private.contribution_matrix_operations`; there are no Production-only tables or columns. Development has 15 additional columns, including `financial_transactions.posting_id` and `reversal_of_id`.
+- Development adds three ledger/transfer triggers, 15 constraints, and 12 indexes. It adds private SECURITY DEFINER helpers and changes several exposed public RPC wrappers from SECURITY DEFINER in Production to SECURITY INVOKER in Development.
+- Production still has direct Super Admin INSERT/UPDATE/DELETE policies on `financial_transactions`. Development intentionally removes direct ledger writes and uses guarded RPCs, immutable posting rows, idempotency, and compensating reversals instead. Do not weaken Development to match this older Production model.
+- Some broad Production `ALL` policies for committee documents and payment methods are split into explicit INSERT/UPDATE/DELETE policies in Development. The Development payment-submission policy set is narrower than Production's Super Admin full-access policy; verify the intended manual-entry workflow before release.
+- Exact schema/security parity therefore requires a separately approved Production migration/release plan. It cannot be achieved safely by copying Production over Development.
+
 Development currently has zero rows in `members`, `profiles`, `financial_transactions`, `financial_postings`, `notifications`, `push_subscriptions`, and `payment_submissions`. No Production user or financial data was copied.
 
 ## Migration history
@@ -74,7 +82,7 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 
 ## Super Admin Member Profile Editor
 
-- GitHub Actions workflow `Development Static Checks` latest run `43042256788` completed successfully. Both jobs passed: every public JavaScript module passed Node syntax checking, and all three Development Edge Functions passed Deno type checking. This is a source-level check, not a substitute for authenticated browser testing.
+- GitHub Actions workflow `Development Static Checks` latest run `43042515132` completed successfully. Both jobs passed: every public JavaScript module passed Node syntax checking, and all three Development Edge Functions passed Deno type checking. The workflow actions were upgraded to Node 24-compatible releases; the latest run has no Node 20 deprecation warning. This is a source-level check, not a substitute for authenticated browser testing.
 
 - Development's member profile editor now opens from a bottom-right pencil button; all Super Admin edit controls are hidden until that button is used.
 - Editable business fields include member identity/contact/address/emergency/nominee details, consent text, joining dates, and Google Form response ID.
