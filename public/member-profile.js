@@ -81,7 +81,7 @@ async function main(){
  const adminControls=access.role==="super_admin"
   ? '<section class="section"><h2>সদস্যের Status ও Member No</h2><div class="field"><label for="memberStatus">Status</label><select id="memberStatus"><option value="pending" '+(m.status==="pending"?"selected":"")+' >Pending</option><option value="active" '+(m.status==="active"?"selected":"")+' >Active</option><option value="inactive" '+(m.status==="inactive"?"selected":"")+' >Inactive</option></select></div><p class="muted small">Pending সদস্যকে Active করলে Member No না থাকলে স্বয়ংক্রিয়ভাবে তৈরি হবে।</p><div class="field"><label for="memberNo">Member No</label><input id="memberNo" type="text" value="'+esc(m.member_no||"")+'" placeholder="যেমন: M-003" maxlength="30"></div><div class="form-actions"><button class="button" id="saveMemberNo" type="button">Member No Save</button></div></section>'
   : "";
- root.innerHTML='<div class="shell"><header class="topbar"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><div class="actions"><a class="button secondary" href="member-info.html">Member Info</a><a class="button secondary" href="dashboard.html">Dashboard</a></div></header><main class="page" style="margin-top:16px"><section class="member-profile-header">'+(photo||'<span class="member-profile-photo member-directory-fallback">FF</span>')+'<div><h1>'+esc(m.full_name_bn||m.full_name||"Member")+'</h1><p class="lead">'+esc(m.member_no||"Member No not assigned")+' · '+esc(m.status)+'</p>'+(m.joining_date?'<p class="muted small">যোগদানের তারিখ: '+esc(dateText(m.joining_date))+'</p>':"")+'</div></section>'+adminControls+adminFieldEditor+'<div class="grid member-profile-summary">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div>'+sections+nomineePhoto+(m.member_note?'<section class="section"><h2>নোট</h2><p>'+esc(m.member_note)+'</p></section>':"")+'</main>'+(access.role==="super_admin"?'<button class="button" id="toggleMemberEditor" type="button" aria-controls="memberFieldEditor" aria-expanded="false" style="position:fixed;right:18px;bottom:18px;z-index:30;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.22)">✎ Edit Profile</button>':'')+adminFieldEditor+'<footer class="footer">Friends Future Vision Forever · Secure member profile</footer></div>';
+ root.innerHTML='<div class="shell"><header class="topbar"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><div class="actions"><a class="button secondary" href="member-info.html">Member Info</a><a class="button secondary" href="dashboard.html">Dashboard</a></div></header><main class="page" style="margin-top:16px"><section class="member-profile-header">'+(photo||'<span class="member-profile-photo member-directory-fallback">FF</span>')+'<div><h1>'+esc(m.full_name_bn||m.full_name||"Member")+'</h1><p class="lead">'+esc(m.member_no||"Member No not assigned")+' · '+esc(m.status)+'</p>'+(m.joining_date?'<p class="muted small">যোগদানের তারিখ: '+esc(dateText(m.joining_date))+'</p>':"")+'</div></section>'+adminControls+'<div class="grid member-profile-summary">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div>'+sections+nomineePhoto+(m.member_note?'<section class="section"><h2>নোট</h2><p>'+esc(m.member_note)+'</p></section>':"")+'</main>'+(access.role==="super_admin"?'<button class="button" id="toggleMemberEditor" type="button" aria-controls="memberFieldEditor" aria-expanded="false" style="position:fixed;right:18px;bottom:18px;z-index:30;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.22)">✎ Edit Profile</button>':'')+adminFieldEditor+'<footer class="footer">Friends Future Vision Forever · Secure member profile</footer></div>';
  if(access.role==="super_admin"){
   const editor=document.getElementById("memberFieldEditor");
   const editorToggle=document.getElementById("toggleMemberEditor");
@@ -103,7 +103,7 @@ async function main(){
     const key=input.dataset.memberField;
     const value=input.value.trim();
     if(key==="full_name"&&!value){alert("পূর্ণ নাম খালি রাখা যাবে না।");input.focus();return}
-    if(input.type==="date"&&value&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)){alert("তারিখের Format সঠিক নয়।");input.focus();return}
+    if(input.type==="date"&&value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert("তারিখের Format সঠিক নয়।");input.focus();return}
     if(value!==String(m[key]??""))changes[key]=value===""?null:value;
    }
    const monthlyInput=document.getElementById("edit_monthly_contribution");
@@ -112,7 +112,7 @@ async function main(){
    if(monthlyChanged){
     const amount=Number(monthlyInput.value),effective=effectiveInput.value;
     if(!Number.isFinite(amount)||amount<=0){alert("মাসিক জমার পরিমাণ শূন্যের বেশি হতে হবে।");monthlyInput.focus();return}
-    if(!effective||!/^\\d{4}-\\d{2}-01$/.test(effective)){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ হতে হবে।");effectiveInput.focus();return}
+    if(!effective||!/^\d{4}-\d{2}-01$/.test(effective)){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ হতে হবে।");effectiveInput.focus();return}
    }
    const profileFile=document.getElementById("edit_profile_photo")?.files?.[0]||null;
    const nomineeFile=document.getElementById("edit_nominee_photo")?.files?.[0]||null;
@@ -140,7 +140,8 @@ async function main(){
      if(!file)return;
      const prepared=await compressMemberImage(file);
      const ownerFolder=m.auth_user_id||access.session.user.id;
-     const path=ownerFolder+"/"+m.id+"/"+prefix+"-"+Date.now()+".webp";
+     const extension=prepared.type==="image/png"?"png":prepared.type==="image/jpeg"?"jpg":"webp";
+     const path=ownerFolder+"/"+m.id+"/"+prefix+"-"+Date.now()+"."+extension;
      const {error:uploadError}=await supabase.storage.from(bucket).upload(path,prepared,{contentType:prepared.type,upsert:false});
      if(uploadError)throw uploadError;
      const oldPath=m[field];
@@ -152,7 +153,7 @@ async function main(){
      if(oldPath&&oldPath!==path)await supabase.storage.from(bucket).remove([oldPath]);
     };
     await uploadPhoto(profileFile,"member-profile-photos","profile_photo_path","profile");
-    await uploadPhoto(nomineeFile,"member-private-documents","nominee");
+    await uploadPhoto(nomineeFile,"member-private-documents","nominee_photo_path","nominee");
     alert("Member-এর তথ্য সফলভাবে Save হয়েছে।");
     location.reload();
    }catch(error){
