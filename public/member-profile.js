@@ -104,7 +104,10 @@ async function main(){
     const key=input.dataset.memberField;
     const value=input.value.trim();
     if(key==="full_name"&&!value){alert("পূর্ণ নাম খালি রাখা যাবে না।");input.focus();return}
+    if(key==="joined_at"&&!value){alert("যোগদানের তারিখ খালি রাখা যাবে না।");input.focus();return}
     if(input.type==="date"&&value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert("তারিখের Format সঠিক নয়।");input.focus();return}
+    if(key==="date_of_birth"&&value&&value>new Date().toISOString().slice(0,10)){alert("জন্মতারিখ ভবিষ্যতের হতে পারে না।");input.focus();return}
+    if(input.type==="email"&&value&&!input.checkValidity()){alert("যোগাযোগের ইমেইল সঠিক নয়।");input.focus();return}
     if(value!==String(m[key]??""))changes[key]=value===""?null:value;
    }
    const monthlyInput=document.getElementById("edit_monthly_contribution");
