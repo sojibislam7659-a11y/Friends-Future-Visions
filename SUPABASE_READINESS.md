@@ -19,7 +19,7 @@ Production remains READ-ONLY. This audit queried Production catalog metadata onl
 
 - Development is 70 commits ahead of `main`, 0 behind at the time of the 2026-11-11 audit. A follow-up Dev-only login-role fix was committed after that comparison; re-check the live ahead count before release.
 - Development contains intentional security/accounting architecture changes. Do not blindly copy Main files over Development or merge without review and owner approval.
-- Cloudflare dashboard inspection on 2026-11-11 confirmed 15 Ready deployments for `dev-superadmin-field-editor`. The branch Preview URL `https://dev-superadmin-field-editor-friends-future-visions.sojibislam7659.workers.dev/` responded successfully in a read-only browser smoke test and rendered the member login page with language toggle, email/password fields, login button, forgot-password link, and signup link. No visible connection or page errors were detected. This verifies only the public login surface; authenticated browser QA remains outstanding.
+- Cloudflare evidence is inconsistent and the Dev deployment is NOT certified. One dashboard inspection listed 15 Ready deployments for `dev-superadmin-field-editor`; a later inspection of the same service showed only `main` deployments. The branch Preview alias responded with a login page, but the exact deployment preview `https://a8fa05c4-friends-future-visions.sojibislam7659.workers.dev/` served a static/placeholder login page whose source did not match the current GitHub `public/login.html` (the repository version contains an active Supabase module script). The live preview therefore cannot yet be treated as the current Dev branch build. Inspect Cloudflare Git integration, branch build configuration, and asset routing before further browser QA. No deployment/settings were changed.
 
 ## Live schema comparison
 
@@ -42,7 +42,7 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 
 - Active Development Edge Functions: `invite-member`, `review-member-signup`, and `send-push`.
 - Production additionally has `google-sheets-sync`; it is not deployed to Development.
-- Development `google-sheets-sync` remains blocked on a separately configured Development-only webhook secret and confirmation of the intended Google Form/Sheet integration. Never reuse Production secrets.
+- Development `google-sheets-sync` remains blocked on a separately configured Development-only webhook secret and confirmation of the intended Google Form/Sheet integration. `public/signup.html` currently only tells applicants to use the same email as the Google Form; it contains no actual Google Form URL. The exact prior form URL has not been recovered. Never reuse Production secrets.
 - Three Development cron jobs are active: meeting reminders (every minute), monthly due reminders (03:00 on the first day of each month), and push delivery (every minute).
 - Recent push-delivery HTTP requests returned status 200 and cron runs succeeded. This confirms the scheduled endpoint call is accepted; it does NOT prove a real browser push notification was delivered. Development currently has no test users or push subscriptions.
 - Development VAPID key pair and cron token were freshly rotated; the public key in `public/push-config.js` matches the Vault public key. The VAPID subject is configured. `get_push_config()` is SECURITY DEFINER but its execute ACL is restricted to `service_role`; it does not grant access to `anon` or `authenticated`.
@@ -65,9 +65,9 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 
 ## Remaining release blockers
 
-1. Development Cloudflare Preview is now responding; run complete authenticated browser QA with isolated test accounts.
+1. Resolve the Cloudflare Dev deployment mismatch: confirm the correct Git-connected project, branch, build root/output directory and static asset routing; deploy only the Dev branch; verify live `/login.html` matches GitHub source before browser QA.
 2. Deploy/configure Google Sheets Sync with a separate Development-only secret and confirm the actual Google Form/Sheet source URL.
-3. Create isolated Development test accounts for Super Admin, Member A, Member B, and Pending signup; test every public/private page and cross-member data isolation in the browser. The login page's two legacy `admin` role allow-list entries were removed in a Dev-only commit after this audit; verify the deployed build.
+3. Create isolated Development test accounts for Super Admin, Member A, Member B, and Pending signup; test every public/private page and cross-member data isolation in the browser. The two legacy `admin` role allow-list entries were removed in a Dev-only commit, and the visible login copy now names only Member and Super Admin; this is not verified live until the correct build is deployed.
 4. Test Storage upload/download with separate authenticated users and verify private document isolation.
 5. Verify real push delivery with a Development test subscription; cron HTTP 200 alone is not an end-to-end push test.
 6. Confirm contribution due-month counting and reconcile monthly rates with the owner.
