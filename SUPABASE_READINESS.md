@@ -17,9 +17,9 @@ Production remains READ-ONLY. This audit queried Production catalog metadata onl
 
 ## Current branch comparison
 
-- Development is 67 commits ahead of `main`, 0 behind.
+- Development is 70 commits ahead of `main`, 0 behind at the time of the 2026-11-11 audit. A follow-up Dev-only login-role fix was committed after that comparison; re-check the live ahead count before release.
 - Development contains intentional security/accounting architecture changes. Do not blindly copy Main files over Development or merge without review and owner approval.
-- Cloudflare dashboard inspection found no deployment for `dev-superadmin-field-editor`; the visible deployment history is for `main` only. The configured Development Preview URL also failed the browser smoke test with `ERR_EMPTY_RESPONSE`. No page title, login form, or menu could be verified. Browser-level feature QA is blocked until a Development deployment exists and the Preview responds.
+- Cloudflare dashboard inspection on 2026-11-11 confirmed 15 Ready deployments for `dev-superadmin-field-editor`. The branch Preview URL `https://dev-superadmin-field-editor-friends-future-visions.sojibislam7659.workers.dev/` responded successfully in a read-only browser smoke test and rendered the member login page with language toggle, email/password fields, login button, forgot-password link, and signup link. No visible connection or page errors were detected. This verifies only the public login surface; authenticated browser QA remains outstanding.
 
 ## Live schema comparison
 
@@ -59,14 +59,15 @@ Development currently has zero rows in `members`, `profiles`, `financial_transac
 ## Security and performance findings
 
 - Current Development Security Advisor: one warning — `pg_net` is installed in the `public` schema. Review relocation/remediation carefully because scheduled jobs currently call `net.http_post`; do not move the extension without updating and testing dependent cron SQL.
+- Read-only Production Security Advisor additionally reports four authenticated-callable `SECURITY DEFINER` functions in the exposed `public` schema (`get_financial_summary`, `review_payment_submission`, `review_private_document`, `set_current_committee_document`) and disabled leaked-password protection. These findings require separate Production-owner approval to remediate; Production was not changed. Development has moved the privileged logic behind private helpers, but exact functional parity and end-to-end authorization still require test accounts.
 - Current Performance Advisor: 29 informational unused-index findings. Do not drop these based only on an unused-index report from an empty Development database.
 - Storage buckets and policies exist, but upload/download authorization still needs separate-user browser testing.
 
 ## Remaining release blockers
 
-1. Fix the Development Cloudflare Worker Preview so it returns a valid response; then run complete browser QA.
+1. Development Cloudflare Preview is now responding; run complete authenticated browser QA with isolated test accounts.
 2. Deploy/configure Google Sheets Sync with a separate Development-only secret and confirm the actual Google Form/Sheet source URL.
-3. Create isolated Development test accounts for Super Admin, Member A, Member B, and Pending signup; test every public/private page and cross-member data isolation in the browser.
+3. Create isolated Development test accounts for Super Admin, Member A, Member B, and Pending signup; test every public/private page and cross-member data isolation in the browser. The login page's two legacy `admin` role allow-list entries were removed in a Dev-only commit after this audit; verify the deployed build.
 4. Test Storage upload/download with separate authenticated users and verify private document isolation.
 5. Verify real push delivery with a Development test subscription; cron HTTP 200 alone is not an end-to-end push test.
 6. Confirm contribution due-month counting and reconcile monthly rates with the owner.
