@@ -87,8 +87,8 @@ import {supabase,supabaseReady} from "./supabase-client.js";
 const form=document.getElementById("loginForm"),btn=document.getElementById("loginButton"),msg=document.getElementById("message");
 let lang="bn";
 const copy={
- bn:{brandBn:"ফ্রেন্ডস ফিউচার ভিশন ফরএভার",title:"সদস্য লগইন",intro:"আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।",emailLabel:"Email address",emailPlaceholder:"আপনার নিবন্ধিত ইমেইল",passwordLabel:"Password",passwordPlaceholder:"আপনার পাসওয়ার্ড",loginButton:"লগইন করুন →",security:"শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন",privacy:"আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।",newMember:"নতুন সদস্য?",forgot:"পাসওয়ার্ড ভুলে গেছেন?",emailRequired:"আগে আপনার নিবন্ধিত ইমেইল লিখুন।",resetSent:"রিসেট লিংক পাঠানো হয়েছে।",resetTitle:"নতুন পাসওয়ার্ড সেট করুন",resetIntro:"ইমেইলে পাওয়া নিরাপদ লিংক দিয়ে নতুন পাসওয়ার্ড দিন।",newPasswordLabel:"নতুন পাসওয়ার্ড",confirmPasswordLabel:"আবার লিখুন",savePassword:"পাসওয়ার্ড পরিবর্তন করুন",createAccount:"নিজে অ্যাকাউন্ট তৈরি করুন",toggle:"English",checking:"যাচাই হচ্ছে…",service:"Login service configured নয়।",loginError:"লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।",pending:"আপনার অ্যাকাউন্ট এখনো Super Admin অনুমোদন করেননি।",rejected:"এই অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি। Super Admin-এর সঙ্গে যোগাযোগ করুন।",pendingVerified:"আপনার ইমেইল যাচাই হয়েছে। এখন Super Admin-এর অনুমোদনের অপেক্ষায় আছেন।",noAccess:"এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।"},
- en:{brandBn:"Friends Future Vision Forever",title:"Member Login",intro:"Sign in securely with your approved account.",emailLabel:"Email address",emailPlaceholder:"Your registered email",passwordLabel:"Password",passwordPlaceholder:"Your password",loginButton:"Sign in →",security:"Access is restricted to approved members and administrators.",privacy:"Do not share your login credentials with anyone.",newMember:"New member?",forgot:"Forgot password?",emailRequired:"Enter your registered email first.",resetSent:"Reset link sent.",resetTitle:"Set a new password",resetIntro:"Enter a new password using the secure link sent to your email.",newPasswordLabel:"New password",confirmPasswordLabel:"Confirm new password",savePassword:"Update password",createAccount:"Create an account",toggle:"বাংলা",checking:"Checking…",service:"Login service is not configured.",loginError:"Unable to sign in. Check your details and try again.",pending:"Your account is awaiting Super Admin approval.",rejected:"This application was not approved. Please contact the Super Admin.",pendingVerified:"Your email is verified. Your account is now awaiting Super Admin approval.",noAccess:"This account does not have committee access."}
+ bn:{brandBn:"ফ্রেন্ডস ফিউচার ভিশন ফরএভার",title:"সদস্য লগইন",intro:"আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।",emailLabel:"Email address",emailPlaceholder:"আপনার নিবন্ধিত ইমেইল",passwordLabel:"Password",passwordPlaceholder:"আপনার পাসওয়ার্ড",loginButton:"লগইন করুন →",security:"শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন",privacy:"আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।",newMember:"নতুন সদস্য?",forgot:"পাসওয়ার্ড ভুলে গেছেন?",emailRequired:"আগে আপনার নিবন্ধিত ইমেইল লিখুন।",resetSent:"রিসেট লিংক পাঠানো হয়েছে।",resetTitle:"নতুন পাসওয়ার্ড সেট করুন",resetIntro:"ইমেইলে পাওয়া নিরাপদ লিংক দিয়ে নতুন পাসওয়ার্ড দিন।",newPasswordLabel:"নতুন পাসওয়ার্ড",confirmPasswordLabel:"আবার লিখুন",savePassword:"পাসওয়ার্ড পরিবর্তন করুন",createAccount:"নিজে অ্যাকাউন্ট তৈরি করুন",toggle:"English",checking:"যাচাই হচ্ছে…",service:"Login service configured নয়।",loginError:"লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।",emailNotConfirmed:"আপনার ইমেইল এখনো যাচাই হয়নি। Inbox/Spam থেকে সর্বশেষ Verification বা Invitation link খুলে Email verify করুন।",invalidCredentials:"ইমেইল বা পাসওয়ার্ড সঠিক নয়। আবার যাচাই করুন।",resetRateLimited:"নিরাপত্তার কারণে অল্প সময়ের মধ্যে একাধিক Reset email পাঠানো যাচ্ছে না। কিছুক্ষণ অপেক্ষা করে আবার চেষ্টা করুন।",pending:"আপনার অ্যাকাউন্ট এখনো Super Admin অনুমোদন করেননি।",rejected:"এই অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি। Super Admin-এর সঙ্গে যোগাযোগ করুন।",pendingVerified:"আপনার ইমেইল যাচাই হয়েছে। এখন Super Admin-এর অনুমোদনের অপেক্ষায় আছেন।",noAccess:"এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।"},
+ en:{brandBn:"Friends Future Vision Forever",title:"Member Login",intro:"Sign in securely with your approved account.",emailLabel:"Email address",emailPlaceholder:"Your registered email",passwordLabel:"Password",passwordPlaceholder:"Your password",loginButton:"Sign in →",security:"Access is restricted to approved members and administrators.",privacy:"Do not share your login credentials with anyone.",newMember:"New member?",forgot:"Forgot password?",emailRequired:"Enter your registered email first.",resetSent:"Reset link sent.",resetTitle:"Set a new password",resetIntro:"Enter a new password using the secure link sent to your email.",newPasswordLabel:"New password",confirmPasswordLabel:"Confirm new password",savePassword:"Update password",createAccount:"Create an account",toggle:"বাংলা",checking:"Checking…",service:"Login service is not configured.",loginError:"Unable to sign in. Check your details and try again.",emailNotConfirmed:"Your email is not verified yet. Open the latest verification or invitation link from your Inbox/Spam folder.",invalidCredentials:"The email or password is incorrect. Check your details and try again.",resetRateLimited:"For security, password reset emails are temporarily rate-limited. Wait a little before trying again.",pending:"Your account is awaiting Super Admin approval.",rejected:"This application was not approved. Please contact the Super Admin.",pendingVerified:"Your email is verified. Your account is now awaiting Super Admin approval.",noAccess:"This account does not have committee access."}
 };
 function tr(key){return copy[lang][key]||copy.bn[key]||key}
 function show(key){msg.textContent=tr(key);msg.style.display="block"}
@@ -111,10 +111,16 @@ document.getElementById("forgotPasswordLink").addEventListener("click",async eve
  const email=document.getElementById("email").value.trim().toLowerCase();
  if(!email){msg.textContent=tr("emailRequired");msg.style.display="block";document.getElementById("email").focus();return}
  const link=document.getElementById("forgotPasswordLink");link.style.pointerEvents="none";
- const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:new URL("login.html",location.href).href});
- link.style.pointerEvents="";
- showKey(error?"loginError": "resetSent");
- if(!error){msg.textContent=lang==="bn"?"যদি এই ইমেইলে অ্যাকাউন্ট থাকে, পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। Inbox/Spam দেখুন।":"If an account exists for this email, a password reset link has been sent. Check Inbox/Spam."}
+ try{
+  const {error}=await supabase.auth.resetPasswordForEmail(email,{redirectTo:new URL("login.html",location.href).href});
+  if(error?.code==="over_email_send_rate_limit")showKey("resetRateLimited");
+  else if(error)showKey("loginError");
+  else{
+   showKey("resetSent");
+   msg.textContent=lang==="bn"?"যদি এই ইমেইলে অ্যাকাউন্ট থাকে, পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। Inbox/Spam দেখুন।":"If an account exists for this email, a password reset link has been sent. Check Inbox/Spam.";
+  }
+ }catch(error){showKey("loginError")}
+ finally{link.style.pointerEvents=""}
 });
 supabase.auth.onAuthStateChange((event,session)=>{
  if(event==="PASSWORD_RECOVERY"&&session){
@@ -153,7 +159,11 @@ form.addEventListener("submit",async e=>{
  e.preventDefault();if(!supabaseReady)return;
  btn.disabled=true;btn.textContent=tr("checking");msg.style.display="none";
  const {data,error}=await supabase.auth.signInWithPassword({email:document.getElementById("email").value.trim(),password:document.getElementById("password").value});
- if(error){showKey("loginError")}
+ if(error){
+  if(error.code==="email_not_confirmed")showKey("emailNotConfirmed");
+  else if(error.code==="invalid_credentials")showKey("invalidCredentials");
+  else showKey("loginError");
+ }
  else{
   const {data:p,error:pe}=await supabase.from("profiles").select("role").eq("id",data.user.id).maybeSingle();
   if(!pe&&p?.role==="pending"){await supabase.auth.signOut();showKey("pendingVerified")}
