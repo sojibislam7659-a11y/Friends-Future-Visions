@@ -1,4 +1,4 @@
-# Friends Future Vision Forever
+# Oikko Savings Committee (ঐক্য সঞ্চয় সমিতি)
 
 Mobile-first private committee portal.
 
