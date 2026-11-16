@@ -115,6 +115,20 @@ async function loadMatrix() {
     tables +
     (isSuper ? '<div class="form-actions matrix-save-actions"><button type="button" id="saveMatrix">Confirm &amp; Save</button><span id="matrixSaveStatus" class="muted small"></span></div>' : "");
 
+  const monthlyTotals = new Map();
+  (sharedRows || []).forEach(row => { const k=String(row.contribution_month).slice(0,7); monthlyTotals.set(k,(monthlyTotals.get(k)||0)+Number(row.amount||0)); });
+  const chartKeys=Array.from(monthlyTotals.keys()).sort().filter(k=>monthlyTotals.get(k)>0).slice(-12);
+  const chartValues=chartKeys.map(k=>monthlyTotals.get(k));
+  const chartMax=Math.max(1,...chartValues);
+  const barHtml=chartKeys.map((k,i)=>"<div class=\"mini-bar-item\"><span>"+esc(k.slice(5))+"</span><i style=\"height:"+Math.max(3,100*chartValues[i]/chartMax)+"%\"></i></div>").join("");
+  const points=chartValues.map((v,i)=>{const x=12+(i*476/Math.max(1,chartValues.length-1));const y=178-(150*v/chartMax);return x+","+y;}).join(" ");
+  const lineHtml="<svg viewBox=\"0 0 500 200\" class=\"matrix-chart-svg\" role=\"img\" aria-label=\"Monthly contribution trend\"><line x1=\"8\" y1=\"180\" x2=\"492\" y2=\"180\" stroke=\"currentColor\" opacity=\".2\"/><polyline points=\""+points+"\" fill=\"none\" stroke=\"#3976d2\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>";
+  const memberTotals=members.map(m=>({name:m.full_name_bn||m.full_name,value:(sharedRows||[]).filter(r=>r.member_id===m.id).reduce((n,r)=>n+Number(r.amount||0),0)}));
+  const pieTotal=memberTotals.reduce((n,x)=>n+x.value,0);let angle=0;const colors=["#15966f","#3976d2","#e0a43b","#9a72ce","#d56d72","#48a9b5"];
+  const stops=memberTotals.filter(x=>x.value>0).map((x,i)=>{const begin=angle;angle+=pieTotal?x.value/pieTotal*360:0;return colors[i%colors.length]+" "+begin+"deg "+angle+"deg";}).join(",");
+  const legend=memberTotals.map((x,i)=>"<span><i style=\"background:"+colors[i%colors.length]+"\"></i>"+esc(x.name)+" · "+money(x.value)+"</span>").join("");
+  root.insertAdjacentHTML("beforeend","<section class=\"section matrix-charts\"><div class=\"section-head\"><h2>Contribution Charts</h2><button type=\"button\" class=\"secondary\" id=\"toggleMatrixCharts\" aria-expanded=\"false\">See Charts</button></div><div id=\"matrixChartsPanel\" hidden><div class=\"matrix-chart-grid\"><article class=\"card\"><strong>Monthly contribution · Column</strong><div class=\"mini-bars\">"+barHtml+"</div></article><article class=\"card\"><strong>Monthly trend · Line</strong>"+lineHtml+"</article><article class=\"card\"><strong>Member share · Pie</strong><div class=\"matrix-pie\" style=\"background:conic-gradient("+stops+")\"></div><div class=\"matrix-chart-legend\">"+legend+"</div></article></div></div></section>");
+  document.getElementById("toggleMatrixCharts")?.addEventListener("click",()=>{const panel=document.getElementById("matrixChartsPanel"),button=document.getElementById("toggleMatrixCharts");panel.hidden=!panel.hidden;button.setAttribute("aria-expanded",String(!panel.hidden));button.textContent=panel.hidden?"See Charts":"Hide Charts";});
   if (!isSuper) return;
 
   function recalculate() {
