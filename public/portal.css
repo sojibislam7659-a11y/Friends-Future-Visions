@@ -546,3 +546,20 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
   .sidebar-panel .sidebar-nav{display:flex!important;flex-direction:column!important;gap:7px!important;padding:14px 0!important}
   .sidebar-panel .sidebar-nav a{width:100%!important;justify-content:flex-start!important;font-size:14px!important;min-height:52px!important}
 }
+
+
+/* Shared member contribution matrix: compact paid day and responsive charts */
+.cell-date.paid-date{display:block;margin-top:3px;color:#15966f;font-size:11px;font-weight:800;line-height:1.15}
+.matrix-charts .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.matrix-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+.matrix-chart-grid .card{min-width:0;overflow:hidden;padding:14px}
+.matrix-chart-grid .card>strong{display:block;font-size:13px;margin-bottom:10px}
+.mini-bars{height:180px;display:flex;align-items:end;gap:5px;padding:8px 2px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.mini-bar-item{height:100%;min-width:18px;flex:1;display:flex;flex-direction:column;justify-content:end;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+.mini-bar-item i{display:block;width:min(24px,80%);min-height:3px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#39b98c,#08745a)}
+.matrix-chart-svg{display:block;width:100%;height:auto;max-height:210px}
+.matrix-pie{width:min(190px,80%);aspect-ratio:1;border-radius:50%;margin:12px auto}
+.matrix-chart-legend{display:grid;gap:6px;margin-top:10px;font-size:11px}
+.matrix-chart-legend span{display:flex;align-items:center;gap:7px;min-width:0}
+.matrix-chart-legend i{display:inline-block;width:9px;height:9px;flex:0 0 9px;border-radius:50%}
+@media(max-width:640px){.matrix-chart-grid{grid-template-columns:1fr}.matrix-chart-grid .card{padding:11px}.cell-date.paid-date{font-size:10px}}
