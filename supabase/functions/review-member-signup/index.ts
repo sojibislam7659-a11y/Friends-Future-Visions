@@ -38,38 +38,47 @@ Deno.serve(async (req: Request) => {
 
   const userId = String(input.user_id || "").trim();
   const action = String(input.action || "");
-  if (!userId || !["approve", "reject", "reopen"].includes(action))
+  if (!userId || !["approve", "reject", "reopen", "confirm_active"].includes(action))
     return json({ error: "Valid user_id and action are required" }, 400);
 
-  if (action === "approve") {
+  if (action === "approve" || action === "confirm_active") {
     const { data: profile, error: profileError } = await admin
       .from("profiles").select("id,email,role").eq("id", userId).maybeSingle();
-    if (profileError || !profile || profile.role !== "pending")
-      return json({ error: "Signup is not awaiting approval" }, 409);
+    const expectedRole = action === "approve" ? "pending" : "member";
+    if (profileError || !profile || profile.role !== expectedRole)
+      return json({ error: action === "approve" ? "Signup is not awaiting approval" : "Member account is not eligible for login confirmation" }, 409);
     if (!profile.email || !profile.email.trim())
       return json({ error: "Signup email is missing" }, 409);
 
     const { data: targetResult, error: targetError } = await admin.auth.admin.getUserById(userId);
     const targetUser = targetResult?.user;
     if (targetError || !targetUser)
-      return json({ error: "Signup Auth account could not be found" }, 404);
+      return json({ error: "Auth account could not be found" }, 404);
     if ((targetUser.email || "").trim().toLowerCase() !== profile.email.trim().toLowerCase())
-      return json({ error: "Auth email and signup profile email do not match" }, 409);
+      return json({ error: "Auth email and profile email do not match" }, 409);
 
-    const { data: matches, error: matchError } = await admin
-      .from("members")
+    let memberQuery = admin.from("members")
       .select("id,member_no,full_name,email,status,auth_user_id")
       .ilike("email", profile.email.trim())
-      .in("status", ["pending", "active"])
-      .or(`auth_user_id.is.null,auth_user_id.eq.${userId}`);
+      .eq("status", "active");
+    if (action === "approve") {
+      memberQuery = admin.from("members")
+        .select("id,member_no,full_name,email,status,auth_user_id")
+        .ilike("email", profile.email.trim())
+        .in("status", ["pending", "active"])
+        .or(`auth_user_id.is.null,auth_user_id.eq.${userId}`);
+    } else {
+      memberQuery = memberQuery.eq("auth_user_id", userId);
+    }
+    const { data: matches, error: matchError } = await memberQuery;
     if (matchError) return json({ error: "Could not verify the Google Form/member record" }, 500);
     if (!matches || matches.length === 0)
-      return json({ error: "No matching Google Form/member record found for this email" }, 409);
+      return json({ error: "No matching active Google Form/member record found for this email and account" }, 409);
     if (matches.length > 1)
       return json({ error: "Multiple member records use this email; resolve duplicates first" }, 409);
 
-    // Super Admin approval is the explicit identity check for this committee.
-    // Only a signup whose Auth email exactly matches one unique stored member email reaches here.
+    // Super Admin approval is the committee's manual identity check.
+    // This bypasses email ownership verification only after a unique stored member match.
     if (!targetUser.email_confirmed_at) {
       const { error: confirmError } = await admin.auth.admin.updateUserById(userId, {
         email_confirm: true
@@ -78,16 +87,28 @@ Deno.serve(async (req: Request) => {
         return json({ error: "Could not enable sign-in for this member", details: confirmError.message }, 502);
     }
 
-    const { data, error } = await admin.rpc("approve_member_signup", {
-      p_user_id: userId,
-      p_admin_user_id: authData.user.id
-    });
-    if (error)
-      return json({
-        error: "Email sign-in was enabled, but member approval did not finish. Check the member record and retry approval.",
-        details: error.message
-      }, 409);
-    return json({ success: true, action, member: data?.[0] || null });
+    if (action === "approve") {
+      const { data, error } = await admin.rpc("approve_member_signup", {
+        p_user_id: userId,
+        p_admin_user_id: authData.user.id
+      });
+      if (error)
+        return json({
+          error: "Email sign-in was enabled, but member approval did not finish. Check the member record and retry approval.",
+          details: error.message
+        }, 409);
+      const { error: stampError } = await admin.from("profiles")
+        .update({ email_verified_at: new Date().toISOString() }).eq("id", userId);
+      if (stampError)
+        return json({ success: true, action, member: data?.[0] || null, warning: "Login is enabled, but profile verification timestamp could not be saved." });
+      return json({ success: true, action, member: data?.[0] || null });
+    }
+
+    const { error: stampError } = await admin.from("profiles")
+      .update({ email_verified_at: new Date().toISOString() }).eq("id", userId);
+    if (stampError)
+      return json({ error: "Email sign-in is enabled, but profile status could not be updated. Retry this action.", details: stampError.message }, 500);
+    return json({ success: true, action });
   }
 
   const { error } = await admin.rpc("reject_member_signup", {
