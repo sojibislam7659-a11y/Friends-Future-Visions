@@ -45,43 +45,20 @@ async function loadMatrix() {
   }
   const isSuper = profile.role === "super_admin";
 
-  let memberQuery = supabase.from("members")
-    .select("id,member_no,full_name,full_name_bn,status,monthly_contribution")
-    .order("member_no");
-  if (isSuper) memberQuery = memberQuery.eq("status", "active");
-  else memberQuery = memberQuery.eq("auth_user_id", user.id).eq("status", "active");
-
-  const { data: members, error: memberError } = await memberQuery;
-  if (memberError) throw memberError;
-  if (!members?.length) {
-    root.innerHTML = '<h1>Member Contribution Matrix</h1>' + empty("এখনো কোনো Active Member পাওয়া যায়নি।");
-    return;
-  }
-
-  const { data: transactions, error: transactionError } = await supabase
-    .from("financial_transactions")
-    .select("id,member_id,amount,transaction_date,created_at,updated_at,reference_no,transaction_type,direction")
-    .in("member_id", members.map(member => member.id))
-    .eq("transaction_type", "contribution")
-    .eq("direction", "in")
-    .gte("transaction_date", "2026-12-01")
-    .lt("transaction_date", "2031-12-01")
-    .order("created_at", { ascending: true });
-  if (transactionError) throw transactionError;
-
+  const { data: sharedRows, error: sharedError } = await supabase.rpc("get_member_shared_financial_data");
+  if (sharedError) throw sharedError;
+  const memberMap = new Map();
   const transactionMap = new Map();
   const matrixPrefix = "FFV_MATRIX|";
-  (transactions || []).forEach(transaction => {
-    const month = String(transaction.transaction_date).slice(0, 7);
-    const key = transaction.member_id + "|" + month;
-    if (!transactionMap.has(key)) transactionMap.set(key, { amount: 0, rows: [], latest: "" });
-    const item = transactionMap.get(key);
-    item.amount += Number(transaction.amount || 0);
-    item.rows.push(transaction);
-    const stamp = transaction.updated_at || transaction.created_at || "";
-    if (stamp > item.latest) item.latest = stamp;
+  (sharedRows || []).forEach(row => {
+    if (!memberMap.has(row.member_id)) memberMap.set(row.member_id, { id: row.member_id, member_no: row.member_no, full_name: row.full_name, full_name_bn: row.full_name_bn, status: "active" });
+    const month = String(row.contribution_month).slice(0, 7);
+    const matrixRows = Number(row.matrix_count || 0) > 0 ? [{ id: null, amount: Number(row.amount || 0), reference_no: matrixPrefix + month + "|" + row.member_id }] : [];
+    const manualRows = row.has_manual ? [{ id: null, amount: Number(row.amount || 0), reference_no: "MANUAL" }] : [];
+    transactionMap.set(row.member_id + "|" + month, { amount: Number(row.amount || 0), rows: matrixRows.concat(manualRows), latest: row.last_paid_at || "", paidDay: row.paid_day || null });
   });
-
+  const members = Array.from(memberMap.values()).sort((a,b)=>String(a.member_no||"").localeCompare(String(b.member_no||"")));
+  if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
   const months = monthList();
   const years = [2026, 2027, 2028, 2029, 2030, 2031];
   const editorRows = [];
@@ -100,7 +77,7 @@ async function loadMatrix() {
         yearTotal += amount;
         const locked = manualRows.length > 0 || matrixRows.length > 1;
         const selected = amount > 0;
-        const savedAt = dateTime(record?.latest);
+        const savedDay = record?.paidDay ? String(record.paidDay) : "";
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
         const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
@@ -109,7 +86,7 @@ async function loadMatrix() {
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
           amountInput +
-          (matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedAt ? '<small class="cell-date">' + esc(savedAt) + '</small>' : ""))) +
+          (matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDay ? '<small class="cell-date paid-date">' + esc(savedDay) + '</small>' : ""))) +
           '</div></td>';
       }).join("");
       const name = member.full_name_bn || member.full_name || "—";
@@ -208,46 +185,10 @@ async function loadMatrix() {
     status.textContent = "সংরক্ষণ হচ্ছে…";
     let changed = 0;
     try {
-      for (const entry of entries) {
-        const reference = matrixPrefix + entry.month + "|" + entry.memberId;
-        const existing = editorRows.find(row => row.memberId === entry.memberId && row.month === entry.month)?.existing || null;
-        if (entry.selected) {
-          if (existing && Number(existing.amount) === entry.amount) continue;
-          if (existing) {
-            const { error } = await supabase.from("financial_transactions")
-              .update({ amount: entry.amount, updated_by: user.id, updated_at: new Date().toISOString() })
-              .eq("id", existing.id);
-            if (error) throw error;
-          } else {
-            const { data: matches, error: lookupError } = await supabase.from("financial_transactions")
-              .select("id,amount").eq("reference_no", reference).limit(2);
-            if (lookupError) throw lookupError;
-            if (matches.length > 1) throw new Error("একই সদস্য ও মাসের একাধিক Matrix Entry পাওয়া গেছে। আগে Duplicate Entry যাচাই করুন।");
-            if (matches.length === 1) {
-              if (Number(matches[0].amount) !== entry.amount) {
-                const { error } = await supabase.from("financial_transactions")
-                  .update({ amount: entry.amount, updated_by: user.id, updated_at: new Date().toISOString() })
-                  .eq("id", matches[0].id);
-                if (error) throw error;
-              } else {
-                continue;
-              }
-            } else {
-              const { error } = await supabase.from("financial_transactions").insert({
-                member_id: entry.memberId, transaction_type: "contribution", amount: entry.amount,
-                transaction_date: entry.month + "-01", description: "Monthly contribution matrix",
-                reference_no: reference, account_type: "bank", direction: "in", created_by: user.id
-              });
-              if (error) throw error;
-            }
-          }
-          changed++;
-        } else if (existing) {
-          const { error } = await supabase.from("financial_transactions").delete().eq("id", existing.id);
-          if (error) throw error;
-          changed++;
-        }
-      }
+      const changes = entries.map(entry => ({ member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0 }));
+      const { data: saved, error } = await supabase.rpc("save_contribution_matrix", { p_idempotency_key: crypto.randomUUID(), p_changes: changes });
+      if (error) throw error;
+      changed = (saved || []).filter(item => item.status !== "unchanged").length;
       status.textContent = changed + "টি পরিবর্তন সংরক্ষিত হয়েছে।";
       toast("Contribution Matrix সংরক্ষণ সম্পন্ন।");
       await loadMatrix();
