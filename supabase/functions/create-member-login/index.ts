@@ -122,8 +122,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const { error: linkError } = await admin.from("members").update({
-    auth_user_id: userId,
-    email
+    auth_user_id: userId
   }).eq("id", member.id).or(`auth_user_id.is.null,auth_user_id.eq.${userId}`);
 
   if (linkError) {
