@@ -68,14 +68,16 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
  <p class="small" style="text-align:center;margin-top:14px"><a href="#" id="forgotPasswordLink">পাসওয়ার্ড ভুলে গেছেন?</a></p>
  <p class="small" style="text-align:center;margin-top:8px"><a href="#" id="resendVerificationLink">Verification email পাননি? আবার পাঠান</a></p>
  <section id="resetPanel" hidden>
-  <h1 data-i18n="resetTitle">নতুন পাসওয়ার্ড সেট করুন</h1>
-  <p class="muted intro" data-i18n="resetIntro">ইমেইলে পাওয়া নিরাপদ লিংক দিয়ে নতুন পাসওয়ার্ড দিন।</p>
+  <h1 data-i18n="resetTitle">পাসওয়ার্ড রিসেট করুন</h1>
+  <p class="muted intro" data-i18n="resetIntro">আপনার Gmail-এ পাঠানো ৬ সংখ্যার কোড লিখুন, তারপর নতুন Password দিন।</p>
   <form id="resetForm">
-   <label for="newPassword" data-i18n="newPasswordLabel">নতুন পাসওয়ার্ড</label>
+   <label for="recoveryCode">Email verification code</label>
+   <input id="recoveryCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="ইমেইলে পাওয়া কোড" required>
+   <label for="newPassword">নতুন পাসওয়ার্ড</label>
    <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
-   <label for="confirmNewPassword" data-i18n="confirmPasswordLabel">আবার লিখুন</label>
+   <label for="confirmNewPassword">নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
    <input id="confirmNewPassword" type="password" autocomplete="new-password" minlength="8" required>
-   <button class="submit" id="resetButton" type="submit" data-i18n="savePassword">পাসওয়ার্ড পরিবর্তন করুন</button>
+   <button class="submit" id="resetButton" type="submit" data-i18n="savePassword">কোড যাচাই করে Password পরিবর্তন করুন</button>
    <div class="message" id="resetMessage" role="status" aria-live="polite"></div>
   </form>
  </section>
@@ -117,8 +119,13 @@ document.getElementById("forgotPasswordLink").addEventListener("click",async eve
   if(error?.code==="over_email_send_rate_limit")showKey("resetRateLimited");
   else if(error)showKey("loginError");
   else{
-   showKey("resetSent");
-   msg.textContent=lang==="bn"?"যদি এই ইমেইলে অ্যাকাউন্ট থাকে, পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে। Inbox/Spam দেখুন।":"If an account exists for this email, a password reset link has been sent. Check Inbox/Spam.";
+   form.hidden=true;
+   document.getElementById("resendVerificationLink").hidden=true;
+   link.hidden=true;
+   resetPanel.hidden=false;
+   resetMessage.textContent=lang==="bn"?"আপনার Email-এ ৬ সংখ্যার Recovery Code পাঠানো হয়েছে। Inbox/Spam দেখুন।":"A 6-digit recovery code has been sent if this email has an account. Check Inbox/Spam.";
+   resetMessage.style.display="block";
+   document.getElementById("recoveryCode").focus();
   }
  }catch(error){showKey("loginError")}
  finally{link.style.pointerEvents=""}
@@ -139,22 +146,36 @@ document.getElementById("resendVerificationLink").addEventListener("click",async
  }catch(error){showKey("resendFailed")}
  finally{delete link.dataset.busy;link.style.pointerEvents=""}
 });
+let recoverySessionReady=false;
 supabase.auth.onAuthStateChange((event,session)=>{
  if(event==="PASSWORD_RECOVERY"&&session){
+  recoverySessionReady=true;
   form.hidden=true;document.querySelector(".security-note").hidden=true;document.querySelectorAll("body > main > p").forEach(x=>x.hidden=true);
   resetPanel.hidden=false;document.getElementById("forgotPasswordLink").hidden=true;
+  document.getElementById("resendVerificationLink").hidden=true;
+  document.getElementById("recoveryCode").required=false;
  }
 });
 document.getElementById("resetForm").addEventListener("submit",async event=>{
  event.preventDefault();
+ const email=document.getElementById("email").value.trim().toLowerCase();
+ const token=document.getElementById("recoveryCode").value.trim();
  const password=document.getElementById("newPassword").value,confirmPassword=document.getElementById("confirmNewPassword").value;
  if(password.length<8){showResetMessage(lang==="bn"?"পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।":"Password must be at least 8 characters.");return}
  if(password!==confirmPassword){showResetMessage(lang==="bn"?"দুটি পাসওয়ার্ড এক নয়।":"The passwords do not match.");return}
- const button=document.getElementById("resetButton");button.disabled=true;
+ if(password.length<8){showResetMessage("Password must be at least 8 characters.");return}
+ const button=document.getElementById("resetButton");button.disabled=true;button.textContent=lang==="bn"?"যাচাই হচ্ছে…":"Verifying…";
+ if(!recoverySessionReady){
+  if(!email||!token){showResetMessage(lang==="bn"?"Email ও Verification Code দিন।":"Enter your email and verification code.");button.disabled=false;button.textContent=tr("savePassword");return}
+  const {error:verifyError}=await supabase.auth.verifyOtp({email,token,type:"recovery"});
+  if(verifyError){showResetMessage(lang==="bn"?"Verification Code সঠিক নয় বা মেয়াদ শেষ। আবার Code নিন।":"Invalid or expired verification code. Request a new code.");button.disabled=false;button.textContent=tr("savePassword");return}
+  recoverySessionReady=true;
+ }
  const {error}=await supabase.auth.updateUser({password});
- if(error)showResetMessage(error.message);
- else{showResetMessage(lang==="bn"?"পাসওয়ার্ড পরিবর্তন হয়েছে। এখন নতুন পাসওয়ার্ড দিয়ে Login করুন।":"Password updated. Sign in with your new password.");await supabase.auth.signOut();setTimeout(()=>location.replace("login.html"),1200)}
- button.disabled=false;
+ if(error){showResetMessage(error.message);button.disabled=false;button.textContent=tr("savePassword");return}
+ showResetMessage(lang==="bn"?"Password পরিবর্তন হয়েছে। নতুন Password দিয়ে Login করুন।":"Password updated. Sign in with your new password.");
+ await supabase.auth.signOut();
+ setTimeout(()=>location.replace("login.html"),1200);
 });
 
 const isPasswordRecovery=location.hash.includes('type=recovery');
