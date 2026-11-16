@@ -332,9 +332,15 @@ async function renderAdmin(){
  if(mErr)throw mErr;
  const {data:signupProfiles,error:signupError}=await supabase.from("profiles").select("id,full_name,email,email_verified_at,role,created_at").in("role",["pending","rejected"]).order("created_at",{ascending:false});
  if(signupError)throw signupError;
+ const linkedAuthIds=members.map(m=>m.auth_user_id).filter(Boolean);
+ const {data:loginProfiles,error:loginProfilesError}=linkedAuthIds.length
+  ?await supabase.from("profiles").select("id,email").in("id",linkedAuthIds)
+  :{data:[],error:null};
+ if(loginProfilesError)throw loginProfilesError;
+ const loginEmailByUserId=new Map((loginProfiles||[]).map(p=>[p.id,p.email]));
  const loginMemberSelect=document.getElementById("loginAccountMember");
  members.filter(m=>m.status==="active").forEach(m=>{const option=document.createElement("option");option.value=m.id;option.textContent=(m.member_no||"")+" · "+m.full_name+(m.auth_user_id?" · Account linked":" · No account");loginMemberSelect.append(option)});
- loginMemberSelect.addEventListener("change",()=>{const selected=members.find(m=>m.id===loginMemberSelect.value);document.getElementById("loginAccountEmail").value=selected?.email||""});
+ loginMemberSelect.addEventListener("change",()=>{const selected=members.find(m=>m.id===loginMemberSelect.value);document.getElementById("loginAccountEmail").value=(selected?.auth_user_id?loginEmailByUserId.get(selected.auth_user_id):"")||selected?.email||""});
  document.getElementById("loginAccountForm").addEventListener("submit",async event=>{
   event.preventDefault();
   const member_id=loginMemberSelect.value,email=document.getElementById("loginAccountEmail").value.trim().toLowerCase();
