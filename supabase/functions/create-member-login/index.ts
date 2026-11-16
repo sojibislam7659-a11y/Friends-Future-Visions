@@ -55,6 +55,11 @@ Deno.serve(async (req: Request) => {
   if (memberError || !member) return json({ error: "Member record not found" }, 404);
   if (member.status !== "active") return json({ error: "Only active members can receive a login account" }, 409);
 
+  const { data: memberEmailMatches, error: memberEmailError } = await admin
+    .from("members").select("id,member_no").ilike("email", email).neq("id", member.id).limit(2);
+  if (memberEmailError) return json({ error: "Could not check duplicate member email" }, 500);
+  if (memberEmailMatches?.length) return json({ error: "এই Email অন্য সদস্যের Member record-এ ব্যবহৃত হচ্ছে। আলাদা Email দিন।" }, 409);
+
   const { data: emailProfiles, error: profileLookupError } = await admin
     .from("profiles").select("id,role,email").ilike("email", email).limit(2);
   if (profileLookupError) return json({ error: "Could not check existing account" }, 500);
@@ -73,6 +78,11 @@ Deno.serve(async (req: Request) => {
   let createdNewUser = false;
 
   if (userId) {
+    const { data: linkedProfile, error: linkedProfileError } = await admin
+      .from("profiles").select("role").eq("id", userId).maybeSingle();
+    if (linkedProfileError || linkedProfile?.role !== "member") {
+      return json({ error: "এই Member-এর linked account Super Admin/অন্যান্য Role-এর হতে পারে। নিরাপত্তার জন্য পরিবর্তন বন্ধ রাখা হয়েছে।" }, 409);
+    }
     const { data: existingResult, error: existingError } = await admin.auth.admin.getUserById(userId);
     const existingUser = existingResult?.user;
     if (existingError || !existingUser) return json({ error: "Linked Auth Account পাওয়া যায়নি। আগে Member link যাচাই করুন।" }, 409);
