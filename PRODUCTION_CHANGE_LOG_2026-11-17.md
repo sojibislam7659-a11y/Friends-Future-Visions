@@ -39,7 +39,7 @@
 - Imported the helper from the shared portal, public DATA page, member profile page, login page, and signup page.
 - Added responsive styling in `public/portal.css`.
 - Static verification: re-fetched all six changed code files from the release branch; confirmed the script import is present in each entry point, the new script contains button type=button and accessible labels, and CSS styles the control.
-- Browser verification and Production deployment are pending; this is not yet live.
+- Merged into Main; live Worker deployment and browser verification remain unconfirmed.
 
 
 ## Rollback procedure
@@ -50,7 +50,7 @@
 
 ## Implementation entries — 2026-11-17
 
-### Frontend changes on `release/production-updates-20261117` (not yet merged or deployed)
+### Frontend changes (merged into Main; live Worker deployment not independently verified)
 - Password visibility: shared accessible show/hide control imported by login, signup, public DATA, member profile, and the shared portal. Static audit of all 25 HTML pages found password inputs only on login and signup; both load the control. Dynamically rendered portal password inputs are covered by the portal import.
 - DATA: all authenticated members use the shared read RPC and can view all active members; member edit controls remain disabled. Super Admin retains matrix editing through an atomic batch RPC. Payment day is editable per cell; members see only the day, while Super Admin can click an amount to view the saved timestamp.
 - DATA charts: added Pie, Column, and Line chart views using local SVG/CSS; no chart CDN or paid API.
@@ -98,5 +98,16 @@
 ### Current data limitations
 - Production still has 7 active members, 0 financial transactions, and 0 configured contribution rates.
 - Until Super Admin sets each member's monthly rate, Personal Due correctly displays `Rate not set`. No ৳2,000 default is assumed.
-- No frontend code has been merged to Main or deployed to the Production Worker yet. The Production database additions are applied and waiting for the release code.
+- Frontend merge confirmed: PR #4 merged at `2026-11-17T08:24:23Z`, Main commit `a01e7f9b3cb24c90029d9832ed93bcfeaf7a6306`. The connected Cloudflare Worker deployment status could not be independently verified in this session; do not treat merge as proof of live deployment.
+- The requested editing is implemented as dedicated page-level editors for structured data (DATA matrix, Personal Due rates, member profile, Rules, Payment, Proof, Admin notices and manual ledger transactions). There is not a universal generic editor that can arbitrarily edit every rendered field on every page; the Admin page also has separate Save actions for separate workflows. This remains a scope gap against the request for one uniform bottom-of-page Save Changes system on every page.
 - Release branch has a dedicated rollback SQL file: `PRODUCTION_ROLLBACK_2026-11-17.sql`. Code backup branch: `backup/main-before-production-changes-20261117`.
+
+
+## Reconnection status — 2026-11-17
+- GitHub connection: verified working.
+- Supabase Production connection: verified working; project status `ACTIVE_HEALTHY`.
+- PR #4: confirmed merged, not merely closed. Merge commit: `a01e7f9b3cb24c90029d9832ed93bcfeaf7a6306`.
+- Main branch HEAD: `a01e7f9b3cb24c90029d9832ed93bcfeaf7a6306`.
+- CI: the release PR's static JavaScript syntax and whitespace check had passed before merge. No separate push-to-Main workflow run was returned for the merge commit.
+- Live Production Worker: not independently confirmed from this session. Direct network/browser verification was unavailable; do not claim that the deployment is live until the Worker URL is checked.
+- Authenticated Super Admin and Member browser QA remains outstanding.
