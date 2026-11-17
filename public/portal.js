@@ -159,7 +159,7 @@ async function renderDue(){
   document.getElementById("saveDueRates")?.addEventListener("click",async()=>{
    const dateInput=document.getElementById("dueEffectiveFrom");
    const effectiveFrom=dateInput.value;
-   if(!effectiveFrom||new Date(effectiveFrom+"T00:00:00").getDate()!==1){toast("কার্যকর তারিখ মাসের ১ তারিখ হতে হবে।",true);dateInput.focus();return}
+   if(!effectiveFrom||new Date(effectiveFrom+"T00:00:00").getDate()!==1||effectiveFrom<"2026-12-01"||effectiveFrom>="2031-12-01"){toast("কার্যকর তারিখ ১ তারিখ হতে হবে এবং Dec 2026–Nov 2031-এর মধ্যে হতে হবে।",true);dateInput.focus();return}
    const inputs=Array.from(document.querySelectorAll(".due-rate-input"));
    const changes=inputs.filter(input=>input.value.trim()!==""&&Number(input.value)!==Number(input.dataset.current||0))
     .map(input=>({member_id:input.dataset.rateMember,amount:Number(input.value),effective_from:effectiveFrom}));
