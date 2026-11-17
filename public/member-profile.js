@@ -143,6 +143,7 @@ async function main(){
     uploaded.push({bucket,path,oldPath:m[field]||null});
     changes[field]=path;
    };
+   let databaseSaved=false;
    try{
     await uploadPhoto(profileFile,"member-profile-photos","profile_photo_path","profile");
     await uploadPhoto(nomineeFile,"member-private-documents","nominee_photo_path","nominee");
@@ -153,11 +154,22 @@ async function main(){
      p_rate_effective_from:monthlyChanged?effectiveInput.value:null
     });
     if(error)throw error;
-    for(const item of uploaded){if(item.oldPath&&item.oldPath!==item.path)await supabase.storage.from(item.bucket).remove([item.oldPath])}
+    databaseSaved=true;
+    for(const item of uploaded){
+     if(item.oldPath&&item.oldPath!==item.path){
+      try{await supabase.storage.from(item.bucket).remove([item.oldPath])}
+      catch(cleanupError){console.warn("Old member photo cleanup failed",cleanupError)}
+     }
+    }
     alert("Member-এর সব পরিবর্তন সফলভাবে Save হয়েছে।");
     location.reload();
    }catch(error){
-    for(const item of uploaded)await supabase.storage.from(item.bucket).remove([item.path]);
+    if(!databaseSaved){
+     for(const item of uploaded){
+      try{await supabase.storage.from(item.bucket).remove([item.path])}
+      catch(cleanupError){console.warn("Temporary photo cleanup failed",cleanupError)}
+     }
+    }
     alert("Save হয়নি: "+(error?.message||String(error))+". আগের তথ্য অক্ষত আছে; আবার পরীক্ষা করুন।");
     button.disabled=false;
    }
