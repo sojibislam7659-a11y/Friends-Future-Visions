@@ -90,15 +90,17 @@ async function loadMatrix() {
         const locked = manualRows.length > 0 || matrixRows.length > 1;
         const selected = amount > 0;
         const savedDay = record?.paidDay ? String(record.paidDay) : "";
+        const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDay ? '<small class="cell-date paid-date">' + esc(savedDay) + '</small>' : ""));
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
         const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
+        const dayInput = isSuper && !locked ? '<input type="number" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" min="1" max="' + new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate() + '" step="1" inputmode="numeric" value="' + esc(savedDay || "1") + '" aria-label="Payment day for ' + esc(member.full_name) + ' in ' + esc(month) + '">' : "";
         if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
           amountInput +
-          (matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDay ? '<small class="cell-date paid-date">' + esc(savedDay) + '</small>' : ""))) +
+          (dayInput || cellStatus) +
           '</div></td>';
       }).join("");
       const name = member.full_name_bn || member.full_name || "—";
@@ -210,13 +212,26 @@ async function loadMatrix() {
     });
     const invalid = entries.find(entry => entry.selected && (!(entry.amount > 0) || !Number.isFinite(entry.amount)));
     if (invalid) { toast("টিক দেওয়া প্রতিটি সদস্যের Amount শূন্যের বেশি হতে হবে।", true); return; }
+    const invalidDay = entries.find(entry => {
+      if (!entry.selected) return false;
+      const [year,month] = entry.month.split("-").map(Number);
+      const maxDay = new Date(year,month,0).getDate();
+      const dayInput = root.querySelector('.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]');
+      const paidDay = Number(dayInput?.value || 1);
+      return !Number.isInteger(paidDay) || paidDay < 1 || paidDay > maxDay;
+    });
+    if (invalidDay) { toast("প্রতিটি নির্বাচিত জমার সঠিক তারিখের দিন লিখুন।", true); return; }
     if (!window.confirm("Contribution Matrix-এর সব পরিবর্তন Confirm করে Save করবেন?")) return;
 
     saveButton.disabled = true;
     status.textContent = "সংরক্ষণ হচ্ছে…";
     let changed = 0;
     try {
-      const changes = entries.map(entry => ({ member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0 }));
+      const changes = entries.map(entry => {
+        const daySelector = '.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]';
+        const dayInput = root.querySelector(daySelector);
+        return { member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0, paid_day: Number(dayInput?.value || 1) };
+      });
       const { data: saved, error } = await supabase.rpc("save_contribution_matrix", { p_idempotency_key: crypto.randomUUID(), p_changes: changes });
       if (error) throw error;
       changed = (saved || []).filter(item => item.status !== "unchanged").length;
