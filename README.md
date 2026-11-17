@@ -56,5 +56,5 @@ Mobile-first private committee portal.
 ## 2026-11-17 release status
 
 - Main includes the shared DATA/Due views, Super Admin editors, password visibility controls, charts, and the public Rules fallback.
-- Production Supabase schema additions are applied; the UI requires the latest Main commit to be deployed by Cloudflare.
+- Production Supabase schema additions are applied, and the Cloudflare Worker has been verified serving the latest Main release assets. Authenticated browser QA remains pending.
 - Current Production data at release time: 7 active members, no financial transactions, and no configured contribution rates. Set each member's approved rate before relying on Due totals.
