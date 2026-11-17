@@ -150,7 +150,7 @@ async function renderDue(){
    .eq("status","active").order("member_no");
   if(rateError)throw rateError;
   const nextMonth=new Date();nextMonth.setDate(1);nextMonth.setMonth(nextMonth.getMonth()+1);
-  const effectiveDefault=localDate(nextMonth);
+  const effectiveDefault=nextMonth.getFullYear()+"-"+String(nextMonth.getMonth()+1).padStart(2,"0")+"-01";
   const rateRows=(rateMembers||[]).map(m=>'<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+esc(m.monthly_contribution?money(m.monthly_contribution):"Not set")+'</td><td><input class="due-rate-input" data-rate-member="'+esc(m.id)+'" data-current="'+Number(m.monthly_contribution||0)+'" type="number" min="1" step="1" inputmode="numeric" value="'+(m.monthly_contribution?esc(m.monthly_contribution):"")+'" aria-label="New monthly rate for '+esc(m.full_name)+'"></td></tr>').join("");
   rateEditor='<section class="section"><div class="section-head"><h2>মাসিক জমার হার সম্পাদনা</h2><span class="pill">Super Admin only</span></div><p class="muted small">প্রত্যেক সদস্যের মাসিক হার আলাদাভাবে দিন। একবার Save করলে সব পরিবর্তন একসঙ্গে সংরক্ষিত হবে।</p><div class="field due-effective-field"><label for="dueEffectiveFrom">কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="dueEffectiveFrom" type="date" value="'+effectiveDefault+'"></div><div class="table-wrap"><table class="due-rate-table"><thead><tr><th>Member ID</th><th>Name</th><th>Current rate</th><th>New monthly rate</th></tr></thead><tbody>'+rateRows+'</tbody></table></div><div class="form-actions"><button type="button" id="saveDueRates">Save Changes</button><span id="dueRateStatus" class="muted small"></span></div></section>';
  }
@@ -197,7 +197,7 @@ async function renderProofs(){
  if(access.role!=="super_admin")proofQuery=proofQuery.eq("published",true);
  const {data,error}=await proofQuery;if(error)throw error;
  const counts={};(data||[]).forEach(p=>{const k=p.proof_month.slice(0,7);counts[k]=(counts[k]||0)+1});
- const months=[];for(let i=0;i<60;i++){const d=new Date(2026,11+i,1);months.push(localDate(d).slice(0,7))}
+ const months=[];for(let i=0;i<60;i++){const d=new Date(2026,11+i,1);months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))}
  const cards=months.map(k=>'<button type="button" class="proof-month-card" data-proof-month="'+k+'"><strong>'+esc(monthText(k))+'</strong><span>'+String(counts[k]||0)+' files</span></button>').join("");
  setPage('<h1>'+t("মাসিক জমা ও বিনিয়োগের প্রমাণ","Monthly deposit and investment proofs")+'</h1><p class="lead">ডিসেম্বর ২০২৬ থেকে নভেম্বর ২০৩১ · প্রতি মাসে একটি বা একাধিক রসিদ। শুধু নির্বাচিত মাসের ফাইল লোড হবে।</p><div class="proof-month-grid">'+cards+'</div><section class="section" id="proofMonthDetail">'+empty("ফাইল দেখতে অথবা আপলোড করতে একটি মাস নির্বাচন করুন।")+'</section>');
  document.querySelectorAll("[data-proof-month]").forEach(button=>button.addEventListener("click",()=>loadProofMonth(button.dataset.proofMonth,data)));
