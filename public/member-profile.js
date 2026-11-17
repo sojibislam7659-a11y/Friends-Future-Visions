@@ -122,7 +122,7 @@ async function main(){
    if(monthlyChanged){
     const amount=Number(monthlyInput.value),effective=effectiveInput.value;
     if(!Number.isFinite(amount)||amount<=0){alert("মাসিক জমার পরিমাণ শূন্যের বেশি হতে হবে।");monthlyInput.focus();return}
-    if(!effective||!/^\d{4}-\d{2}-01$/.test(effective)){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ হতে হবে।");effectiveInput.focus();return}
+    if(!effective||effective.length!==10||!effective.endsWith("-01")||effective<"2026-12-01"||effective>="2031-12-01"){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ এবং Dec 2026–Nov 2031-এর মধ্যে হতে হবে।");effectiveInput.focus();return}
    }
    const profileFile=document.getElementById("edit_profile_photo")?.files?.[0]||null;
    const nomineeFile=document.getElementById("edit_nominee_photo")?.files?.[0]||null;
