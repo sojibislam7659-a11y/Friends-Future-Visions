@@ -601,3 +601,17 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
 .matrix-day{width:48px;min-height:28px;padding:4px 5px;border:1px solid #a8c8b4;border-radius:7px;background:#f1f8f2;color:#173d36;font:700 11px Inter,"Noto Sans Bengali",sans-serif;text-align:center}
 .matrix-day:disabled{opacity:.75}
 @media(max-width:640px){.matrix-day{width:48px;min-height:32px;font-size:12px}.matrix-cell{gap:7px}}
+
+
+/* Unified Super Admin editors for proofs, notices and payment settings */
+.proof-meta-row,.notice-edit-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px 0;border-bottom:1px solid var(--border,#d9e5df)}
+.proof-meta-row .field:nth-child(3),.notice-edit-row .field:nth-child(4){grid-column:1/-1}
+.payment-method-form{min-width:0;border:1px solid var(--border,#d9e5df);border-radius:12px;padding:14px}
+.payment-method-form legend{font-weight:800;padding:0 8px}
+.payment-method-form .field{margin-bottom:10px}
+.payment-method-form input[type="text"],.payment-method-form input[type="tel"]{max-width:100%}
+@media(max-width:640px){
+ .proof-meta-row,.notice-edit-row{grid-template-columns:minmax(0,1fr);gap:8px}
+ .proof-meta-row .field:nth-child(3),.notice-edit-row .field:nth-child(4){grid-column:auto}
+ .payment-method-form{padding:12px}
+}
