@@ -28,6 +28,12 @@
 - Current Main does not provide shared member contribution matrix to members.
 
 ## Change entries
+### 2026-11-17 — Contribution matrix default amount correction
+- Removed the unsafe hardcoded ৳2,000 default from the Main contribution matrix.
+- A member's configured `monthly_contribution` is now used as the default; if no rate exists, the Super Admin is prompted to enter the amount rather than silently assuming one.
+- Static verification: confirmed the hardcoded `amount.value = "2000"` and ৳2,000 default notice are absent, and the configured-rate fallback and warning are present.
+- Production deployment and authenticated browser verification are pending.
+
 ### 2026-11-17 — Password visibility controls
 - Added `public/password-visibility.js` to add accessible show/hide buttons to password inputs, including inputs added later by dynamic page rendering.
 - Imported the helper from the shared portal, public DATA page, member profile page, login page, and signup page.
