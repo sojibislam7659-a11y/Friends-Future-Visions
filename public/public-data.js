@@ -1,3 +1,4 @@
+import "./password-visibility.js";
 import { supabase, supabaseReady } from "./supabase-client.js";
 
 const root = document.getElementById("publicData");
