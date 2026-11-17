@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -22,5 +24,5 @@ jobs:
         run: |
           set -e
           find public -type f -name '*.js' -print0 | xargs -0 -n1 node --check
-      - name: Check whitespace errors
-        run: git diff --check
+      - name: Check committed diff whitespace
+        run: git diff --check origin/main...HEAD
