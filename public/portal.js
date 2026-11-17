@@ -302,6 +302,7 @@ async function loadProofMonth(month,allProofs){
    const button=document.getElementById("savePaymentSettings"),status=document.getElementById("paymentSettingsStatus");
    button.disabled=true;status.textContent="সংরক্ষণ হচ্ছে…";
    const newPaths=[];
+   let paymentSaved=false;
    try{
     for(const item of uploads){
      const ext=item.file.type==="image/png"?"png":item.file.type==="image/jpeg"?"jpg":"webp";
@@ -313,6 +314,7 @@ async function loadProofMonth(month,allProofs){
     }
     const {error:saveError}=await supabase.from("payment_methods").upsert(updates,{onConflict:"method"});
     if(saveError)throw saveError;
+    paymentSaved=true;
     for(const method of ["bkash","nagad"]){
      const existing=methods.find(m=>m.method===method),updated=updates.find(m=>m.method===method);
      if(existing?.qr_path&&existing.qr_path!==updated.qr_path){
@@ -323,9 +325,14 @@ async function loadProofMonth(month,allProofs){
     toast("Payment settings সংরক্ষণ সম্পন্ন।");
     await renderPayment();
    }catch(error){
-    for(const path of newPaths){try{await supabase.storage.from("payment-qr").remove([path])}catch(cleanupError){console.warn("Temporary QR cleanup failed",cleanupError)}}
-    status.textContent="Save হয়নি।";
-    toast("Payment settings save error: "+(error.message||"Unknown error"),true);
+    if(!paymentSaved){
+     for(const path of newPaths){try{await supabase.storage.from("payment-qr").remove([path])}catch(cleanupError){console.warn("Temporary QR cleanup failed",cleanupError)}}
+     status.textContent="Save হয়নি।";
+     toast("Payment settings save error: "+(error.message||"Unknown error"),true);
+    }else{
+     status.textContent="Database-এ Save হয়েছে; refresh-এ সমস্যা হয়েছে।";
+     toast("Payment settings Save হয়েছে, তবে page refresh করতে সমস্যা হয়েছে।",true);
+    }
     button.disabled=false;
    }
   });
