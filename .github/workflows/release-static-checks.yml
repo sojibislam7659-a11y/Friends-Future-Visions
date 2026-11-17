@@ -3,9 +3,11 @@ name: Release static checks
 on:
   push:
     branches:
+      - development
       - release/production-updates-20261117
   pull_request:
     branches:
+      - development
       - main
 
 jobs:
