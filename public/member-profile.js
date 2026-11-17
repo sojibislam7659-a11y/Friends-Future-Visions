@@ -1,3 +1,4 @@
+import "./password-visibility.js";
 import { supabase } from "./supabase-client.js";
 import { requireRole } from "./auth-guard.js";
 
