@@ -86,6 +86,7 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
  <p class="small" style="text-align:center;margin-top:14px"><span data-i18n="newMember">নতুন সদস্য?</span> <a href="signup.html" data-i18n="createAccount">নিজে অ্যাকাউন্ট তৈরি করুন</a></p>
 </main>
 <script type="module">
+import "./password-visibility.js";
 import {supabase,supabaseReady} from "./supabase-client.js";
 const form=document.getElementById("loginForm"),btn=document.getElementById("loginButton"),msg=document.getElementById("message");
 let lang="bn";
