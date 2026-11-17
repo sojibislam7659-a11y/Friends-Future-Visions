@@ -73,6 +73,18 @@ async function summary(){
  if(error)throw error;
  return data||{};
 }
+function dashboardChartMarkup(summaryData){
+ const rows=(summaryData.monthly_trend||[]).slice(-12);
+ const values=rows.map(r=>Number(r.contributions||0));
+ const max=Math.max(1,...values);
+ const bars=rows.map((r,i)=>"<div class=\"mini-bar-item\"><span>"+esc(String(r.month||"").slice(5))+"</span><i style=\"height:"+Math.max(3,100*values[i]/max)+"%\"></i></div>").join("");
+ const pts=values.map((v,i)=>(12+i*476/Math.max(1,values.length-1))+","+(178-150*v/max)).join(" ");
+ const line="<svg viewBox=\"0 0 500 200\" class=\"matrix-chart-svg\" role=\"img\" aria-label=\"Monthly contributions\"><polyline points=\""+pts+"\" fill=\"none\" stroke=\"#3976d2\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>";
+ const parts=[{name:"Contributions",value:Number(summaryData.total_contributions||0),color:"#15966f"},{name:"Expenses",value:Number(summaryData.total_expenses||0),color:"#d56d72"},{name:"Investment",value:Number(summaryData.investment_balance||0),color:"#3976d2"}];
+ const total=parts.reduce((n,x)=>n+x.value,0);let angle=0;const stops=parts.map(x=>{const start=angle;angle+=total?x.value/total*360:0;return x.color+" "+start+"deg "+angle+"deg"}).join(",");
+ const pie="<div class=\"matrix-pie\" style=\"background:conic-gradient("+stops+")\"></div><div class=\"matrix-chart-legend\">"+parts.map(x=>"<span><i style=\"background:"+x.color+"\"></i>"+x.name+" · "+money(x.value)+"</span>").join("")+"</div>";
+ return "<section class=\"section matrix-charts\"><h2>"+t("আর্থিক চার্ট","Financial charts")+"</h2><div class=\"matrix-chart-grid\"><article class=\"card\"><strong>"+t("মাসিক জমা · Column","Monthly contributions · Column")+"</strong><div class=\"mini-bars\">"+bars+"</div></article><article class=\"card\"><strong>"+t("জমার প্রবণতা · Line","Contribution trend · Line")+"</strong>"+line+"</article><article class=\"card\"><strong>"+t("আর্থিক অনুপাত · Pie","Financial mix · Pie")+"</strong>"+pie+"</article></div></section>";
+}
 async function renderDashboard(){
  const s=await Promise.race([
   summary(),
@@ -87,7 +99,7 @@ async function renderDashboard(){
  card(t("মোট ব্যয়","Total expenses"),money(s.total_expenses))+
  card(t("অন্যান্য আয় + বিনিয়োগ লাভ","Other income + investment profit"),money(Number(s.other_income||0)+Number(s.investment_profit||0)))+
  card(t("লেনদেন সংখ্যা","Transactions"),String(s.transaction_count||0),s.last_updated?t("সর্বশেষ আপডেট: ","Last updated: ")+new Date(s.last_updated).toLocaleString():"")
- +'</div><div class="notice">'+t("এই হিসাব Database-এর লেনদেন থেকে তৈরি। এখনো কোনো লেনদেন না থাকলে শূন্য দেখাবে; পুরোনো বা প্রাথমিক ব্যালেন্স Super Admin এন্ট্রি না করা পর্যন্ত এখানে যোগ হবে না।","Figures are calculated from database transactions. Zero means no ledger entries have been recorded; historical or opening balances must be entered by the Super Admin.")+'</div><section class="section"><div class="section-head"><h2>'+t("সাম্প্রতিক নোটিশ","Recent notices")+'</h2><span class="pill">'+t("লগইন করা সদস্যদের জন্য","For signed-in users")+'</span></div><div id="noticeList" class="list">'+empty(t("কোনো প্রকাশিত নোটিশ নেই।","No published notices."))+'</div></section><section class="section"><h2>'+t("আপনার নোটিফিকেশন","Your notifications")+'</h2><div id="inboxList" class="list">'+empty(t("কোনো নোটিফিকেশন নেই।","No notifications."))+'</div></section><div class="notice">'+t("নোটিফিকেশনের বিস্তারিত দেখতে লগইন করো। Push alert শুধু সাধারণ বার্তা দেখাবে।","Sign in to view notification details. Push alerts display only a generic message.")+'</div><div class="form-actions"><button class="secondary" id="enablePush">এই ডিভাইসে Push চালু করুন</button></div>');
+ +'</div>'+dashboardChartMarkup(s)+'<div class="notice">'+t("এই হিসাব Database-এর লেনদেন থেকে তৈরি। এখনো কোনো লেনদেন না থাকলে শূন্য দেখাবে; পুরোনো বা প্রাথমিক ব্যালেন্স Super Admin এন্ট্রি না করা পর্যন্ত এখানে যোগ হবে না।","Figures are calculated from database transactions. Zero means no ledger entries have been recorded; historical or opening balances must be entered by the Super Admin.")+'</div><section class="section"><div class="section-head"><h2>'+t("সাম্প্রতিক নোটিশ","Recent notices")+'</h2><span class="pill">'+t("লগইন করা সদস্যদের জন্য","For signed-in users")+'</span></div><div id="noticeList" class="list">'+empty(t("কোনো প্রকাশিত নোটিশ নেই।","No published notices."))+'</div></section><section class="section"><h2>'+t("আপনার নোটিফিকেশন","Your notifications")+'</h2><div id="inboxList" class="list">'+empty(t("কোনো নোটিফিকেশন নেই।","No notifications."))+'</div></section><div class="notice">'+t("নোটিফিকেশনের বিস্তারিত দেখতে লগইন করো। Push alert শুধু সাধারণ বার্তা দেখাবে।","Sign in to view notification details. Push alerts display only a generic message.")+'</div><div class="form-actions"><button class="secondary" id="enablePush">এই ডিভাইসে Push চালু করুন</button></div>');
  document.getElementById("enablePush").addEventListener("click",async()=>{try{await enablePush(supabase,access.session.user.id);toast("এই ডিভাইসে Push চালু হয়েছে।")}catch(e){toast(e.message||"Push চালু করা যায়নি।")}});
  const [notices,inbox]=await Promise.all([
   supabase.from("notices").select("id,title,body,notice_type,meeting_at,published_at").eq("published",true).order("published_at",{ascending:false}).limit(8),
