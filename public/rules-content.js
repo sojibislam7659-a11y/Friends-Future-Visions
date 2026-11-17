@@ -3,18 +3,18 @@ const root=document.getElementById("rulesContent");
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const empty=m=>'<div class="empty">'+esc(m)+'</div>';
 async function load(){
- if(!supabaseReady){root.innerHTML=empty("Rules service is unavailable.");return}
+ if(!supabaseReady)return
  const {data:sessionData}=await supabase.auth.getSession();
  const user=sessionData?.session?.user||null;
  let isSuper=false;
  if(user){
   const {data:profile,error:profileError}=await supabase.from("profiles").select("role").eq("id",user.id).maybeSingle();
-  if(profileError){root.innerHTML=empty(profileError.message);return}
+  if(profileError)return
   isSuper=profile?.role==="super_admin";
  }
  const {data:rules,error}=await supabase.from("committee_rules").select("id,rule_key,title,body,sort_order,is_active").order("sort_order");
- if(error){root.innerHTML=empty(error.message);return}
- if(!rules?.length){root.innerHTML=empty("এখনো কোনো নিয়ম প্রকাশ করা হয়নি।");return}
+ if(error)return
+ if(!rules?.length)return
  if(!isSuper){
   root.innerHTML=rules.filter(rule=>rule.is_active).map(rule=>'<section class="section"><h2>'+esc(rule.title)+'</h2><p>'+esc(rule.body)+'</p></section>').join("")||empty("এখনো কোনো প্রকাশিত নিয়ম নেই।");
   return;
