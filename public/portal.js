@@ -238,7 +238,7 @@ async function loadProofMonth(month,allProofs){
    const {data,error}=await supabase.rpc("save_committee_proof_metadata",{p_changes:changes});
    if(error){status.textContent="Save হয়নি।";toast(error.message,true);button.disabled=false;return}
    status.textContent=(data?.saved||changes.length)+"টি Proof record Save হয়েছে।";
-   toast("Proof তথ্য সংরক্ষণ সম্পন্ন।");await renderProofs();
+   toast("Proof তথ্য সংরক্ষণ সম্পন্ন।");await renderProofs();[...document.querySelectorAll("[data-proof-month]")].find(button=>button.dataset.proofMonth===month)?.click();
   });
   const form=document.getElementById("proofUploadForm"),input=document.getElementById("proofFilesInput"),drop=document.getElementById("proofDropzone");
   drop.addEventListener("dragover",event=>{event.preventDefault();drop.classList.add("dragover")});
@@ -262,7 +262,7 @@ async function loadProofMonth(month,allProofs){
     success++;
    }
    status.textContent=success+" / "+files.length+" uploaded";
-   toast(success+"টি ফাইল আপলোড হয়েছে।");await renderProofs();
+   toast(success+"টি ফাইল আপলোড হয়েছে।");await renderProofs();[...document.querySelectorAll("[data-proof-month]")].find(button=>button.dataset.proofMonth===month)?.click();
   });
  }
 }async function renderPayment(){
