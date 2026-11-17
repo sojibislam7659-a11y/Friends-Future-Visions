@@ -28,7 +28,13 @@
 - Current Main does not provide shared member contribution matrix to members.
 
 ## Change entries
-_No implementation changes recorded yet._
+### 2026-11-17 — Password visibility controls
+- Added `public/password-visibility.js` to add accessible show/hide buttons to password inputs, including inputs added later by dynamic page rendering.
+- Imported the helper from the shared portal, public DATA page, member profile page, login page, and signup page.
+- Added responsive styling in `public/portal.css`.
+- Static verification: re-fetched all six changed code files from the release branch; confirmed the script import is present in each entry point, the new script contains button type=button and accessible labels, and CSS styles the control.
+- Browser verification and Production deployment are pending; this is not yet live.
+
 
 ## Rollback procedure
 - Frontend rollback: restore Main to the pre-change commit by reverting the release merge commit (preferred) or moving Main back to baseline SHA only if no later unrelated commits exist. Keep the backup branch immutable.
