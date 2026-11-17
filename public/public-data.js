@@ -17,10 +17,14 @@ const monthList = () => {
   return result;
 };
 const monthName = key => new Date(key + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short" });
-const dateTime = value => value ? new Date(value).toLocaleString("en-GB", {
-  timeZone: "Asia/Dhaka", day: "2-digit", month: "short", year: "numeric",
-  hour: "2-digit", minute: "2-digit"
-}) : "";
+const dateTime = value => {
+  if (!value) return "";
+  const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Dhaka", day: "2-digit", month: "2-digit", year: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: true
+  }).formatToParts(new Date(value)).map(part => [part.type, part.value]));
+  return parts.day + "." + parts.month + "." + parts.year + " at " + parts.hour + "." + parts.minute + parts.dayPeriod.toLowerCase();
+};
 
 function toast(message, isError = false) {
   const node = document.createElement("div");
@@ -46,43 +50,27 @@ async function loadMatrix() {
   }
   const isSuper = profile.role === "super_admin";
 
-  let memberQuery = supabase.from("members")
-    .select("id,member_no,full_name,full_name_bn,status,monthly_contribution")
-    .order("member_no");
-  if (isSuper) memberQuery = memberQuery.eq("status", "active");
-  else memberQuery = memberQuery.eq("auth_user_id", user.id).eq("status", "active");
-
-  const { data: members, error: memberError } = await memberQuery;
-  if (memberError) throw memberError;
-  if (!members?.length) {
-    root.innerHTML = '<h1>Member Contribution Matrix</h1>' + empty("এখনো কোনো Active Member পাওয়া যায়নি।");
-    return;
-  }
-
-  const { data: transactions, error: transactionError } = await supabase
-    .from("financial_transactions")
-    .select("id,member_id,amount,transaction_date,created_at,updated_at,reference_no,transaction_type,direction")
-    .in("member_id", members.map(member => member.id))
-    .eq("transaction_type", "contribution")
-    .eq("direction", "in")
-    .gte("transaction_date", "2026-12-01")
-    .lt("transaction_date", "2031-12-01")
-    .order("created_at", { ascending: true });
-  if (transactionError) throw transactionError;
-
+  const { data: sharedRows, error: sharedError } = await supabase.rpc("get_member_shared_financial_data");
+  if (sharedError) throw sharedError;
+  const memberMap = new Map();
   const transactionMap = new Map();
   const matrixPrefix = "FFV_MATRIX|";
-  (transactions || []).forEach(transaction => {
-    const month = String(transaction.transaction_date).slice(0, 7);
-    const key = transaction.member_id + "|" + month;
-    if (!transactionMap.has(key)) transactionMap.set(key, { amount: 0, rows: [], latest: "" });
-    const item = transactionMap.get(key);
-    item.amount += Number(transaction.amount || 0);
-    item.rows.push(transaction);
-    const stamp = transaction.updated_at || transaction.created_at || "";
-    if (stamp > item.latest) item.latest = stamp;
+  (sharedRows || []).forEach(row => {
+    if (!memberMap.has(row.member_id)) memberMap.set(row.member_id, { id: row.member_id, member_no: row.member_no, full_name: row.full_name, full_name_bn: row.full_name_bn, status: "active" });
+    const month = String(row.contribution_month).slice(0, 7);
+    const matrixRows = Number(row.matrix_count || 0) > 0 ? [{ id: null, amount: Number(row.amount || 0), reference_no: matrixPrefix + month + "|" + row.member_id }] : [];
+    const manualRows = row.has_manual ? [{ id: null, amount: Number(row.amount || 0), reference_no: "MANUAL" }] : [];
+    transactionMap.set(row.member_id + "|" + month, { amount: Number(row.amount || 0), rows: matrixRows.concat(manualRows), latest: row.last_paid_at || "", paidDay: row.paid_day || null });
   });
-
+  const members = Array.from(memberMap.values()).sort((a,b)=>String(a.member_no||"").localeCompare(String(b.member_no||"")));
+  if (isSuper) {
+    const { data: rateMembers, error: rateError } = await supabase.from("members")
+      .select("id,monthly_contribution").eq("status", "active");
+    if (rateError) throw rateError;
+    const rateMap = new Map((rateMembers || []).map(member => [member.id, Number(member.monthly_contribution || 0)]));
+    members.forEach(member => { member.monthly_contribution = rateMap.get(member.id) || 0; });
+  }
+  if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
   const months = monthList();
   const years = [2026, 2027, 2028, 2029, 2030, 2031];
   const editorRows = [];
@@ -101,16 +89,16 @@ async function loadMatrix() {
         yearTotal += amount;
         const locked = manualRows.length > 0 || matrixRows.length > 1;
         const selected = amount > 0;
-        const savedAt = dateTime(record?.latest);
+        const savedDay = record?.paidDay ? String(record.paidDay) : "";
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
-        const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
+        const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
         if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
           amountInput +
-          (matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedAt ? '<small class="cell-date">' + esc(savedAt) + '</small>' : ""))) +
+          (matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDay ? '<small class="cell-date paid-date">' + esc(savedDay) + '</small>' : ""))) +
           '</div></td>';
       }).join("");
       const name = member.full_name_bn || member.full_name || "—";
@@ -134,11 +122,25 @@ async function loadMatrix() {
   root.innerHTML = '<h1>Member Contribution Matrix</h1>' +
     '<p class="lead">' + (isSuper
       ? 'প্রতি মাসে সদস্যের জমা Checkbox দিয়ে নির্বাচন করুন। Amount পরিবর্তন করা যাবে; সব পরিবর্তন Confirm & Save করলে সংরক্ষিত হবে।'
-      : 'এখানে শুধু আপনার নিজের মাসভিত্তিক জমার তথ্য দেখানো হচ্ছে।') + '</p>' +
+      : 'এখানে সব সক্রিয় সদস্যের মাসভিত্তিক জমা দেখা যাবে। আপনি শুধু দেখতে পারবেন; পরিবর্তন করতে পারবেন না।') + '</p>' +
     (isSuper ? '<div class="notice">সদস্যের নির্ধারিত মাসিক জমার হার থাকলে সেটি প্রাথমিক Amount হিসেবে আসবে। হার নির্ধারিত না থাকলে Amount নিজে লিখুন। Checkbox উঠালে Amount হবে ৳0।</div>' : "") +
     tables +
     (isSuper ? '<div class="form-actions matrix-save-actions"><button type="button" id="saveMatrix">Confirm &amp; Save</button><span id="matrixSaveStatus" class="muted small"></span></div>' : "");
 
+  const monthlyTotals = new Map();
+  (sharedRows || []).forEach(row => { const k=String(row.contribution_month).slice(0,7); monthlyTotals.set(k,(monthlyTotals.get(k)||0)+Number(row.amount||0)); });
+  const chartKeys=Array.from(monthlyTotals.keys()).sort().filter(k=>monthlyTotals.get(k)>0).slice(-12);
+  const chartValues=chartKeys.map(k=>monthlyTotals.get(k));
+  const chartMax=Math.max(1,...chartValues);
+  const barHtml=chartKeys.map((k,i)=>"<div class=\"mini-bar-item\"><span>"+esc(k.slice(5))+"</span><i style=\"height:"+Math.max(3,100*chartValues[i]/chartMax)+"%\"></i></div>").join("");
+  const points=chartValues.map((v,i)=>{const x=12+(i*476/Math.max(1,chartValues.length-1));const y=178-(150*v/chartMax);return x+","+y;}).join(" ");
+  const lineHtml="<svg viewBox=\"0 0 500 200\" class=\"matrix-chart-svg\" role=\"img\" aria-label=\"Monthly contribution trend\"><line x1=\"8\" y1=\"180\" x2=\"492\" y2=\"180\" stroke=\"currentColor\" opacity=\".2\"/><polyline points=\""+points+"\" fill=\"none\" stroke=\"#3976d2\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>";
+  const memberTotals=members.map(m=>({name:m.full_name_bn||m.full_name,value:(sharedRows||[]).filter(r=>r.member_id===m.id).reduce((n,r)=>n+Number(r.amount||0),0)}));
+  const pieTotal=memberTotals.reduce((n,x)=>n+x.value,0);let angle=0;const colors=["#15966f","#3976d2","#e0a43b","#9a72ce","#d56d72","#48a9b5"];
+  const stops=memberTotals.filter(x=>x.value>0).map((x,i)=>{const begin=angle;angle+=pieTotal?x.value/pieTotal*360:0;return colors[i%colors.length]+" "+begin+"deg "+angle+"deg";}).join(",");
+  const legend=memberTotals.map((x,i)=>"<span><i style=\"background:"+colors[i%colors.length]+"\"></i>"+esc(x.name)+" · "+money(x.value)+"</span>").join("");
+  root.insertAdjacentHTML("beforeend","<section class=\"section matrix-charts\"><div class=\"section-head\"><h2>Contribution Charts</h2><button type=\"button\" class=\"secondary\" id=\"toggleMatrixCharts\" aria-expanded=\"false\">See Charts</button></div><div id=\"matrixChartsPanel\" hidden><div class=\"matrix-chart-grid\"><article class=\"card\"><strong>Monthly contribution · Column</strong><div class=\"mini-bars\">"+barHtml+"</div></article><article class=\"card\"><strong>Monthly trend · Line</strong>"+lineHtml+"</article><article class=\"card\"><strong>Member share · Pie</strong><div class=\"matrix-pie\" style=\"background:conic-gradient("+stops+")\"></div><div class=\"matrix-chart-legend\">"+legend+"</div></article></div></div></section>");
+  document.getElementById("toggleMatrixCharts")?.addEventListener("click",()=>{const panel=document.getElementById("matrixChartsPanel"),button=document.getElementById("toggleMatrixCharts");panel.hidden=!panel.hidden;button.setAttribute("aria-expanded",String(!panel.hidden));button.textContent=panel.hidden?"See Charts":"Hide Charts";});
   if (!isSuper) return;
 
   function recalculate() {
@@ -189,6 +191,11 @@ async function loadMatrix() {
       if (check) check.checked = Number(input.value) > 0;
       recalculate();
     });
+    input.addEventListener("click", () => {
+      if (input.dataset.lastPaidAt) {
+        toast("Saved amount: " + money(input.dataset.savedAmount) + " · Paid: " + dateTime(input.dataset.lastPaidAt));
+      }
+    });
   });
 
   const saveButton = document.getElementById("saveMatrix");
@@ -209,46 +216,10 @@ async function loadMatrix() {
     status.textContent = "সংরক্ষণ হচ্ছে…";
     let changed = 0;
     try {
-      for (const entry of entries) {
-        const reference = matrixPrefix + entry.month + "|" + entry.memberId;
-        const existing = editorRows.find(row => row.memberId === entry.memberId && row.month === entry.month)?.existing || null;
-        if (entry.selected) {
-          if (existing && Number(existing.amount) === entry.amount) continue;
-          if (existing) {
-            const { error } = await supabase.from("financial_transactions")
-              .update({ amount: entry.amount, updated_by: user.id, updated_at: new Date().toISOString() })
-              .eq("id", existing.id);
-            if (error) throw error;
-          } else {
-            const { data: matches, error: lookupError } = await supabase.from("financial_transactions")
-              .select("id,amount").eq("reference_no", reference).limit(2);
-            if (lookupError) throw lookupError;
-            if (matches.length > 1) throw new Error("একই সদস্য ও মাসের একাধিক Matrix Entry পাওয়া গেছে। আগে Duplicate Entry যাচাই করুন।");
-            if (matches.length === 1) {
-              if (Number(matches[0].amount) !== entry.amount) {
-                const { error } = await supabase.from("financial_transactions")
-                  .update({ amount: entry.amount, updated_by: user.id, updated_at: new Date().toISOString() })
-                  .eq("id", matches[0].id);
-                if (error) throw error;
-              } else {
-                continue;
-              }
-            } else {
-              const { error } = await supabase.from("financial_transactions").insert({
-                member_id: entry.memberId, transaction_type: "contribution", amount: entry.amount,
-                transaction_date: entry.month + "-01", description: "Monthly contribution matrix",
-                reference_no: reference, account_type: "bank", direction: "in", created_by: user.id
-              });
-              if (error) throw error;
-            }
-          }
-          changed++;
-        } else if (existing) {
-          const { error } = await supabase.from("financial_transactions").delete().eq("id", existing.id);
-          if (error) throw error;
-          changed++;
-        }
-      }
+      const changes = entries.map(entry => ({ member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0 }));
+      const { data: saved, error } = await supabase.rpc("save_contribution_matrix", { p_idempotency_key: crypto.randomUUID(), p_changes: changes });
+      if (error) throw error;
+      changed = (saved || []).filter(item => item.status !== "unchanged").length;
       status.textContent = changed + "টি পরিবর্তন সংরক্ষিত হয়েছে।";
       toast("Contribution Matrix সংরক্ষণ সম্পন্ন।");
       await loadMatrix();
