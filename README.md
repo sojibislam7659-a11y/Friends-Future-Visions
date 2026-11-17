@@ -11,11 +11,12 @@ Mobile-first private committee portal.
 ## Access model
 
 - Only `super_admin` can create, edit, or delete committee and financial records.
-- `admin` and `member` roles are read-only.
-- Members can view only their own sensitive profile, due information, and transaction entries.
+- Only `super_admin` can edit committee, member, payment, proof, notice, and financial records.
+- All authenticated members can view the shared monthly contribution matrix (member names, Member IDs, amounts, and payment day) and the all-member Due summary.
+- Members cannot edit the shared DATA or Due pages; exact saved timestamps and sensitive profile/document details remain Super Admin-only or limited to the member's own profile as appropriate.
 - Members can submit profile-change requests and upload their own photo; changes/photos are published only after Super Admin approval.
 - The public member directory contains only member number, name, and approved photo.
-- Members cannot submit payments or upload financial proofs.
+- Members can submit payment claims for Super Admin verification, but cannot upload or edit financial proofs.
 
 ## Main features
 
@@ -47,5 +48,13 @@ Mobile-first private committee portal.
 
 ## Branch safety
 
-- Before each code change, the current `main` state is snapshotted to `development`.
-- The stable backup branch remains untouched until the owner asks to mark a release stable.
+- Production changes are developed on a release branch, checked by GitHub Actions, and merged to `main` through a pull request.
+- The pre-release code snapshot is `backup/main-before-production-changes-20261117`.
+- Database rollback instructions are in `PRODUCTION_ROLLBACK_2026-11-17.sql`; review data changes before restoring a database backup.
+
+
+## 2026-11-17 release status
+
+- Main includes the shared DATA/Due views, Super Admin editors, password visibility controls, charts, and the public Rules fallback.
+- Production Supabase schema additions are applied; the UI requires the latest Main commit to be deployed by Cloudflare.
+- Current Production data at release time: 7 active members, no financial transactions, and no configured contribution rates. Set each member's approved rate before relying on Due totals.
