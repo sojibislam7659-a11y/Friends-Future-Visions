@@ -81,6 +81,8 @@
 - `20261117080958_batch_edit_dashboard_notices`
 - `20261117081514_index_admin_editor_foreign_keys`
 - `20261117081534_allow_superadmin_private_member_doc_upload`
+- `20261117081906_limit_member_rate_dates_to_committee_horizon`
+- `20261117082154_index_and_clean_matrix_smoke_test_records`
 
 ### Verification performed
 - Shared read RPC returned 420 rows covering 7 active members × 60 months for both Super Admin and Member.
@@ -90,7 +92,8 @@
 - Public anonymous read test returned the 5 active rules.
 - Matrix payment-day validation rejected day 32; day 16 with amount 0 returned `unchanged` and did not create a financial transaction.
 - No Production financial transaction rows were inserted or updated. No member rates, notices, proof metadata, payment settings, or member profile values were changed.
-- Added indexes for all newly observed unindexed foreign keys. Remaining security advisor warnings are pre-existing: `pg_net` in public schema, leaked-password protection disabled, and four existing public SECURITY DEFINER workflow/summary RPCs. No new public SECURITY DEFINER editor RPCs remain; exposed batch write wrappers are SECURITY INVOKER.
+- Two temporary no-op matrix idempotency test records were deleted after testing; the operations table is clean. The pre-existing rate helper was given the same Dec 2026–Nov 2031 effective-date guard as the new editors; the rollback SQL restores its exact prior definition.
+- Added indexes for all newly observed unindexed foreign keys. The performance advisor no longer reports unindexed foreign keys; remaining unused-index and multiple-permissive-policy notices are pre-existing/expected with the currently empty tables. Remaining security advisor warnings are pre-existing: `pg_net` in public schema, leaked-password protection disabled, and four existing public SECURITY DEFINER workflow/summary RPCs. No new public SECURITY DEFINER editor RPCs remain; exposed batch write wrappers are SECURITY INVOKER.
 
 ### Current data limitations
 - Production still has 7 active members, 0 financial transactions, and 0 configured contribution rates.
