@@ -193,26 +193,76 @@ async function renderMembers(){
  setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("সদস্যদের ছবি ও নাম। নিজের ছবি বা নাম চাপলে ব্যক্তিগত প্রোফাইল খুলবে। Super Admin যেকোনো সদস্যের প্রোফাইল খুলতে পারবেন।","Members are shown by photo and name. Members can open their own profile; Super Admin can open any profile.")+'</p><div class="member-directory-grid">'+cards.join("")+'</div>');
 }
 async function renderProofs(){
- const {data,error}=await supabase.from("committee_proofs").select("id,proof_month,title,storage_path,note,created_at").eq("published",true).order("proof_month",{ascending:true});if(error)throw error;
+ let proofQuery=supabase.from("committee_proofs").select("id,proof_month,title,storage_path,note,published,created_at").order("proof_month",{ascending:true});
+ if(access.role!=="super_admin")proofQuery=proofQuery.eq("published",true);
+ const {data,error}=await proofQuery;if(error)throw error;
  const counts={};(data||[]).forEach(p=>{const k=p.proof_month.slice(0,7);counts[k]=(counts[k]||0)+1});
  const months=[];for(let i=0;i<60;i++){const d=new Date(2026,11+i,1);months.push(localDate(d).slice(0,7))}
  const cards=months.map(k=>'<button type="button" class="proof-month-card" data-proof-month="'+k+'"><strong>'+esc(monthText(k))+'</strong><span>'+String(counts[k]||0)+' files</span></button>').join("");
  setPage('<h1>'+t("মাসিক জমা ও বিনিয়োগের প্রমাণ","Monthly deposit and investment proofs")+'</h1><p class="lead">ডিসেম্বর ২০২৬ থেকে নভেম্বর ২০৩১ · প্রতি মাসে একটি বা একাধিক রসিদ। শুধু নির্বাচিত মাসের ফাইল লোড হবে।</p><div class="proof-month-grid">'+cards+'</div><section class="section" id="proofMonthDetail">'+empty("ফাইল দেখতে অথবা আপলোড করতে একটি মাস নির্বাচন করুন।")+'</section>');
- document.querySelectorAll("[data-proof-month]").forEach(b=>b.addEventListener("click",()=>loadProofMonth(b.dataset.proofMonth,data)));
+ document.querySelectorAll("[data-proof-month]").forEach(button=>button.addEventListener("click",()=>loadProofMonth(button.dataset.proofMonth,data)));
 }
 async function loadProofMonth(month,allProofs){
- const root=document.getElementById("proofMonthDetail");if(!root)return;const rows=(allProofs||[]).filter(p=>p.proof_month.slice(0,7)===month);
- root.innerHTML='<h2>'+esc(monthText(month))+'</h2><div class="muted small">'+rows.length+' file(s)</div><div id="proofFiles" class="list">'+empty("ফাইল লোড হচ্ছে…")+'</div>'+(access.role==="super_admin"?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">ছবি সর্বোচ্চ 5MB, PDF সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>':"");
+ const root=document.getElementById("proofMonthDetail");if(!root)return;
+ const rows=(allProofs||[]).filter(p=>p.proof_month.slice(0,7)===month);
+ const metaEditor=access.role==="super_admin"&&rows.length
+  ?'<form id="proofMetaForm" class="section"><h3>এই মাসের Proof তথ্য সম্পাদনা</h3><p class="muted small">Title, note, month এবং প্রকাশের অবস্থা একবারে Save হবে।</p>'+rows.map(p=>'<div class="proof-meta-row" data-proof-meta-row><input type="hidden" name="id" value="'+esc(p.id)+'"><div class="field"><label>Title</label><input name="title" maxlength="180" required value="'+esc(p.title)+'"></div><div class="field"><label>Proof month</label><input name="proof_month" type="date" value="'+esc(p.proof_month)+'" required></div><div class="field"><label>Note</label><textarea name="note" rows="2" maxlength="500">'+esc(p.note||"")+'</textarea></div><label class="inline-check"><input name="published" type="checkbox" '+(p.published?"checked":"")+'> Published</label></div>').join("")+'<div class="form-actions"><button type="submit" id="saveProofMeta">Save Changes</button><span id="proofMetaStatus" class="muted small"></span></div></form>'
+  :"";
+ const uploadForm=access.role==="super_admin"
+  ?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><h3>Upload new proof</h3><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">ছবি সর্বোচ্চ 5MB, PDF সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>'
+  :"";
+ root.innerHTML='<h2>'+esc(monthText(month))+'</h2><div class="muted small">'+rows.length+' file(s)</div><div id="proofFiles" class="list">'+empty("ফাইল লোড হচ্ছে…")+'</div>'+metaEditor+uploadForm;
  const fileBox=document.getElementById("proofFiles");
- if(rows.length){const rendered=await Promise.all(rows.map(async p=>{const {data:u,error:urlError}=await supabase.storage.from("committee-proofs").createSignedUrl(p.storage_path,1800);if(urlError||!u?.signedUrl)return '<article class="list-item"><strong>'+esc(p.title)+'</strong><span class="pill">File unavailable</span></article>';return '<article class="list-item"><div class="row"><strong>'+esc(p.title)+'</strong><span class="pill">'+esc(p.storage_path.toLowerCase().endsWith(".pdf")?"PDF":"Image")+'</span></div><p>'+esc(p.note||"")+'</p><a class="button secondary" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">Open proof</a></article>'}));fileBox.innerHTML=rendered.join("")}else fileBox.innerHTML=empty("এই মাসে এখনো কোনো রসিদ আপলোড করা হয়নি।");
+ if(rows.length){
+  const rendered=await Promise.all(rows.map(async proof=>{
+   const {data:u,error:urlError}=await supabase.storage.from("committee-proofs").createSignedUrl(proof.storage_path,1800);
+   if(urlError||!u?.signedUrl)return '<article class="list-item"><strong>'+esc(proof.title)+'</strong><span class="pill">File unavailable</span></article>';
+   return '<article class="list-item"><div class="row"><strong>'+esc(proof.title)+'</strong><span class="pill">'+(proof.published?"Published":"Hidden")+'</span></div><p>'+esc(proof.note||"")+'</p><a class="button secondary" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">Open proof</a></article>';
+  }));
+  fileBox.innerHTML=rendered.join("");
+ }else fileBox.innerHTML=empty("এই মাসে এখনো কোনো রসিদ আপলোড করা হয়নি।");
  if(access.role==="super_admin"){
+  const metaForm=document.getElementById("proofMetaForm");
+  metaForm?.addEventListener("submit",async event=>{
+   event.preventDefault();
+   const changes=[...metaForm.querySelectorAll("[data-proof-meta-row]")].map(row=>({
+    id:row.querySelector('[name="id"]').value,
+    title:row.querySelector('[name="title"]').value.trim(),
+    proof_month:row.querySelector('[name="proof_month"]').value,
+    note:row.querySelector('[name="note"]').value.trim(),
+    published:row.querySelector('[name="published"]').checked
+   }));
+   if(changes.some(item=>!item.title||!item.proof_month||!/^\\d{4}-\\d{2}-01$/.test(item.proof_month))){toast("Title দিতে হবে এবং Proof month মাসের ১ তারিখ হতে হবে।",true);return}
+   const button=document.getElementById("saveProofMeta"),status=document.getElementById("proofMetaStatus");
+   button.disabled=true;status.textContent="সংরক্ষণ হচ্ছে…";
+   const {data,error}=await supabase.rpc("save_committee_proof_metadata",{p_changes:changes});
+   if(error){status.textContent="Save হয়নি।";toast(error.message,true);button.disabled=false;return}
+   status.textContent=(data?.saved||changes.length)+"টি Proof record Save হয়েছে।";
+   toast("Proof তথ্য সংরক্ষণ সম্পন্ন।");await renderProofs();
+  });
   const form=document.getElementById("proofUploadForm"),input=document.getElementById("proofFilesInput"),drop=document.getElementById("proofDropzone");
-  drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("dragover")});drop.addEventListener("dragleave",()=>drop.classList.remove("dragover"));
-  drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("dragover");if(e.dataTransfer?.files?.length){input.files=e.dataTransfer.files;drop.dataset.selected=e.dataTransfer.files.length+" file(s) selected"}});
+  drop.addEventListener("dragover",event=>{event.preventDefault();drop.classList.add("dragover")});
+  drop.addEventListener("dragleave",()=>drop.classList.remove("dragover"));
+  drop.addEventListener("drop",event=>{event.preventDefault();drop.classList.remove("dragover");if(event.dataTransfer?.files?.length){input.files=event.dataTransfer.files;drop.dataset.selected=event.dataTransfer.files.length+" file(s) selected"}});
   input.addEventListener("change",()=>{drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
-  form.addEventListener("submit",async e=>{e.preventDefault();const files=Array.from(input.files||[]);if(!files.length){toast("কমপক্ষে একটি ফাইল নির্বাচন করুন।");return}const allowed=["image/jpeg","image/png","image/webp","application/pdf"],bad=files.find(f=>!allowed.includes(f.type)||(f.type==="application/pdf"?f.size>10*1024*1024:f.size>5*1024*1024));if(bad){toast("ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+bad.name);return}const button=document.getElementById("proofUploadButton"),status=document.getElementById("proofUploadStatus");button.disabled=true;let success=0;
-   for(const file of files){status.textContent=(success+1)+" / "+files.length+" uploading…";const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-80),path=month+"/"+crypto.randomUUID()+"-"+safeName;const {error:upError}=await supabase.storage.from("committee-proofs").upload(path,file,{upsert:false,contentType:file.type});if(upError){toast(file.name+": "+upError.message);continue}const {error:rowError}=await supabase.from("committee_proofs").insert({proof_month:month+"-01",title:file.name,note:String(new FormData(form).get("note")||"").trim()||null,storage_path:path,published:true,uploaded_by:access.session.user.id});if(rowError){await supabase.storage.from("committee-proofs").remove([path]);toast(file.name+": "+rowError.message);continue}success++}
-   toast(success+"টি ফাইল আপলোড হয়েছে।");renderProofs();
+  form.addEventListener("submit",async event=>{
+   event.preventDefault();const files=Array.from(input.files||[]);
+   if(!files.length){toast("কমপক্ষে একটি ফাইল নির্বাচন করুন।");return}
+   const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
+   const bad=files.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024));
+   if(bad){toast("ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+bad.name,true);return}
+   const button=document.getElementById("proofUploadButton"),status=document.getElementById("proofUploadStatus");button.disabled=true;let success=0;
+   for(const file of files){
+    status.textContent=(success+1)+" / "+files.length+" uploading…";
+    const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-80),path=month+"/"+crypto.randomUUID()+"-"+safeName;
+    const {error:upError}=await supabase.storage.from("committee-proofs").upload(path,file,{upsert:false,contentType:file.type});
+    if(upError){toast(file.name+": "+upError.message,true);continue}
+    const {error:rowError}=await supabase.from("committee_proofs").insert({proof_month:month+"-01",title:file.name,note:String(new FormData(form).get("note")||"").trim()||null,storage_path:path,published:true,uploaded_by:access.session.user.id});
+    if(rowError){await supabase.storage.from("committee-proofs").remove([path]);toast(file.name+": "+rowError.message,true);continue}
+    success++;
+   }
+   status.textContent=success+" / "+files.length+" uploaded";
+   toast(success+"টি ফাইল আপলোড হয়েছে।");await renderProofs();
   });
  }
 }async function renderPayment(){
