@@ -66,6 +66,7 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
  <p class="small signup-links"><a href="login.html">আগে থেকেই অ্যাকাউন্ট আছে? Login করুন</a></p>
 </main>
 <script type="module">
+import "./password-visibility.js";
 import {supabase,supabaseReady} from "./supabase-client.js";
 const form=document.getElementById("signupForm"),button=document.getElementById("signupButton"),message=document.getElementById("message");
 const show=(text)=>{message.textContent=text;message.style.display="block"};
