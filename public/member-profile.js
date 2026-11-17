@@ -118,7 +118,7 @@ async function main(){
    }
    const monthlyInput=document.getElementById("edit_monthly_contribution");
    const effectiveInput=document.getElementById("edit_contribution_effective_date");
-   const monthlyChanged=monthlyInput&&monthlyInput.value!==String(m.monthly_contribution??"");
+   const monthlyChanged=Boolean(monthlyInput&&(monthlyInput.value!==String(m.monthly_contribution??"")||effectiveInput?.value));
    if(monthlyChanged){
     const amount=Number(monthlyInput.value),effective=effectiveInput.value;
     if(!Number.isFinite(amount)||amount<=0){alert("মাসিক জমার পরিমাণ শূন্যের বেশি হতে হবে।");monthlyInput.focus();return}
