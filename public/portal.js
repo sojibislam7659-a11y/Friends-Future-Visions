@@ -521,8 +521,35 @@ async function renderAdmin(){
  const memberSelect=document.getElementById("transactionMember");
  members.forEach(m=>{const o=document.createElement("option");o.value=m.id;o.textContent=(m.member_no||"")+(m.member_no?" · ":"")+m.full_name;memberSelect.append(o)});
  document.getElementById("adminMembers").innerHTML='<table><thead><tr><th>Member ID</th><th>Name</th><th>Status</th><th>Monthly</th><th>Start</th><th>Login link</th></tr></thead><tbody>'+members.map(m=>'<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+esc(m.status)+'</td><td>'+esc(m.monthly_contribution?money(m.monthly_contribution):"Not set")+'</td><td>'+esc(m.contribution_start_date||"—")+'</td><td>'+((m.auth_user_id)?'<span class="pill">Linked</span>':'<span class="pill">Not linked</span>')+'</td></tr>').join("")+'</tbody></table>';
- const tx=await supabase.from("financial_transactions").select("transaction_date,transaction_type,account_type,direction,amount,description").order("transaction_date",{ascending:false}).limit(20);
- document.getElementById("adminTransactions").innerHTML=tx.error?empty(tx.error.message):tx.data.length?'<table><thead><tr><th>Date</th><th>Type</th><th>Account</th><th>Flow</th><th>Amount</th><th>Description</th></tr></thead><tbody>'+tx.data.map(x=>'<tr><td>'+esc(x.transaction_date)+'</td><td>'+esc(x.transaction_type)+'</td><td>'+esc(x.account_type)+'</td><td>'+esc(x.direction)+'</td><td>'+money(x.amount)+'</td><td>'+esc(x.description||"")+'</td></tr>').join("")+'</tbody></table>':empty("এখনো কোনো লেনদেন নেই।");
+ const tx=await supabase.from("financial_transactions").select("id,transaction_date,transaction_type,account_type,direction,amount,description,reference_no,transfer_group_id").order("transaction_date",{ascending:false}).limit(100);
+ const txBox=document.getElementById("adminTransactions");
+ if(tx.error)txBox.innerHTML=empty(tx.error.message);
+ else if(!tx.data.length)txBox.innerHTML=empty("এখনো কোনো লেনদেন নেই।");
+ else{
+  txBox.innerHTML='<form id="adminTransactionEditForm"><table><thead><tr><th>Date</th><th>Type</th><th>Account</th><th>Flow</th><th>Amount</th><th>Description</th><th>Editing</th></tr></thead><tbody>'+tx.data.map(x=>{
+   const locked=x.transaction_type==="transfer"||Boolean(x.transfer_group_id)||String(x.reference_no||"").startsWith("FFV_MATRIX|");
+   const reason=x.transaction_type==="transfer"||x.transfer_group_id?"Transfer pair locked":String(x.reference_no||"").startsWith("FFV_MATRIX|")?"Edit from DATA":"Editable";
+   return '<tr data-transaction-row="'+esc(x.id)+'"><td>'+(locked?esc(x.transaction_date):'<input type="date" name="date" value="'+esc(x.transaction_date)+'" data-current="'+esc(x.transaction_date)+'">')+'</td><td>'+esc(x.transaction_type)+'</td><td>'+esc(x.account_type)+'</td><td>'+esc(x.direction)+'</td><td>'+(locked?money(x.amount):'<input type="number" name="amount" min=".01" step=".01" value="'+Number(x.amount)+'" data-current="'+Number(x.amount)+'">')+'</td><td>'+(locked?esc(x.description||""):'<input type="text" name="description" maxlength="500" value="'+esc(x.description||"")+'" data-current="'+esc(x.description||"")+'">')+'</td><td><span class="pill">'+reason+'</span><input type="hidden" name="id" value="'+esc(x.id)+'"></td></tr>';
+  }).join("")+'</tbody></table><div class="form-actions"><button type="submit" id="saveAdminTransactions">Save Changes</button><span id="adminTransactionStatus" class="muted small"></span></div></form>';
+  document.getElementById("adminTransactionEditForm").addEventListener("submit",async event=>{
+   event.preventDefault();
+   const changes=[];
+   for(const row of txBox.querySelectorAll("[data-transaction-row]")){
+    const amount=row.querySelector('[name="amount"]'),date=row.querySelector('[name="date"]'),description=row.querySelector('[name="description"]');
+    if(!amount||!date||!description)continue;
+    const next={id:row.querySelector('[name="id"]').value,amount:Number(amount.value),transaction_date:date.value,description:description.value.trim()};
+    if(next.amount!==Number(amount.dataset.current)||next.transaction_date!==date.dataset.current||next.description!==description.dataset.current)changes.push(next);
+   }
+   if(!changes.length){toast("কোনো পরিবর্তন করা হয়নি।");return}
+   if(changes.some(x=>!(x.amount>0)||!Number.isFinite(x.amount)||!x.transaction_date)){toast("Amount ও Date সঠিকভাবে পূরণ করুন।",true);return}
+   const button=document.getElementById("saveAdminTransactions"),status=document.getElementById("adminTransactionStatus");
+   button.disabled=true;status.textContent="সংরক্ষণ হচ্ছে…";
+   const {data,error}=await supabase.rpc("save_financial_transaction_edits",{p_changes:changes});
+   if(error){status.textContent="Save হয়নি।";toast(error.message,true);button.disabled=false;return}
+   status.textContent=(data?.saved||changes.length)+"টি লেনদেন আপডেট হয়েছে।";
+   toast("লেনদেনের পরিবর্তন সংরক্ষিত হয়েছে।");renderAdmin();
+  });
+ }
  const pending=await supabase.from("profile_change_requests").select("id,member_id,submitted_by,requested_changes,requested_photo_path,created_at,members(full_name,member_no)").eq("status","pending").order("created_at");
  const pBox=document.getElementById("pendingRequests");
  if(pending.error)pBox.textContent=pending.error.message;
