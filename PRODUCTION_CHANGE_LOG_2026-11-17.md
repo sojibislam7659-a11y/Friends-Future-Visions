@@ -47,3 +47,53 @@
 - Database rollback: only run the exact reverse migration documented alongside each applied Production migration. Do not drop/recreate tables or delete ledger data as a rollback shortcut.
 - Before any Production database migration, record the exact existing function definitions, grants, RLS policies, indexes, and row counts. After migration, verify them and run the rollback SQL only if a tested failure requires it.
 - A code rollback does not automatically reverse database changes. Track the two separately.
+
+## Implementation entries — 2026-11-17
+
+### Frontend changes on `release/production-updates-20261117` (not yet merged or deployed)
+- Password visibility: shared accessible show/hide control imported by login, signup, public DATA, member profile, and the shared portal. Static audit of all 25 HTML pages found password inputs only on login and signup; both load the control. Dynamically rendered portal password inputs are covered by the portal import.
+- DATA: all authenticated members use the shared read RPC and can view all active members; member edit controls remain disabled. Super Admin retains matrix editing through an atomic batch RPC. Payment day is editable per cell; members see only the day, while Super Admin can click an amount to view the saved timestamp.
+- DATA charts: added Pie, Column, and Line chart views using local SVG/CSS; no chart CDN or paid API.
+- Dashboard: added compact financial charts from the existing summary data.
+- Personal Due: all members see all members' due status; only Super Admin gets the rate editor and one batch Save Changes action. Missing rates display as `Rate not set`, not a fabricated amount.
+- Member Profile: Super Admin can open a member's profile editor and save all editable fields, status, Member ID, optional monthly rate, and photos through one Save Changes action. Member permissions remain unchanged.
+- Payment: consolidated bKash/Nagad settings into one Save Changes form; existing QR files are replaced only after the DB upsert succeeds.
+- Proof: Super Admin can edit proof month, title, note, and publication status in one batch save; members only see published proofs.
+- Rules: rules now load from a database table. The Rules page remains publicly readable; Super Admin can edit all rules in one Save Changes action.
+- Admin: added batch editors for recent non-transfer/non-matrix ledger transactions and existing dashboard notices. Matrix entries remain editable only from DATA; paired transfers remain locked.
+- Branding: verified the exact requested name `Friends Future Vision Forever` across active pages; updated the 12 legacy member redirect page titles that had no brand.
+- Contrast/mobile: added higher-contrast due status chips and improved mobile matrix cell/date readability and editor layouts.
+- Performance: charts use inline SVG/CSS; shared DATA/Due reads use one RPC; writes use batched, transactional RPCs; no new third-party libraries or paid services.
+
+### Production database migrations applied
+- `20261117075243_shared_member_financial_data_read_rpc`
+- `20261117075423_atomic_matrix_and_rate_batch_saves`
+- `20261117075844_superadmin_member_profile_batch_editor`
+- `20261117075904_fix_profile_editor_jsonb_validation`
+- `20261117075925_fix_profile_editor_composite_assignment`
+- `20261117080125_use_invoker_wrappers_for_admin_batch_writes`
+- `20261117080239_capture_matrix_payment_day_and_original_timestamp`
+- `20261117080416_move_shared_finance_logic_to_private_schema`
+- `20261117080608_editable_public_committee_rules`
+- `20261117080624_separate_public_and_member_rule_read_policies`
+- `20261117080748_batch_edit_committee_proof_metadata`
+- `20261117080914_batch_edit_financial_transaction_sources`
+- `20261117080958_batch_edit_dashboard_notices`
+- `20261117081514_index_admin_editor_foreign_keys`
+- `20261117081534_allow_superadmin_private_member_doc_upload`
+
+### Verification performed
+- Shared read RPC returned 420 rows covering 7 active members × 60 months for both Super Admin and Member.
+- Member response returned no exact timestamp values; Super Admin role can receive the timestamp field.
+- Super Admin smoke tests succeeded for matrix save, rate batch, member profile batch, rules batch, proof metadata batch, notice batch, and transaction batch using empty/no-op payloads.
+- Member write attempts were rejected with SQLSTATE `42501` for matrix, rates, member profile, rules, proof metadata, notices, and ledger transaction editing.
+- Public anonymous read test returned the 5 active rules.
+- Matrix payment-day validation rejected day 32; day 16 with amount 0 returned `unchanged` and did not create a financial transaction.
+- No Production financial transaction rows were inserted or updated. No member rates, notices, proof metadata, payment settings, or member profile values were changed.
+- Added indexes for all newly observed unindexed foreign keys. Remaining security advisor warnings are pre-existing: `pg_net` in public schema, leaked-password protection disabled, and four existing public SECURITY DEFINER workflow/summary RPCs. No new public SECURITY DEFINER editor RPCs remain; exposed batch write wrappers are SECURITY INVOKER.
+
+### Current data limitations
+- Production still has 7 active members, 0 financial transactions, and 0 configured contribution rates.
+- Until Super Admin sets each member's monthly rate, Personal Due correctly displays `Rate not set`. No ৳2,000 default is assumed.
+- No frontend code has been merged to Main or deployed to the Production Worker yet. The Production database additions are applied and waiting for the release code.
+- Release branch has a dedicated rollback SQL file: `PRODUCTION_ROLLBACK_2026-11-17.sql`. Code backup branch: `backup/main-before-production-changes-20261117`.
