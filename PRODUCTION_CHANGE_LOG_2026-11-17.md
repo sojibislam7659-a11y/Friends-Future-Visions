@@ -115,5 +115,12 @@
 ### Main merge and deployment verification update
 - PR #4 (full release) merged to Main.
 - PR #5 (static Rules fallback) merged to Main after the live fetch showed the old loading placeholder.
+- PR #7 (preserve static Rules fallback when Supabase is unavailable) merged to Main; CI passed.
 - Both PRs passed the GitHub Actions JavaScript syntax and committed-diff whitespace checks.
 - The live Production Rules URL still returned the previous loading placeholder after PR #5; do not assume Cloudflare has deployed the latest Main commit until the Cloudflare Deployments page confirms the latest Main SHA. Authenticated browser QA remains pending.
+
+### Final performance and concurrency checks
+- A full no-op matrix save processed all 420 current cells (7 active members × 60 months) in 0.267 seconds on the Production database; no financial rows were written.
+- Two parallel requests using the same idempotency key both returned the same 420-cell result; the idempotency lock prevented duplicate posting.
+- All temporary matrix-operation smoke-test records were deleted; the operation table returned to zero rows.
+- Live Worker checks: Rules fallback content is served, the password-visibility script asset is served, and the DATA matrix script asset is served. The login page exposes the 8-character recovery-code field and two new-password fields in its static markup. Actual eye-button click testing and authenticated page interactions still need a real logged-in browser session.
