@@ -104,7 +104,7 @@ async function loadMatrix() {
         const savedAt = dateTime(record?.latest);
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
-        const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
+        const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
         if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
         return '<td><div class="matrix-cell">' +
@@ -135,7 +135,7 @@ async function loadMatrix() {
     '<p class="lead">' + (isSuper
       ? 'প্রতি মাসে সদস্যের জমা Checkbox দিয়ে নির্বাচন করুন। Amount পরিবর্তন করা যাবে; সব পরিবর্তন Confirm & Save করলে সংরক্ষিত হবে।'
       : 'এখানে শুধু আপনার নিজের মাসভিত্তিক জমার তথ্য দেখানো হচ্ছে।') + '</p>' +
-    (isSuper ? '<div class="notice">প্রাথমিক Amount ৳2,000। প্রয়োজন হলে প্রতিটি মাস ও সদস্যের Amount আলাদাভাবে Edit করতে পারবেন। Checkbox উঠালে Amount হবে ৳0।</div>' : "") +
+    (isSuper ? '<div class="notice">সদস্যের নির্ধারিত মাসিক জমার হার থাকলে সেটি প্রাথমিক Amount হিসেবে আসবে। হার নির্ধারিত না থাকলে Amount নিজে লিখুন। Checkbox উঠালে Amount হবে ৳0।</div>' : "") +
     tables +
     (isSuper ? '<div class="form-actions matrix-save-actions"><button type="button" id="saveMatrix">Confirm &amp; Save</button><span id="matrixSaveStatus" class="muted small"></span></div>' : "");
 
@@ -177,7 +177,7 @@ async function loadMatrix() {
       const selector = '.matrix-amount[data-member="' + check.dataset.member + '"][data-month="' + check.dataset.month + '"]';
       const amount = root.querySelector(selector);
       if (!amount) return;
-      if (check.checked && Number(amount.value) <= 0) amount.value = "2000";
+      if (check.checked && Number(amount.value) <= 0) { const defaultAmount = Number(amount.dataset.defaultAmount || 0); if (defaultAmount > 0) amount.value = String(defaultAmount); else toast("এই সদস্যের মাসিক জমার হার সেট করা নেই। Amount লিখুন।", true); }
       if (!check.checked) amount.value = "0";
       recalculate();
     });
