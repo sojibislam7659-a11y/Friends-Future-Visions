@@ -615,109 +615,14 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
  .proof-meta-row .field:nth-child(3),.notice-edit-row .field:nth-child(4){grid-column:auto}
  .payment-method-form{padding:12px}
 }
-
-
-/* 2026-11-17 Friends Future Vision blue-green visual system */
-:root{
-  color-scheme:light;
-  --navy:#092d50;
-  --navy-2:#123e66;
-  --blue:#087fbd;
-  --blue-soft:#e8f4fb;
-  --green:#2fae43;
-  --green-dark:#218b36;
-  --line:#dce6ee;
-  --muted:#657789;
-  --surface:#fff;
-  --soft:#f0f6fa;
-}
-body{background:#f4f7fb;color:#142b43}
-a{color:#087fbd}
-.shell{max-width:1440px;padding:18px clamp(12px,2vw,28px)}
-.topbar{
-  position:sticky;top:8px;z-index:30;
-  background:rgba(255,255,255,.96);
-  border:1px solid #dce6ee;border-radius:16px;
-  box-shadow:0 5px 22px rgba(9,45,80,.06);
-  backdrop-filter:blur(12px);
-}
-.brand strong{color:var(--navy);font-weight:800;letter-spacing:-.02em}
-.brand small{color:#61778a}
-.brand img{width:48px;height:48px;object-fit:contain;filter:none!important}
-.page{
-  background:#fff;border:1px solid #e0e8ef;border-radius:17px;
-  box-shadow:0 4px 18px rgba(9,45,80,.035);
-}
-.page h1{color:var(--navy)}
-.section h2{color:var(--navy-2)}
-.lead,.muted{color:#657789}
-.card{
-  border:1px solid #e0e8ef;border-radius:14px;
-  box-shadow:0 2px 9px rgba(9,45,80,.025);
-}
-.card .value{color:var(--navy)}
-.card .label{color:#536a7e}
-th{background:#edf5fa;color:var(--navy-2)}
-.nav:not(.sidebar-nav){background:#fff;border-color:#e0e8ef;box-shadow:0 2px 10px rgba(9,45,80,.03)}
-.nav:not(.sidebar-nav) a{color:#274b68}
-.nav:not(.sidebar-nav) a.active,.nav:not(.sidebar-nav) a:hover{background:#e8f4fb;color:#075f91}
-button,.button{background:var(--blue);border-radius:10px}
-button:hover,.button:hover{background:#066da6}
-.button.secondary,button.secondary{background:#edf4f8;color:var(--navy);border-color:#d5e2eb}
-.button.danger,button.danger{background:#a83d3d}
-.icon-button{background:#edf4f8;color:var(--navy);border-color:#d5e2eb}
-.icon-button:hover{background:#dfeef7}
-.role,.pill{background:#e8f6eb;color:#1d7831}
-.sidebar-panel,.notification-panel{background:linear-gradient(180deg,#092d50,#061f39);border-color:rgba(190,215,240,.16)}
-.sidebar-brand img{filter:none!important;background:#fff;border-radius:50%;padding:3px}
-.sidebar-brand strong{color:#fff}
-.sidebar-brand small{color:#b8cde0}
-.sidebar-panel .sidebar-nav a{
-  color:#e2edf7!important;background:transparent!important;
-  border:1px solid transparent!important;font-weight:650!important;
-  min-height:46px!important;border-radius:10px!important;
-}
-.sidebar-panel .sidebar-nav a .ui-icon{color:#b7d3e8!important}
-.sidebar-panel .sidebar-nav a:hover{
-  color:#fff!important;background:rgba(255,255,255,.09)!important;
-  border-color:rgba(255,255,255,.12)!important;
-}
-.sidebar-panel .sidebar-nav a.active{
-  color:#fff!important;
-  background:linear-gradient(100deg,rgba(8,127,189,.55),rgba(47,174,67,.22))!important;
-  border-color:rgba(151,204,238,.35)!important;
-  box-shadow:inset 3px 0 0 #42a9e1!important;
-}
-.sidebar-panel .sidebar-nav a .ui-icon{color:#d2e8f7!important}
-.sidebar-footer{border-color:rgba(190,215,240,.16)}
-.account-role{color:#fff}
-.account-email{color:#b8cde0}
-.sidebar-footer button{background:#eaf2f8!important;color:#123e66!important}
-.sidebar-footer button:hover{background:#fff!important}
-.footer{
-  margin-top:24px;padding:26px 24px;text-align:left;
-  color:#dce9f5;background:linear-gradient(120deg,#092d50,#061f39);
-  border-radius:14px;
-}
-body.login-theme{background:#f4f7fb;color:#142b43}
-body.login-theme .page{background:#fff}
-body.login-theme .topbar{background:#fff}
-body.login-theme .brand img{filter:none!important}
-body.login-theme .page h1{color:var(--navy)}
-body.login-theme .card{background:#fff}
-body.login-theme .sidebar-panel .sidebar-nav a{color:#e2edf7!important}
-body.login-theme .sidebar-panel .sidebar-nav a.active{color:#fff!important}
-.matrix-chart-grid .card{background:#fff}
-.success{background:#eaf7ed;border-color:#c7e8cf;color:#1d7831}
-.error{background:#fff0ef;border-color:#f0d0ce;color:#963b35}
-.notice{background:#fff9eb;border-color:#f0dfb5;color:#70551b}
-@media(max-width:760px){
-  .shell{padding:10px}
-  .topbar{top:4px}
-  .page{border-radius:14px}
-  .brand img{width:42px;height:42px}
-  .footer{padding:20px 16px}
-}
-@media(prefers-reduced-motion:no-preference){
-  .card,.nav a,button,.button{transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease}
+ 
+/* Brand lockup: larger emblem with readable vector wordmark */
+.brand img{width:104px;height:88px;object-fit:contain;flex:0 0 auto}
+.topbar-brand{gap:10px}
+.topbar-brand>div{display:none}
+.sidebar-brand img{width:112px;height:94px;object-fit:contain}
+.sidebar-brand>span{display:none}
+@media(max-width:640px){
+ .brand img{width:94px;height:80px}
+ .sidebar-brand img{width:104px;height:88px}
 }
