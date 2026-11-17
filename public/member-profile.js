@@ -111,7 +111,7 @@ async function main(){
     if(key==="full_name"&&!value){alert("পূর্ণ নাম খালি রাখা যাবে না।");input.focus();return}
     if(key==="joined_at"&&!value){alert("যোগদানের তারিখ খালি রাখা যাবে না।");input.focus();return}
     if(key==="status"&&!["pending","active","inactive"].includes(value)){alert("Status সঠিক নয়।");input.focus();return}
-    if(input.type==="date"&&value&&!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)){alert("তারিখের Format সঠিক নয়।");input.focus();return}
+    if(input.type==="date"&&value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert("তারিখের Format সঠিক নয়।");input.focus();return}
     if(key==="date_of_birth"&&value&&value>new Date().toISOString().slice(0,10)){alert("জন্মতারিখ ভবিষ্যতের হতে পারে না।");input.focus();return}
     if(input.type==="email"&&value&&!input.checkValidity()){alert("যোগাযোগের ইমেইল সঠিক নয়।");input.focus();return}
     if(value!==String(m[key]??""))changes[key]=value===""?null:value;
@@ -122,7 +122,7 @@ async function main(){
    if(monthlyChanged){
     const amount=Number(monthlyInput.value),effective=effectiveInput.value;
     if(!Number.isFinite(amount)||amount<=0){alert("মাসিক জমার পরিমাণ শূন্যের বেশি হতে হবে।");monthlyInput.focus();return}
-    if(!effective||!/^\\d{4}-\\d{2}-01$/.test(effective)){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ হতে হবে।");effectiveInput.focus();return}
+    if(!effective||!/^\d{4}-\d{2}-01$/.test(effective)){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ হতে হবে।");effectiveInput.focus();return}
    }
    const profileFile=document.getElementById("edit_profile_photo")?.files?.[0]||null;
    const nomineeFile=document.getElementById("edit_nominee_photo")?.files?.[0]||null;
