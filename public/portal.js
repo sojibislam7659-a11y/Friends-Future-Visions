@@ -232,7 +232,7 @@ async function loadProofMonth(month,allProofs){
     note:row.querySelector('[name="note"]').value.trim(),
     published:row.querySelector('[name="published"]').checked
    }));
-   if(changes.some(item=>!item.title||!item.proof_month||!/^\\d{4}-\\d{2}-01$/.test(item.proof_month))){toast("Title দিতে হবে এবং Proof month মাসের ১ তারিখ হতে হবে।",true);return}
+   if(changes.some(item=>!item.title||!item.proof_month||!/^\d{4}-\d{2}-01$/.test(item.proof_month))){toast("Title দিতে হবে এবং Proof month মাসের ১ তারিখ হতে হবে।",true);return}
    const button=document.getElementById("saveProofMeta"),status=document.getElementById("proofMetaStatus");
    button.disabled=true;status.textContent="সংরক্ষণ হচ্ছে…";
    const {data,error}=await supabase.rpc("save_committee_proof_metadata",{p_changes:changes});
