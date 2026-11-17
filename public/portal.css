@@ -596,3 +596,8 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
  .due-rate-table input{width:110px;min-height:40px}
  .due-effective-field{max-width:none}
 }
+
+
+.matrix-day{width:48px;min-height:28px;padding:4px 5px;border:1px solid #a8c8b4;border-radius:7px;background:#f1f8f2;color:#173d36;font:700 11px Inter,"Noto Sans Bengali",sans-serif;text-align:center}
+.matrix-day:disabled{opacity:.75}
+@media(max-width:640px){.matrix-day{width:48px;min-height:32px;font-size:12px}.matrix-cell{gap:7px}}
