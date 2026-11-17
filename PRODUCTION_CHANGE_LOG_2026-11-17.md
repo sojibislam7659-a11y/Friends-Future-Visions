@@ -59,7 +59,7 @@
 - Member Profile: Super Admin can open a member's profile editor and save all editable fields, status, Member ID, optional monthly rate, and photos through one Save Changes action. Member permissions remain unchanged.
 - Payment: consolidated bKash/Nagad settings into one Save Changes form; existing QR files are replaced only after the DB upsert succeeds.
 - Proof: Super Admin can edit proof month, title, note, and publication status in one batch save; members only see published proofs.
-- Rules: rules now load from a database table. The Rules page remains publicly readable; Super Admin can edit all rules in one Save Changes action.
+- Rules: rules now load from a database table. The Rules page remains publicly readable; Super Admin can edit all rules in one Save Changes action. A static five-rule fallback was added so the page remains readable if dynamic loading is unavailable.
 - Admin: added batch editors for recent non-transfer/non-matrix ledger transactions and existing dashboard notices. Matrix entries remain editable only from DATA; paired transfers remain locked.
 - Branding: verified the exact requested name `Friends Future Vision Forever` across active pages; updated the 12 legacy member redirect page titles that had no brand.
 - Contrast/mobile: added higher-contrast due status chips and improved mobile matrix cell/date readability and editor layouts.
@@ -111,3 +111,9 @@
 - CI: the release PR's static JavaScript syntax and whitespace check had passed before merge. No separate push-to-Main workflow run was returned for the merge commit.
 - Live Production Worker: not independently confirmed from this session. Direct network/browser verification was unavailable; do not claim that the deployment is live until the Worker URL is checked.
 - Authenticated Super Admin and Member browser QA remains outstanding.
+
+### Main merge and deployment verification update
+- PR #4 (full release) merged to Main.
+- PR #5 (static Rules fallback) merged to Main after the live fetch showed the old loading placeholder.
+- Both PRs passed the GitHub Actions JavaScript syntax and committed-diff whitespace checks.
+- The live Production Rules URL still returned the previous loading placeholder after PR #5; do not assume Cloudflare has deployed the latest Main commit until the Cloudflare Deployments page confirms the latest Main SHA. Authenticated browser QA remains pending.
