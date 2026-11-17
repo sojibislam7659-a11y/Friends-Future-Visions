@@ -124,26 +124,61 @@ function monthCount(start){
  return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()+1);
 }
 async function renderDue(){
- let q=supabase.from("members").select("id,member_no,full_name,monthly_contribution,contribution_start_date,joined_at,status");
- if(access.role==="member")q=q.eq("auth_user_id",access.session.user.id);else if(access.role==="super_admin")q=q.eq("status","active");
- const {data:members,error}=await q.order("member_no");if(error)throw error;
- 
- if(!members.length){setPage('<h1>Personal Due</h1>'+empty("এই লগইন অ্যাকাউন্টের সঙ্গে কোনো সদস্য রেকর্ড যুক্ত নেই।"));return}
- const ids=members.map(m=>m.id);
- const [rr,tr]=await Promise.all([supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").in("member_id",ids).order("effective_from"),supabase.from("financial_transactions").select("member_id,transaction_type,amount,transaction_date,created_at").in("member_id",ids).eq("transaction_type","contribution").eq("direction","in").lte("transaction_date",today())]);
- if(rr.error)throw rr.error;if(tr.error)throw tr.error;
- const rates={};(rr.data||[]).forEach(r=>(rates[r.member_id]??=[]).push(r));const paid={};(tr.data||[]).forEach(x=>{const start=rates[x.member_id]?.[0]?.effective_from;if(start&&x.transaction_date>=start)paid[x.member_id]=(paid[x.member_id]||0)+Number(x.amount)});
- const now=new Date(),nowIndex=now.getFullYear()*12+now.getMonth(),rows=members.map(m=>{
-  const list=rates[m.id]||[],start=list[0]?.effective_from;let expected=0,months=0;
-  if(start){const [y,mo]=start.split("-").map(Number),first=y*12+mo-1;months=Math.max(0,nowIndex-first+1);for(let k=0;k<months;k++){const d=new Date(y,mo-1+k,1),from=localDate(d),next=new Date(d.getFullYear(),d.getMonth()+1,1),to=localDate(new Date(next.getTime()-86400000)),rate=list.find(r=>r.effective_from<=from&&(!r.effective_to||r.effective_to>=to));if(rate)expected+=Number(rate.monthly_amount)}}
-  const received=paid[m.id]||0;return {m,received,due:list.length?Math.max(0,expected-received):null,configured:list.length>0,months};
+ const {data:sharedRows,error}=await supabase.rpc("get_member_shared_financial_data");
+ if(error)throw error;
+ const byMember=new Map();
+ (sharedRows||[]).forEach(row=>{
+  if(!byMember.has(row.member_id)){
+   byMember.set(row.member_id,{
+    member_no:row.member_no,full_name:row.full_name,
+    received:Number(row.total_paid||0),due:Number(row.total_due||0),
+    configured:Boolean(row.due_configured)
+   });
+  }
  });
- const sumPaid=rows.reduce((n,r)=>n+r.received,0),sumDue=rows.reduce((n,r)=>n+(r.due||0),0);
- const head=today()<"2026-12-01"?'<p class="lead">হিসাব শুরু হবে ১ ডিসেম্বর ২০২৬ থেকে।</p>':'<p class="lead">1 December, 2026 to '+esc(dateText(today()))+' · '+(access.role==="super_admin"?"Super Admin view":"শুধু আপনার নিজের হিসাব")+'</p>';
- const deposits=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+money(r.received)+'</td></tr>').join("");
- const dues=rows.map(r=>'<tr><td>'+esc(r.m.member_no||"—")+'</td><td>'+esc(r.m.full_name)+'</td><td>'+esc(r.configured?money(r.due):"Not configured")+'</td></tr>').join("");
- setPage('<h1>'+t("ব্যক্তিগত জমা ও বকেয়া","Personal deposits and dues")+'</h1>'+head+'<section class="section"><h2>মোট জমা</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>'+deposits+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumPaid)+'</td></tr></tbody></table></div></section><section class="section"><h2>মোট বকেয়া</h2><div class="table-wrap"><table><thead><tr><th>SL / Member No.</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>'+dues+'<tr class="total-row"><td colspan="2">TOTAL</td><td>'+money(sumDue)+'</td></tr></tbody></table></div></section><div class="notice">বকেয়া হিসাবের জন্য প্রত্যেক সদস্যের মাসিক জমার হার ও কার্যকর তারিখ Super Admin-কে নির্ধারণ করতে হবে।</div>');
-}async function renderMembers(){
+ const rows=Array.from(byMember.values()).sort((a,b)=>String(a.member_no||"").localeCompare(String(b.member_no||"")));
+ if(!rows.length){setPage("<h1>Personal Due</h1>"+empty("এখনো কোনো Active Member পাওয়া যায়নি।"));return}
+ const sumPaid=rows.reduce((n,r)=>n+r.received,0);
+ const sumDue=rows.reduce((n,r)=>n+(r.configured?r.due:0),0);
+ const dueClass=v=>v>5000?"due-high":v>2000?"due-medium":"due-low";
+ const deposits=rows.map(r=>"<tr><td>"+esc(r.member_no||"—")+"</td><td>"+esc(r.full_name)+"</td><td>"+money(r.received)+"</td></tr>").join("");
+ const dues=rows.map(r=>"<tr><td>"+esc(r.member_no||"—")+"</td><td>"+esc(r.full_name)+"</td><td>"+(r.configured?'<span class=\"due-chip '+dueClass(r.due)+'\">'+money(r.due)+'</span>':'<span class=\"due-chip due-unconfigured\">Rate not set</span>')+"</td></tr>").join("");
+ let rateEditor="";
+ if(access.role==="super_admin"){
+  const {data:rateMembers,error:rateError}=await supabase.from("members")
+   .select("id,member_no,full_name,monthly_contribution")
+   .eq("status","active").order("member_no");
+  if(rateError)throw rateError;
+  const nextMonth=new Date();nextMonth.setDate(1);nextMonth.setMonth(nextMonth.getMonth()+1);
+  const effectiveDefault=localDate(nextMonth);
+  const rateRows=(rateMembers||[]).map(m=>'<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+esc(m.monthly_contribution?money(m.monthly_contribution):"Not set")+'</td><td><input class="due-rate-input" data-rate-member="'+esc(m.id)+'" data-current="'+Number(m.monthly_contribution||0)+'" type="number" min="1" step="1" inputmode="numeric" value="'+(m.monthly_contribution?esc(m.monthly_contribution):"")+'" aria-label="New monthly rate for '+esc(m.full_name)+'"></td></tr>').join("");
+  rateEditor='<section class="section"><div class="section-head"><h2>মাসিক জমার হার সম্পাদনা</h2><span class="pill">Super Admin only</span></div><p class="muted small">প্রত্যেক সদস্যের মাসিক হার আলাদাভাবে দিন। একবার Save করলে সব পরিবর্তন একসঙ্গে সংরক্ষিত হবে।</p><div class="field due-effective-field"><label for="dueEffectiveFrom">কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="dueEffectiveFrom" type="date" value="'+effectiveDefault+'"></div><div class="table-wrap"><table class="due-rate-table"><thead><tr><th>Member ID</th><th>Name</th><th>Current rate</th><th>New monthly rate</th></tr></thead><tbody>'+rateRows+'</tbody></table></div><div class="form-actions"><button type="button" id="saveDueRates">Save Changes</button><span id="dueRateStatus" class="muted small"></span></div></section>';
+ }
+ setPage("<h1>"+t("সদস্যদের জমা ও বকেয়া","Member deposits and dues")+"</h1><p class=\"lead\">"+t("সব সক্রিয় সদস্যের জমা ও বকেয়া দেখা যাচ্ছে। সদস্যরা শুধু দেখতে পারবেন; সম্পাদনা শুধু Super Admin করতে পারবেন।","All active members’ deposits and dues. Members have view-only access; only the Super Admin can edit.")+"</p><section class=\"section\"><h2>"+t("মোট জমা","Total deposits")+"</h2><div class=\"table-wrap\"><table><thead><tr><th>Member ID</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>"+deposits+"<tr class=\"total-row\"><td colspan=\"2\">TOTAL</td><td>"+money(sumPaid)+"</td></tr></tbody></table></div></section><section class=\"section\"><h2>"+t("মোট বকেয়া","Total due")+"</h2><div class=\"table-wrap\"><table><thead><tr><th>Member ID</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>"+dues+"<tr class=\"total-row\"><td colspan=\"2\">TOTAL</td><td>"+money(sumDue)+"</td></tr></tbody></table></div><p class=\"small muted\">"+t("সবুজ: ৳২,০০০ পর্যন্ত · হলুদ: ৳২,০০০-এর বেশি থেকে ৳৫,০০০ পর্যন্ত · লাল: ৳৫,০০০-এর বেশি","Green: up to ৳2,000 · Yellow: above ৳2,000 to ৳5,000 · Red: above ৳5,000")+"</p></section>"+rateEditor+'<div class="notice">'+t("যে সদস্যের মাসিক জমার হার এখনো নির্ধারণ করা হয়নি, তার Due সঠিকভাবে গণনা করা সম্ভব নয়। Super Admin হার সেট করলে হিসাব স্বয়ংক্রিয়ভাবে আপডেট হবে।","A member’s due cannot be calculated until their monthly contribution rate is configured. The total updates automatically after the Super Admin sets the rate.")+"</div>");
+ if(access.role==="super_admin"){
+  document.getElementById("saveDueRates")?.addEventListener("click",async()=>{
+   const dateInput=document.getElementById("dueEffectiveFrom");
+   const effectiveFrom=dateInput.value;
+   if(!effectiveFrom||new Date(effectiveFrom+"T00:00:00").getDate()!==1){toast("কার্যকর তারিখ মাসের ১ তারিখ হতে হবে।",true);dateInput.focus();return}
+   const inputs=Array.from(document.querySelectorAll(".due-rate-input"));
+   const changes=inputs.filter(input=>input.value.trim()!==""&&Number(input.value)!==Number(input.dataset.current||0))
+    .map(input=>({member_id:input.dataset.rateMember,amount:Number(input.value),effective_from:effectiveFrom}));
+   if(changes.some(change=>!(change.amount>0)||!Number.isFinite(change.amount))){toast("প্রত্যেক মাসিক হার শূন্যের বেশি হতে হবে।",true);return}
+   if(!changes.length){toast("কোনো পরিবর্তন করা হয়নি।");return}
+   const button=document.getElementById("saveDueRates"),status=document.getElementById("dueRateStatus");
+   button.disabled=true;status.textContent="সংরক্ষণ হচ্ছে…";
+   try{
+    const {data,error}=await supabase.rpc("save_member_contribution_rates",{p_changes:changes});
+    if(error)throw error;
+    status.textContent=String(data?.saved||changes.length)+"টি হার সংরক্ষিত হয়েছে।";
+    toast("মাসিক জমার হার সংরক্ষণ সম্পন্ন।");
+    await renderDue();
+   }catch(error){console.error(error);status.textContent="সংরক্ষণ হয়নি।";toast("Save error: "+(error.message||"Unknown error"),true)}
+   finally{const current=document.getElementById("saveDueRates");if(current)current.disabled=false}
+  });
+ }
+}
+async function renderMembers(){
  const {data,error}=await supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no");if(error)throw error;
  if(!data.length){setPage('<h1>Member Info</h1>'+empty(t("এখনো কোনো Active member নেই।","No active members yet.")));return}
  const own=access.role==="member"?await supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle():{data:null};if(own.error)throw own.error;const ownId=own.data?.id||null;
