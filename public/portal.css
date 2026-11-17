@@ -617,12 +617,12 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
 }
  
 /* Brand lockup: larger emblem with readable vector wordmark */
-.brand img{width:140px;height:111px;object-fit:contain;flex:0 0 auto}
+.brand img{width:150px;height:150px;object-fit:contain;flex:0 0 auto;background:#fff;border-radius:12px}
 .topbar-brand{gap:10px}
 .topbar-brand>div{display:none}
-.sidebar-brand img{width:135px;height:107px;object-fit:contain}
+.sidebar-brand img{width:150px;height:150px;object-fit:contain;background:#fff;border-radius:12px}
 .sidebar-brand>span{display:none}
 @media(max-width:640px){
- .brand img{width:130px;height:103px}
- .sidebar-brand img{width:125px;height:99px}
+ .brand img{width:132px;height:132px}
+ .sidebar-brand img{width:132px;height:132px}
 }
