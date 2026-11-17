@@ -195,7 +195,7 @@ async function loadMatrix() {
     });
     input.addEventListener("click", () => {
       if (input.dataset.lastPaidAt) {
-        toast("Saved amount: " + money(input.dataset.savedAmount) + " · Paid: " + dateTime(input.dataset.lastPaidAt));
+        toast("Saved amount: " + money(input.dataset.savedAmount) + " · Recorded: " + dateTime(input.dataset.lastPaidAt));
       }
     });
   });
