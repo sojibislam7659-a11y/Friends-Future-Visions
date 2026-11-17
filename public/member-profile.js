@@ -1,3 +1,4 @@
+import "./password-visibility.js";
 import { supabase } from "./supabase-client.js";
 import { requireRole } from "./auth-guard.js";
 
@@ -7,6 +8,30 @@ const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{maximumFractionDigits:
 const card=(label,value)=>'<article class="card"><div class="label">'+esc(label)+'</div><div class="value">'+esc(value)+'</div></article>';
 const empty=m=>'<div class="empty">'+esc(m)+'</div>';
 const dateText=v=>v?new Date(v+"T00:00:00").toLocaleDateString("en-GB"):"—";
+
+async function compressMemberImage(file,maxBytes){
+ if(!file||!["image/jpeg","image/png","image/webp"].includes(file.type))throw new Error("শুধু JPG, PNG অথবা WebP ছবি আপলোড করা যাবে।");
+ if(file.size>20*1024*1024)throw new Error("মূল ছবির সাইজ ২০ MB-এর বেশি।");
+ if(typeof createImageBitmap!=="function")return file;
+ const bitmap=await createImageBitmap(file);
+ const scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));
+ const canvas=document.createElement("canvas");
+ canvas.width=Math.max(1,Math.round(bitmap.width*scale));
+ canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+ const ctx=canvas.getContext("2d");
+ if(!ctx)throw new Error("ছবি প্রস্তুত করা যায়নি।");
+ ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+ bitmap.close?.();
+ let blob=null;
+ for(const quality of [0.82,0.72,0.62,0.52]){
+  blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",quality));
+  if(blob&&blob.size<=maxBytes*0.9)break;
+ }
+ if(!blob||blob.size>maxBytes)throw new Error("Compress করার পরও ছবির সাইজ Storage সীমার মধ্যে আনা যায়নি।");
+ const outputType=blob.type||"image/webp";
+ const extension=outputType==="image/png"?"png":outputType==="image/jpeg"?"jpg":"webp";
+ return new File([blob],"member-photo."+extension,{type:outputType,lastModified:Date.now()});
+}
 
 async function main(){
  const access=await requireRole(["super_admin","member"]);
@@ -46,36 +71,110 @@ async function main(){
   if(!rows.length)return "";
   return '<section class="section"><h2>'+esc(group.title)+'</h2><div class="member-profile-grid">'+rows.map(([key,label])=>'<div class="member-profile-field"><small>'+esc(label)+'</small><strong>'+esc(m[key])+'</strong></div>').join("")+'</div></section>';
  }).join("");
- const adminControls=access.role==="super_admin"
-  ? '<section class="section"><h2>সদস্যের Status ও Member No</h2><div class="field"><label for="memberStatus">Status</label><select id="memberStatus"><option value="pending" '+(m.status==="pending"?"selected":"")+' >Pending</option><option value="active" '+(m.status==="active"?"selected":"")+' >Active</option><option value="inactive" '+(m.status==="inactive"?"selected":"")+' >Inactive</option></select></div><p class="muted small">Pending সদস্যকে Active করলে Member No না থাকলে স্বয়ংক্রিয়ভাবে তৈরি হবে।</p><div class="field"><label for="memberNo">Member No</label><input id="memberNo" type="text" value="'+esc(m.member_no||"")+'" placeholder="যেমন: M-003" maxlength="30"></div><div class="form-actions"><button class="button" id="saveMemberNo" type="button">Member No Save</button></div></section>'
+ const editableMemberFields=[
+  ["member_no","Member ID","text"],["status","Status","select"],
+  ["full_name","পূর্ণ নাম","text"],["full_name_bn","বাংলা নাম","text"],
+  ["father_name","পিতার নাম","text"],["mother_name","মাতার নাম","text"],["spouse_name","স্বামী/স্ত্রীর নাম","text"],
+  ["date_of_birth","জন্মতারিখ","date"],["gender","লিঙ্গ","text"],["profession","পেশা","text"],
+  ["phone","মোবাইল","text"],["alternate_phone","বিকল্প মোবাইল","text"],["whatsapp","WhatsApp","text"],["email","যোগাযোগের ইমেইল","email"],
+  ["present_address","বর্তমান ঠিকানা","textarea"],["permanent_address","স্থায়ী ঠিকানা","textarea"],["district","জেলা","text"],["upazila","উপজেলা","text"],
+  ["emergency_contact_name","জরুরি যোগাযোগের নাম","text"],["emergency_contact_relation","জরুরি যোগাযোগের সম্পর্ক","text"],["emergency_contact_phone","জরুরি যোগাযোগের মোবাইল","text"],
+  ["nominee_name","নমিনির নাম","text"],["nominee_relation","নমিনির সম্পর্ক","text"],["nominee_phone","নমিনির মোবাইল","text"],["nominee_address","নমিনির ঠিকানা","textarea"],
+  ["member_note","সদস্য সম্পর্কে নোট","textarea"],["joined_at","যোগদানের তারিখ","date"],["joining_date","রেকর্ডে যোগদানের তারিখ","date"],
+  ["data_consent","তথ্য ব্যবহারের সম্মতি","textarea"],["account_consent","অ্যাকাউন্ট সংক্রান্ত সম্মতি","textarea"]
+ ];
+ const adminFieldEditor=access.role==="super_admin"
+  ? '<section class="section"><h2>Member তথ্য সম্পাদনা</h2><p class="muted small">এই অংশটি শুধু Super Admin-এর জন্য। Row ID, Auth account link, created_at ও contribution_start_date (rate history) system-managed/read-only; মাসিক জমার হার effective date দিয়ে পরিবর্তন করতে হবে।</p><div class="member-profile-grid">'+editableMemberFields.map(([key,label,type])=>'<div class="field"><label for="edit_'+key+'">'+esc(label)+'</label>'+(type==="textarea"?'<textarea id="edit_'+key+'" data-member-field="'+key+'" rows="2">'+esc(m[key]??"")+'</textarea>':type==="select"?'<select id="edit_'+key+'" data-member-field="'+key+'"><option value="pending" '+(m[key]==="pending"?"selected":"")+'>Pending</option><option value="active" '+(m[key]==="active"?"selected":"")+'>Active</option><option value="inactive" '+(m[key]==="inactive"?"selected":"")+'>Inactive</option></select>':'<input id="edit_'+key+'" data-member-field="'+key+'" type="'+type+'" value="'+esc(m[key]??"")+'">')+'</div>').join("")+'</div><div class="member-profile-grid"><div class="field"><label for="edit_monthly_contribution">মাসিক জমার পরিমাণ (৳)</label><input id="edit_monthly_contribution" type="number" min="1" step="1" value="'+esc(m.monthly_contribution??"")+'"></div><div class="field"><label for="edit_contribution_effective_date">নতুন জমার হার কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="edit_contribution_effective_date" type="date" value="" ></div><div class="field"><label for="edit_profile_photo">Profile Photo (JPG/PNG/WebP)</label><input id="edit_profile_photo" type="file" accept="image/jpeg,image/png,image/webp"></div><div class="field"><label for="edit_nominee_photo">Nominee Photo (JPG/PNG/WebP)</label><input id="edit_nominee_photo" type="file" accept="image/jpeg,image/png,image/webp"></div></div><div class="form-actions"><button class="button" id="saveMemberFields" type="button">Save Changes</button><button class="secondary" id="cancelMemberEditor" type="button">Cancel</button></div></section>'
   : "";
- root.innerHTML='<div class="shell"><header class="topbar"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><div class="actions"><a class="button secondary" href="member-info.html">Member Info</a><a class="button secondary" href="dashboard.html">Dashboard</a></div></header><main class="page" style="margin-top:16px"><section class="member-profile-header">'+(photo||'<span class="member-profile-photo member-directory-fallback">FF</span>')+'<div><h1>'+esc(m.full_name_bn||m.full_name||"Member")+'</h1><p class="lead">'+esc(m.member_no||"Member No not assigned")+' · '+esc(m.status)+'</p>'+(m.joining_date?'<p class="muted small">যোগদানের তারিখ: '+esc(dateText(m.joining_date))+'</p>':"")+'</div></section>'+adminControls+'<div class="grid member-profile-summary">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div>'+sections+nomineePhoto+(m.member_note?'<section class="section"><h2>নোট</h2><p>'+esc(m.member_note)+'</p></section>':"")+'</main><footer class="footer">Friends Future Vision Forever · Secure member profile</footer></div>';
+ const combinedEditor=access.role==="super_admin" ? '<div id="memberFieldEditor" hidden>'+adminFieldEditor+'</div>' : "";
+ root.innerHTML='<div class="shell"><header class="topbar"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><div class="actions"><a class="button secondary" href="member-info.html">Member Info</a><a class="button secondary" href="dashboard.html">Dashboard</a></div></header><main class="page" style="margin-top:16px"><section class="member-profile-header">'+(photo||'<span class="member-profile-photo member-directory-fallback">FF</span>')+'<div><h1>'+esc(m.full_name_bn||m.full_name||"Member")+'</h1><p class="lead">'+esc(m.member_no||"Member No not assigned")+' · '+esc(m.status)+'</p>'+(m.joining_date?'<p class="muted small">যোগদানের তারিখ: '+esc(dateText(m.joining_date))+'</p>':"")+'</div></section>'+'<div class="grid member-profile-summary">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div>'+sections+nomineePhoto+(m.member_note?'<section class="section"><h2>নোট</h2><p>'+esc(m.member_note)+'</p></section>':"")+'</main>'+(access.role==="super_admin"?'<button class="button" id="toggleMemberEditor" type="button" aria-controls="memberFieldEditor" aria-expanded="false" style="position:fixed;right:18px;bottom:18px;z-index:30;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.22)">✎ Edit Profile</button>':'')+combinedEditor+'<footer class="footer">Friends Future Vision Forever · Secure member profile</footer></div>';
  if(access.role==="super_admin"){
-  const statusSelect=document.getElementById("memberStatus");
-  statusSelect?.addEventListener("change",async()=>{
-   const nextStatus=statusSelect.value;
-   if(!["pending","active","inactive"].includes(nextStatus)){statusSelect.value=m.status;return}
-   if(!confirm("এই সদস্যের Status "+nextStatus+" করবেন?")){statusSelect.value=m.status;return}
-   statusSelect.disabled=true;
-   const {error}=await supabase.from("members").update({status:nextStatus}).eq("id",m.id);
-   if(error){alert("Status update হয়নি: "+error.message);statusSelect.disabled=false;statusSelect.value=m.status;return}
-   alert(nextStatus==="active"&&!m.member_no?"সদস্য Active হয়েছে এবং Member No স্বয়ংক্রিয়ভাবে তৈরি হয়েছে।":"সদস্যের Status আপডেট হয়েছে।");
-   location.reload();
+  const editor=document.getElementById("memberFieldEditor");
+  const editorToggle=document.getElementById("toggleMemberEditor");
+  editorToggle?.addEventListener("click",()=>{
+   editor.hidden=!editor.hidden;
+   editorToggle.setAttribute("aria-expanded",String(!editor.hidden));
+   editorToggle.textContent=editor.hidden?"✎ Edit Profile":"✕ Close Editor";
+   if(!editor.hidden)editor.scrollIntoView({behavior:"smooth",block:"start"});
   });
-  document.getElementById("saveMemberNo")?.addEventListener("click",async()=>{
-   const input=document.getElementById("memberNo");
-   const nextNo=input.value.trim();
-   if(!nextNo){alert("Member No খালি রাখা যাবে না।");input.focus();return}
-   if(nextNo===String(m.member_no||"")){alert("Member No-তে কোনো পরিবর্তন করা হয়নি।");return}
-   if(!confirm("এই সদস্যের Member No "+nextNo+" সেট করবেন?"))return;
-   input.disabled=true;
-   const saveButton=document.getElementById("saveMemberNo");
-   saveButton.disabled=true;
-   const {error}=await supabase.from("members").update({member_no:nextNo}).eq("id",m.id);
-   if(error){alert("Member No Save হয়নি: "+error.message);input.disabled=false;saveButton.disabled=false;return}
-   alert("Member No আপডেট হয়েছে।");
-   location.reload();
+  document.getElementById("cancelMemberEditor")?.addEventListener("click",()=>{
+   editor.hidden=true;
+   editorToggle?.setAttribute("aria-expanded","false");
+   if(editorToggle)editorToggle.textContent="✎ Edit Profile";
   });
+  document.getElementById("saveMemberFields")?.addEventListener("click",async()=>{
+   const fields=[...document.querySelectorAll("[data-member-field]")];
+   const changes={};
+   for(const input of fields){
+    const key=input.dataset.memberField;
+    const value=input.value.trim();
+    if(key==="full_name"&&!value){alert("পূর্ণ নাম খালি রাখা যাবে না।");input.focus();return}
+    if(key==="joined_at"&&!value){alert("যোগদানের তারিখ খালি রাখা যাবে না।");input.focus();return}
+    if(key==="status"&&!["pending","active","inactive"].includes(value)){alert("Status সঠিক নয়।");input.focus();return}
+    if(input.type==="date"&&value&&!/^\d{4}-\d{2}-\d{2}$/.test(value)){alert("তারিখের Format সঠিক নয়।");input.focus();return}
+    if(key==="date_of_birth"&&value&&value>new Date().toISOString().slice(0,10)){alert("জন্মতারিখ ভবিষ্যতের হতে পারে না।");input.focus();return}
+    if(input.type==="email"&&value&&!input.checkValidity()){alert("যোগাযোগের ইমেইল সঠিক নয়।");input.focus();return}
+    if(value!==String(m[key]??""))changes[key]=value===""?null:value;
+   }
+   const monthlyInput=document.getElementById("edit_monthly_contribution");
+   const effectiveInput=document.getElementById("edit_contribution_effective_date");
+   const monthlyChanged=Boolean(monthlyInput&&(monthlyInput.value!==String(m.monthly_contribution??"")||effectiveInput?.value));
+   if(monthlyChanged){
+    const amount=Number(monthlyInput.value),effective=effectiveInput.value;
+    if(!Number.isFinite(amount)||amount<=0){alert("মাসিক জমার পরিমাণ শূন্যের বেশি হতে হবে।");monthlyInput.focus();return}
+    if(!effective||effective.length!==10||!effective.endsWith("-01")||effective<"2026-12-01"||effective>="2031-12-01"){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ এবং Dec 2026–Nov 2031-এর মধ্যে হতে হবে।");effectiveInput.focus();return}
+   }
+   const profileFile=document.getElementById("edit_profile_photo")?.files?.[0]||null;
+   const nomineeFile=document.getElementById("edit_nominee_photo")?.files?.[0]||null;
+   if(!Object.keys(changes).length&&!monthlyChanged&&!profileFile&&!nomineeFile){alert("কোনো পরিবর্তন করা হয়নি।");return}
+   const button=document.getElementById("saveMemberFields");
+   button.disabled=true;
+   const uploaded=[];
+   const uploadPhoto=async(file,bucket,field,prefix)=>{
+    if(!file)return;
+    const maxBytes=bucket==="member-profile-photos"?5*1024*1024:10*1024*1024;
+    const prepared=await compressMemberImage(file,maxBytes);
+    if(prepared.size>maxBytes)throw new Error("Compress করার পরও ছবির সাইজ Storage সীমার বেশি।");
+    const ownerFolder=m.auth_user_id||access.session.user.id;
+    const extension=prepared.type==="image/png"?"png":prepared.type==="image/jpeg"?"jpg":"webp";
+    const path=ownerFolder+"/"+m.id+"/"+prefix+"-"+crypto.randomUUID()+"."+extension;
+    const {error:uploadError}=await supabase.storage.from(bucket).upload(path,prepared,{contentType:prepared.type,upsert:false});
+    if(uploadError)throw uploadError;
+    uploaded.push({bucket,path,oldPath:m[field]||null});
+    changes[field]=path;
+   };
+   let databaseSaved=false;
+   try{
+    await uploadPhoto(profileFile,"member-profile-photos","profile_photo_path","profile");
+    await uploadPhoto(nomineeFile,"member-private-documents","nominee_photo_path","nominee");
+    const {error}=await supabase.rpc("save_member_admin_profile",{
+     p_member_id:m.id,
+     p_changes:changes,
+     p_rate_amount:monthlyChanged?Number(monthlyInput.value):null,
+     p_rate_effective_from:monthlyChanged?effectiveInput.value:null
+    });
+    if(error)throw error;
+    databaseSaved=true;
+    for(const item of uploaded){
+     if(item.oldPath&&item.oldPath!==item.path){
+      try{await supabase.storage.from(item.bucket).remove([item.oldPath])}
+      catch(cleanupError){console.warn("Old member photo cleanup failed",cleanupError)}
+     }
+    }
+    alert("Member-এর সব পরিবর্তন সফলভাবে Save হয়েছে।");
+    location.reload();
+   }catch(error){
+    if(!databaseSaved){
+     for(const item of uploaded){
+      try{await supabase.storage.from(item.bucket).remove([item.path])}
+      catch(cleanupError){console.warn("Temporary photo cleanup failed",cleanupError)}
+     }
+    }
+    alert("Save হয়নি: "+(error?.message||String(error))+". আগের তথ্য অক্ষত আছে; আবার পরীক্ষা করুন।");
+    button.disabled=false;
+   }
+  });
+
  }
 }
 main().catch(error=>{console.error(error);root.innerHTML='<div class="shell"><div class="error">'+esc(error.message||"Profile load failed")+'</div></div>'});

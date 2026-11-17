@@ -546,3 +546,72 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
   .sidebar-panel .sidebar-nav{display:flex!important;flex-direction:column!important;gap:7px!important;padding:14px 0!important}
   .sidebar-panel .sidebar-nav a{width:100%!important;justify-content:flex-start!important;font-size:14px!important;min-height:52px!important}
 }
+
+/* Accessible show/hide control for every password field */
+.password-field-wrap{position:relative;display:block;width:100%;min-width:0}
+.password-field-wrap>input{width:100%;padding-right:48px!important}
+.password-visibility-toggle{position:absolute;right:7px;top:50%;transform:translateY(-50%);z-index:2;width:36px;min-width:36px;height:36px;min-height:36px;padding:7px;border:0;border-radius:8px;background:transparent!important;color:currentColor!important;box-shadow:none!important;cursor:pointer;opacity:.88}
+.password-visibility-toggle:hover{background:rgba(128,150,170,.16)!important;opacity:1}
+.password-visibility-toggle svg{width:20px;height:20px;display:block;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.password-visibility-toggle:focus-visible{outline:2px solid #8db5ff;outline-offset:2px}
+
+
+.cell-date.paid-date{display:block;margin-top:3px;color:#15966f;font-size:11px;font-weight:800;line-height:1.15}
+.matrix-charts .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.matrix-chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:12px}
+.matrix-chart-grid .card{min-width:0;overflow:hidden;padding:14px}
+.matrix-chart-grid .card>strong{display:block;font-size:13px;margin-bottom:10px}
+.mini-bars{height:180px;display:flex;align-items:end;gap:5px;padding:8px 2px 0;border-bottom:1px solid var(--line);overflow-x:auto}
+.mini-bar-item{height:100%;min-width:18px;flex:1;display:flex;flex-direction:column;justify-content:end;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+.mini-bar-item i{display:block;width:min(24px,80%);min-height:3px;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#39b98c,#08745a)}
+.matrix-chart-svg{display:block;width:100%;height:auto;max-height:210px}
+.matrix-pie{width:min(190px,80%);aspect-ratio:1;border-radius:50%;margin:12px auto}
+.matrix-chart-legend{display:grid;gap:6px;margin-top:10px;font-size:11px}
+.matrix-chart-legend span{display:flex;align-items:center;gap:7px;min-width:0}
+.matrix-chart-legend i{display:inline-block;width:9px;height:9px;flex:0 0 9px;border-radius:50%}
+@media(max-width:640px){.matrix-chart-grid{grid-template-columns:1fr}.matrix-chart-grid .card{padding:11px}.cell-date.paid-date{font-size:10px}}
+
+/* Mobile contribution matrix: keep member identity visible and make payment details legible */
+@media(max-width:640px){
+  .matrix-wrap{max-width:100%;max-height:72vh;overflow:auto;overscroll-behavior:contain}
+  .matrix-editable th,.matrix-editable td{min-width:104px;padding:9px 8px;font-size:12px}
+  .matrix-editable th.sticky-col,.matrix-editable td.sticky-col{min-width:92px}
+  .matrix-editable .name-col{left:92px;min-width:132px}
+  .matrix-cell{min-width:88px;gap:6px}
+  .matrix-amount{width:82px;min-height:36px;font-size:12px}
+  .matrix-cell .cell-date,.cell-date.paid-date{max-width:100px;font-size:11px;line-height:1.3}
+}
+
+
+/* High-contrast, accessible due indicators and Super Admin rate editor */
+.due-chip{display:inline-flex;align-items:center;justify-content:center;min-width:92px;padding:6px 10px;border:1px solid transparent;border-radius:9px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}
+.due-low{color:#14532d;background:#dcfce7;border-color:#86efac}
+.due-medium{color:#713f12;background:#fef3c7;border-color:#fcd34d}
+.due-high{color:#991b1b;background:#fee2e2;border-color:#fca5a5}
+.due-unconfigured{color:#334155;background:#e2e8f0;border-color:#cbd5e1}
+.due-rate-table input{width:130px;max-width:100%;min-height:38px;padding:7px 9px;border:1px solid #8ca99a;border-radius:8px;background:#fff;color:#183c32;font:600 13px Inter,"Noto Sans Bengali",sans-serif}
+.due-effective-field{max-width:260px}
+@media(max-width:640px){
+ .due-chip{min-width:82px;padding:6px 8px;font-size:12px}
+ .due-rate-table input{width:110px;min-height:40px}
+ .due-effective-field{max-width:none}
+}
+
+
+.matrix-day{width:48px;min-height:28px;padding:4px 5px;border:1px solid #a8c8b4;border-radius:7px;background:#f1f8f2;color:#173d36;font:700 11px Inter,"Noto Sans Bengali",sans-serif;text-align:center}
+.matrix-day:disabled{opacity:.75}
+@media(max-width:640px){.matrix-day{width:48px;min-height:32px;font-size:12px}.matrix-cell{gap:7px}}
+
+
+/* Unified Super Admin editors for proofs, notices and payment settings */
+.proof-meta-row,.notice-edit-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:14px 0;border-bottom:1px solid var(--border,#d9e5df)}
+.proof-meta-row .field:nth-child(3),.notice-edit-row .field:nth-child(4){grid-column:1/-1}
+.payment-method-form{min-width:0;border:1px solid var(--border,#d9e5df);border-radius:12px;padding:14px}
+.payment-method-form legend{font-weight:800;padding:0 8px}
+.payment-method-form .field{margin-bottom:10px}
+.payment-method-form input[type="text"],.payment-method-form input[type="tel"]{max-width:100%}
+@media(max-width:640px){
+ .proof-meta-row,.notice-edit-row{grid-template-columns:minmax(0,1fr);gap:8px}
+ .proof-meta-row .field:nth-child(3),.notice-edit-row .field:nth-child(4){grid-column:auto}
+ .payment-method-form{padding:12px}
+}
