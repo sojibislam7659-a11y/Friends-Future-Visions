@@ -217,41 +217,75 @@ async function loadProofMonth(month,allProofs){
  }
 }async function renderPayment(){
  const isSuper=access.role==="super_admin";
- const mr=await supabase.from("payment_methods").select("id,method,account_name,account_number,qr_path,active").eq("active",true).order("method");
+ let methodQuery=supabase.from("payment_methods").select("id,method,account_name,account_number,qr_path,active").order("method");
+ if(!isSuper)methodQuery=methodQuery.eq("active",true);
+ const mr=await methodQuery;
  if(mr.error)throw mr.error;
  const methods=mr.data||[];
- const cards=await Promise.all(methods.map(async m=>{
+ const activeMethods=methods.filter(m=>m.active);
+ const cards=await Promise.all(activeMethods.map(async m=>{
   const {data:u}=m.qr_path?await supabase.storage.from("payment-qr").createSignedUrl(m.qr_path,1800):{data:null};
   return '<article class="payment-method-card"><div class="row"><strong>'+esc(m.method.toUpperCase())+'</strong><span class="pill">Active</span></div><p>'+esc(m.account_name||"")+'</p><p class="payment-number">'+esc(m.account_number||"নম্বর সেট করা হয়নি")+'</p>'+(u?.signedUrl?'<img class="payment-qr" loading="lazy" src="'+esc(u.signedUrl)+'" alt="Payment QR">':"")+'</article>';
  }));
  const base='<h1>Payment</h1><p class="lead">bKash অথবা Nagad-এ টাকা পাঠানোর পর Transaction ID জমা দিন। Super Admin যাচাই করে অনুমোদন করবেন।</p><div class="payment-method-grid">'+(cards.join("")||empty("Super Admin এখনো bKash/Nagad নম্বর সেট করেননি।"))+'</div>';
  if(isSuper){
-  setPage(base+'<section class="section"><h2>Payment account settings</h2><p class="muted">শুধু Super Admin নম্বর ও QR code পরিবর্তন করতে পারবেন।</p><div class="form-grid">'+["bkash","nagad"].map(m=>'<form class="payment-method-form card" data-method="'+m+'"><h3>'+m.toUpperCase()+'</h3><div class="field"><label>Account name</label><input name="account_name" required></div><div class="field"><label>Account number</label><input name="account_number" required inputmode="tel"></div><div class="field"><label>QR image (optional)</label><input name="qr" type="file" accept="image/jpeg,image/png,image/webp"></div><button type="submit">Save '+m.toUpperCase()+'</button></form>').join("")+'</div></section><section class="section"><h2>Pending payment submissions</h2><div id="pendingPayments" class="list">'+empty("লোড হচ্ছে…")+'</div></section>');
-  for(const form of document.querySelectorAll(".payment-method-form")){
-   const method=form.dataset.method,existing=methods.find(m=>m.method===method);
-   if(existing){form.elements.account_name.value=existing.account_name||"";form.elements.account_number.value=existing.account_number||""}
-   form.addEventListener("submit",async e=>{
-    e.preventDefault();const fd=new FormData(form),name=String(fd.get("account_name")||"").trim(),number=String(fd.get("account_number")||"").trim(),file=fd.get("qr");
-    if(!name||!number){toast("Account name ও number দিতে হবে।");return}
-    let qrPath=existing?.qr_path||null;
-    if(file?.size){
-     if(file.size>2*1024*1024||!["image/jpeg","image/png","image/webp"].includes(file.type)){toast("QR image 2MB-এর মধ্যে JPG/PNG/WEBP হতে হবে।");return}
-     const ext=(file.name.split(".").pop()||"png").toLowerCase();qrPath=method+"/"+crypto.randomUUID()+"."+ext;
-     const {error:upError}=await supabase.storage.from("payment-qr").upload(qrPath,file,{upsert:false,contentType:file.type});
-     if(upError){toast(upError.message);return}
+  const settings=["bkash","nagad"].map(method=>{
+   const existing=methods.find(m=>m.method===method);
+   return '<fieldset class="payment-method-form card" data-method="'+method+'"><legend>'+method.toUpperCase()+'</legend><div class="field"><label>Account name</label><input name="'+method+'_account_name" value="'+esc(existing?.account_name||"")+'" required></div><div class="field"><label>Account number</label><input name="'+method+'_account_number" value="'+esc(existing?.account_number||"")+'" required inputmode="tel"></div><div class="field"><label>QR image (optional)</label><input name="'+method+'_qr" type="file" accept="image/jpeg,image/png,image/webp"></div><label class="inline-check"><input name="'+method+'_active" type="checkbox" '+(existing?.active===false?"":"checked")+'> Active</label><label class="inline-check"><input name="'+method+'_remove_qr" type="checkbox"> Remove current QR</label></fieldset>';
+  }).join("");
+  setPage(base+'<section class="section"><h2>Payment account settings</h2><p class="muted">bKash ও Nagad—দুটির পরিবর্তন একবারে Save হবে। শুধু Super Admin সম্পাদনা করতে পারবেন।</p><form id="paymentSettingsForm"><div class="form-grid">'+settings+'</div><div class="form-actions"><button type="submit" id="savePaymentSettings">Save Changes</button><span id="paymentSettingsStatus" class="muted small"></span></div></form></section><section class="section"><h2>Pending payment submissions</h2><div id="pendingPayments" class="list">'+empty("লোড হচ্ছে…")+'</div></section>');
+  document.getElementById("paymentSettingsForm").addEventListener("submit",async event=>{
+   event.preventDefault();
+   const form=event.currentTarget,fd=new FormData(form),updates=[],uploads=[];
+   for(const method of ["bkash","nagad"]){
+    const existing=methods.find(m=>m.method===method);
+    const name=String(fd.get(method+"_account_name")||"").trim();
+    const number=String(fd.get(method+"_account_number")||"").trim();
+    const active=fd.get(method+"_active")==="on";
+    const file=fd.get(method+"_qr");
+    const removeQr=fd.get(method+"_remove_qr")==="on";
+    if(active&&(!name||!number)){toast(method.toUpperCase()+" Active রাখতে Account name ও number দিতে হবে।",true);return}
+    if(file?.size&& (file.size>2*1024*1024||!["image/jpeg","image/png","image/webp"].includes(file.type))){toast(method.toUpperCase()+" QR image 2MB-এর মধ্যে JPG/PNG/WEBP হতে হবে।",true);return}
+    updates.push({method,account_name:name||existing?.account_name||"",account_number:number||existing?.account_number||"",qr_path:removeQr?null:(existing?.qr_path||null),active,updated_by:access.session.user.id});
+    if(file?.size)uploads.push({method,file,oldPath:existing?.qr_path||null});
+   }
+   const button=document.getElementById("savePaymentSettings"),status=document.getElementById("paymentSettingsStatus");
+   button.disabled=true;status.textContent="সংরক্ষণ হচ্ছে…";
+   const newPaths=[];
+   try{
+    for(const item of uploads){
+     const ext=item.file.type==="image/png"?"png":item.file.type==="image/jpeg"?"jpg":"webp";
+     const path=item.method+"/"+crypto.randomUUID()+"."+ext;
+     const {error}=await supabase.storage.from("payment-qr").upload(path,item.file,{upsert:false,contentType:item.file.type});
+     if(error)throw error;
+     item.newPath=path;newPaths.push(path);
+     const row=updates.find(x=>x.method===item.method);row.qr_path=path;
     }
-    const {error:saveError}=await supabase.from("payment_methods").upsert({method,account_name:name,account_number:number,qr_path:qrPath,active:true,updated_by:access.session.user.id},{onConflict:"method"});
-    if(saveError){if(file?.size&&qrPath)await supabase.storage.from("payment-qr").remove([qrPath]);toast(saveError.message)}
-    else{toast(method.toUpperCase()+" details saved.");renderPayment()}
-   });
-  }
+    const {error:saveError}=await supabase.from("payment_methods").upsert(updates,{onConflict:"method"});
+    if(saveError)throw saveError;
+    for(const method of ["bkash","nagad"]){
+     const existing=methods.find(m=>m.method===method),updated=updates.find(m=>m.method===method);
+     if(existing?.qr_path&&existing.qr_path!==updated.qr_path){
+      try{await supabase.storage.from("payment-qr").remove([existing.qr_path])}catch(cleanupError){console.warn("Old QR cleanup failed",cleanupError)}
+     }
+    }
+    status.textContent="দুটি Payment method-এর পরিবর্তন Save হয়েছে।";
+    toast("Payment settings সংরক্ষণ সম্পন্ন।");
+    await renderPayment();
+   }catch(error){
+    for(const path of newPaths){try{await supabase.storage.from("payment-qr").remove([path])}catch(cleanupError){console.warn("Temporary QR cleanup failed",cleanupError)}}
+    status.textContent="Save হয়নি।";
+    toast("Payment settings save error: "+(error.message||"Unknown error"),true);
+    button.disabled=false;
+   }
+  });
   const pending=await supabase.from("payment_submissions").select("id,member_id,submitted_by,amount,payment_date,payment_method,reference_no,created_at,members(full_name,member_no)").eq("status","pending").order("created_at");
   const box=document.getElementById("pendingPayments");
   if(pending.error)box.textContent=pending.error.message;
   else if(!pending.data.length)box.innerHTML=empty("কোনো Pending payment নেই।");
   else box.innerHTML=pending.data.map(p=>'<article class="list-item"><strong>'+esc(p.members?.member_no||"")+' · '+esc(p.members?.full_name||"Member")+'</strong><p>'+money(p.amount)+' · '+esc(p.payment_method||"")+' · '+esc(p.payment_date)+'</p><p>Transaction ID: <strong>'+esc(p.reference_no)+'</strong></p><div class="field"><label>Ledger account</label><select data-payment-account="'+esc(p.id)+'"><option value="cash">Cash</option><option value="bank">Bank</option></select></div><div class="row"><button data-payment-approve="'+esc(p.id)+'">Approve & add to ledger</button><button class="danger" data-payment-reject="'+esc(p.id)+'">Reject</button></div></article>').join("");
-  box.querySelectorAll("[data-payment-approve],[data-payment-reject]").forEach(b=>b.addEventListener("click",async()=>{
-   const approved=b.hasAttribute("data-payment-approve"),id=approved?b.dataset.paymentApprove:b.dataset.paymentReject,note=prompt("Admin note (optional):")||null,account=document.querySelector('[data-payment-account="'+id+'"]')?.value||"cash";
+  box.querySelectorAll("[data-payment-approve],[data-payment-reject]").forEach(button=>button.addEventListener("click",async()=>{
+   const approved=button.hasAttribute("data-payment-approve"),id=approved?button.dataset.paymentApprove:button.dataset.paymentReject,note=prompt("Admin note (optional):")||null,account=document.querySelector('[data-payment-account="'+id+'"]')?.value||"cash";
    const {error}=await supabase.rpc("review_payment_submission",{p_submission_id:id,p_approved:approved,p_admin_note:note,p_account_type:account});
    if(error)toast(error.message);else{toast(approved?"Payment verified and added once to ledger.":"Payment rejected.");renderPayment()}
   }));
@@ -263,7 +297,7 @@ async function loadProofMonth(month,allProofs){
  if(!member){setPage(base+empty("এই লগইন অ্যাকাউন্টের সঙ্গে Member record link করা নেই।"));return}
  const history=await supabase.from("payment_submissions").select("id,amount,payment_date,payment_method,reference_no,status,admin_note,created_at").eq("submitted_by",access.session.user.id).order("created_at",{ascending:false}).limit(20);
  if(history.error)throw history.error;
- setPage(base+'<section class="section"><h2>Payment submission</h2><form id="paymentSubmitForm" class="form-grid"><div class="field"><label>Amount (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>Payment method</label><select name="method" required>'+methods.map(m=>'<option value="'+esc(m.method)+'">'+esc(m.method.toUpperCase())+'</option>').join("")+'</select></div><div class="field"><label>Payment date</label><input name="date" type="date" max="'+today()+'" value="'+today()+'" required></div><div class="field"><label>Transaction ID</label><input name="reference" maxlength="100" required></div><div class="form-actions"><button type="submit">Submit for verification</button></div></form></section><section class="section"><h2>Your payment history</h2><div class="list">'+(history.data.map(p=>'<article class="list-item"><div class="row"><strong>'+money(p.amount)+'</strong><span class="pill">'+esc(p.status)+'</span></div><p>'+esc(p.payment_method||"")+' · '+esc(p.payment_date)+' · '+esc(p.reference_no)+'</p><small>'+esc(p.admin_note||"")+'</small></article>').join("")||empty("কোনো Payment submission নেই।"))+'</div></section>');
+ setPage(base+'<section class="section"><h2>Payment submission</h2><form id="paymentSubmitForm" class="form-grid"><div class="field"><label>Amount (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>Payment method</label><select name="method" required>'+activeMethods.map(m=>'<option value="'+esc(m.method)+'">'+esc(m.method.toUpperCase())+'</option>').join("")+'</select></div><div class="field"><label>Payment date</label><input name="date" type="date" max="'+today()+'" value="'+today()+'" required></div><div class="field"><label>Transaction ID</label><input name="reference" maxlength="100" required></div><div class="form-actions"><button type="submit">Submit for verification</button></div></form></section><section class="section"><h2>Your payment history</h2><div class="list">'+(history.data.map(p=>'<article class="list-item"><div class="row"><strong>'+money(p.amount)+'</strong><span class="pill">'+esc(p.status)+'</span></div><p>'+esc(p.payment_method||"")+' · '+esc(p.payment_date)+' · '+esc(p.reference_no)+'</p><small>'+esc(p.admin_note||"")+'</small></article>').join("")||empty("কোনো Payment submission নেই।"))+'</div></section>');
  document.getElementById("paymentSubmitForm").addEventListener("submit",async e=>{
   e.preventDefault();const fd=new FormData(e.currentTarget),amount=Number(fd.get("amount")),reference=String(fd.get("reference")||"").trim();
   if(!(amount>0)||!reference){toast("সঠিক Amount ও Transaction ID দিন।");return}
@@ -271,7 +305,6 @@ async function loadProofMonth(month,allProofs){
   if(error)toast(error.message);else{toast("Payment যাচাইয়ের জন্য জমা হয়েছে।");renderPayment()}
  });
 }
-
 async function renderProfile(){
  const {data:m,error}=await supabase.from("members").select("*").eq("auth_user_id",access.session.user.id).maybeSingle();
  if(error)throw error;
