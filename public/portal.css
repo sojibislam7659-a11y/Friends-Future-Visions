@@ -640,3 +640,12 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
 .topbar-brand img{width:170px;height:135px;max-width:min(34vw,170px)}
 .sidebar-brand img{width:150px;height:119px}
 @media(max-width:640px){.sidebar-brand img{width:132px;height:105px}}
+
+/* Sidebar logo contrast: the navy wordmark needs a light backing on the dark drawer. */
+.sidebar-brand img{
+  background:#f3f8f4!important;
+  border:1px solid rgba(255,255,255,.28)!important;
+  border-radius:14px!important;
+  padding:8px!important;
+  box-shadow:0 4px 14px rgba(0,0,0,.16)!important;
+}
