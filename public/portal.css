@@ -650,8 +650,9 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
   box-shadow:0 4px 14px rgba(0,0,0,.16)!important;
 }
 
-/* One shared transparent vector logo across Login, Dashboard header and sidebar. */
-.login .brand img{width:300px;height:auto;max-width:100%;object-fit:contain;background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;box-shadow:none!important}
-.topbar-brand img,.sidebar-brand img{width:170px;height:auto;max-width:min(34vw,170px);object-fit:contain;background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;box-shadow:none!important}
-.sidebar-brand img{width:150px;max-width:150px}
+
+/* Keep the original Login Page logo asset unchanged and reuse it across the portal. */
+.topbar-brand img,.sidebar-brand img{object-fit:contain;background:transparent!important;border:0!important;border-radius:0!important;padding:0!important;box-shadow:none!important}
+.topbar-brand img{width:170px;height:auto;max-width:min(34vw,170px)}
+.sidebar-brand img{width:150px;height:auto;max-width:150px}
 @media(max-width:640px){.sidebar-brand img{width:132px;max-width:132px}}
