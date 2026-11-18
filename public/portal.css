@@ -626,3 +626,17 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
  .brand img{width:132px;height:132px}
  .sidebar-brand img{width:132px;height:132px}
 }
+
+
+/* Transparent vector brand mark: blend naturally with the dashboard surfaces */
+.topbar-brand img,.sidebar-brand img{
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  padding:0!important;
+  box-shadow:none!important;
+  object-fit:contain;
+}
+.topbar-brand img{width:170px;height:135px;max-width:min(34vw,170px)}
+.sidebar-brand img{width:150px;height:119px}
+@media(max-width:640px){.sidebar-brand img{width:132px;height:105px}}
