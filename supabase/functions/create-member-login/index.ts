@@ -1,14 +1,18 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const cors = {
-  "Access-Control-Allow-Origin": "https://friends-future-visions.sojibislam7659.workers.dev",
+const allowedOrigins = new Set([
+  "https://friends-future-visions.sojibislam7659.workers.dev",
+  "https://development-friends-future-visions-dev.sojibislam7659.workers.dev"
+]);
+const corsHeaders = (origin: string | null) => ({
+  "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin)
+    ? origin
+    : "https://friends-future-visions.sojibislam7659.workers.dev",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json"
-};
-
-const json = (body: object, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: cors });
+  "Content-Type": "application/json",
+  "Vary": "Origin"
+});
 
 function makeTemporaryPassword() {
   const bytes = new Uint8Array(18);
@@ -18,7 +22,10 @@ function makeTemporaryPassword() {
 }
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const headers = corsHeaders(req.headers.get("origin"));
+  const json = (body: object, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers });
+  if (req.method === "OPTIONS") return new Response("ok", { headers });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const url = Deno.env.get("SUPABASE_URL");
