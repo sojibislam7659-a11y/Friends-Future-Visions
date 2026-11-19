@@ -211,7 +211,7 @@ body.login-theme .topbar{border-radius:18px}
 body.login-theme .page{border-radius:20px}
 body.login-theme .brand strong,body.login-theme .brand small{color:#f0f4ff}
 body.login-theme .brand small{opacity:.72}
-body.login-theme .brand img{filter:brightness(0) invert(1);opacity:.92}
+body.login-theme .brand img{filter:none;opacity:1}
 body.login-theme .nav{background:rgba(20,38,70,.88)}
 body.login-theme .nav a{color:#c4d3ed}
 body.login-theme .nav a.active,body.login-theme .nav a:hover{background:rgba(120,140,255,.20);color:#fff}
