@@ -1,0 +1,54 @@
+name: Development browser QA
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  member-login-dashboard:
+    name: Member login and dashboard smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout Development
+        uses: actions/checkout@v4
+        with:
+          ref: development
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright test runner
+        run: |
+          npm init -y
+          npm install --no-save --no-audit --no-fund @playwright/test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify test credentials are configured
+        env:
+          DEV_TEST_EMAIL: ${{ secrets.DEV_TEST_EMAIL }}
+          DEV_TEST_PASSWORD: ${{ secrets.DEV_TEST_PASSWORD }}
+        run: |
+          test -n "$DEV_TEST_EMAIL" || (echo "Missing GitHub Actions secret: DEV_TEST_EMAIL" && exit 1)
+          test -n "$DEV_TEST_PASSWORD" || (echo "Missing GitHub Actions secret: DEV_TEST_PASSWORD" && exit 1)
+
+      - name: Run Development browser QA
+        env:
+          DEV_TEST_EMAIL: ${{ secrets.DEV_TEST_EMAIL }}
+          DEV_TEST_PASSWORD: ${{ secrets.DEV_TEST_PASSWORD }}
+        run: npx playwright test
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: development-browser-qa
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7
