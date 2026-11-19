@@ -615,7 +615,7 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
  .proof-meta-row .field:nth-child(3),.notice-edit-row .field:nth-child(4){grid-column:auto}
  .payment-method-form{padding:12px}
 }
- 
+
 /* Brand lockup: larger emblem with readable vector wordmark */
 .brand img{width:150px;height:150px;object-fit:contain;flex:0 0 auto;background:transparent;border-radius:0}
 .topbar-brand{gap:10px}
