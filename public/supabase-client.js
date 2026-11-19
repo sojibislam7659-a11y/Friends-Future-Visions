@@ -5,8 +5,8 @@
  */
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = "https://ugtzmtmsfaajclftfeuz.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_j2LBGMqLPoaA9OD70W5pAw_Kgg9XEn9";
+const SUPABASE_URL = "https://tvdxbyzvkjiebwslmnvj.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_uHCRkBNpkJNNoIB_Egjpkw_eX5QW2YI";
 
 const isConfigured =
   SUPABASE_URL.startsWith("https://") &&
