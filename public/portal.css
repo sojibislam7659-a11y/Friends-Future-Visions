@@ -626,3 +626,19 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
  .brand img{width:132px;height:132px}
  .sidebar-brand img{width:132px;height:132px}
 }
+
+
+/* Development-only sidebar background preview: soft coral */
+.sidebar-panel{
+  background:#F98570!important;
+  color:#0C2C4C!important;
+  border-color:rgba(12,44,76,.18)!important;
+}
+.sidebar-panel .sidebar-brand small,
+.sidebar-panel .account-email{
+  color:#38546C!important;
+}
+.sidebar-panel .sidebar-head,
+.sidebar-panel .sidebar-footer{
+  border-color:rgba(12,44,76,.18)!important;
+}
