@@ -62,7 +62,6 @@ select jsonb_build_object(
   ) order by h.yr,h.half) from halves h),'[]'::jsonb)
 )
 from totals t;
-$function$
-
+$function$;
 
 CREATE INDEX IF NOT EXISTS financial_transactions_reversal_of_id_idx ON public.financial_transactions(reversal_of_id) WHERE reversal_of_id IS NOT NULL;
