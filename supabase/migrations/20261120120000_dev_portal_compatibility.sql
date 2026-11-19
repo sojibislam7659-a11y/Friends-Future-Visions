@@ -90,9 +90,7 @@ BEGIN
   END LOOP;
   RETURN jsonb_build_object('saved',v_saved);
 END;
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.save_committee_rules(p_changes jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -148,9 +146,7 @@ BEGIN
   END LOOP;
   RETURN jsonb_build_object('saved',v_saved);
 END;
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.save_member_admin_profile(p_member_id uuid, p_changes jsonb, p_rate_amount numeric DEFAULT NULL::numeric, p_rate_effective_from date DEFAULT NULL::date)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -237,9 +233,7 @@ BEGIN
   END IF;
   RETURN jsonb_build_object('saved',true,'rate_saved',p_rate_amount IS NOT NULL);
 END;
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.save_member_contribution_rates(p_changes jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -292,9 +286,7 @@ BEGIN
 
   RETURN jsonb_build_object('saved', v_count);
 END;
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.save_notice_updates(p_changes jsonb)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -358,9 +350,7 @@ BEGIN
   END LOOP;
   RETURN jsonb_build_object('saved',v_saved);
 END;
-$function$
-
-
+$function$;
 CREATE OR REPLACE FUNCTION private.get_member_shared_financial_data()
  RETURNS TABLE(member_id uuid, member_no text, full_name text, full_name_bn text, contribution_month date, amount numeric, paid_day integer, last_paid_at timestamp with time zone, total_paid numeric, total_due numeric, due_configured boolean, has_manual boolean, matrix_count integer)
  LANGUAGE plpgsql
@@ -411,10 +401,7 @@ begin
  left join expected e on e.member_id=mg.id left join paid p on p.member_id=mg.id
  left join configured cfg on cfg.member_id=mg.id order by mg.member_no,mg.month_start;
 end;
-$function$
-
-
-
+$function$;
 CREATE OR REPLACE FUNCTION public.get_member_shared_financial_data()
 RETURNS TABLE(
   member_id uuid, member_no text, full_name text, full_name_bn text,
