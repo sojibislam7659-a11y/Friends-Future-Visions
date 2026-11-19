@@ -541,10 +541,10 @@ async function renderAdmin(){
    if(changes.some(x=>!(x.amount>0)||!Number.isFinite(x.amount)||!x.transaction_date)){toast("Amount ও Date সঠিকভাবে পূরণ করুন।",true);return}
    const button=document.getElementById("saveAdminTransactions"),status=document.getElementById("adminTransactionStatus");
    button.disabled=true;status.textContent="সংরক্ষণ হচ্ছে…";
-   const {data,error}=await supabase.rpc("save_financial_transaction_edits",{p_changes:changes});
+   const {data,error}=await supabase.rpc("correct_financial_transactions",{p_idempotency_key:crypto.randomUUID(),p_changes:changes});
    if(error){status.textContent="Save হয়নি।";toast(error.message,true);button.disabled=false;return}
-   status.textContent=(data?.saved||changes.length)+"টি লেনদেন আপডেট হয়েছে।";
-   toast("লেনদেনের পরিবর্তন সংরক্ষিত হয়েছে।");renderAdmin();
+   status.textContent=(data?.saved||changes.length)+"টি লেনদেন সংশোধন হয়েছে।";
+   toast("লেনদেনের সংশোধন সংরক্ষিত হয়েছে।");renderAdmin();
   });
  }
  const pending=await supabase.from("profile_change_requests").select("id,member_id,submitted_by,requested_changes,requested_photo_path,created_at,members(full_name,member_no)").eq("status","pending").order("created_at");
@@ -557,7 +557,46 @@ async function renderAdmin(){
   document.querySelectorAll("[data-approve],[data-reject]").forEach(b=>b.addEventListener("click",async()=>{const approved=b.hasAttribute("data-approve"),id=approved?b.dataset.approve:b.dataset.reject;const note=prompt("Admin note (optional):")||null;const {error}=await supabase.rpc("review_profile_change_request",{p_request_id:id,p_approved:approved,p_admin_note:note});if(error)toast(error.message);else{toast(approved?"Request approved.":"Request rejected.");renderAdmin()}}));
  }
  await renderPendingPrivateDocuments();
- document.getElementById("transactionForm").addEventListener("submit",async e=>{e.preventDefault();const d=new FormData(e.currentTarget),type=d.get("type"),amount=Number(d.get("amount")),account=d.get("account"),date=d.get("date"),memberId=d.get("member_id")||null,desc=String(d.get("description")||"").trim();if(!(amount>0)){toast("Amount অবশ্যই 0-এর বেশি হতে হবে।");return}if(type==="contribution"&&!memberId){toast("Contribution-এর জন্য সদস্য নির্বাচন করো।");return}let payload;if(type==="transfer"){const destination=d.get("destination");if(account===destination){toast("Source ও destination account আলাদা হতে হবে।");return}const group=crypto.randomUUID();payload=[{transaction_type:"transfer",account_type:account,direction:"out",amount,transaction_date:date,description:desc,reference_no:d.get("reference_no")||null,transfer_group_id:group,created_by:access.session.user.id},{transaction_type:"transfer",account_type:destination,direction:"in",amount,transaction_date:date,description:desc,reference_no:d.get("reference_no")||null,transfer_group_id:group,created_by:access.session.user.id}]}else{const direction=["withdrawal","expense","investment_loss"].includes(type)?"out":"in";payload={transaction_type:type,account_type:account,direction,amount,transaction_date:date,member_id:memberId,description:desc,reference_no:d.get("reference_no")||null,created_by:access.session.user.id}}const {error}=await supabase.from("financial_transactions").insert(payload);if(error)toast(error.message);else{toast("লেনদেন সংরক্ষিত হয়েছে।");renderAdmin()}});
+ document.getElementById("transactionForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const d=new FormData(e.currentTarget);
+  const type=String(d.get("type")||"");
+  const amount=Number(d.get("amount"));
+  const account=String(d.get("account")||"");
+  const date=String(d.get("date")||"");
+  const memberId=d.get("member_id")||null;
+  const desc=String(d.get("description")||"").trim();
+  const referenceNo=String(d.get("reference_no")||"").trim()||null;
+  const destination=type==="transfer"?String(d.get("destination")||""):null;
+  if(!(amount>0)||!Number.isFinite(amount)){toast("Amount অবশ্যই 0-এর বেশি হতে হবে।",true);return}
+  if(!date){toast("লেনদেনের তারিখ দিতে হবে।",true);return}
+  if(type==="contribution"&&!memberId){toast("Contribution-এর জন্য সদস্য নির্বাচন করো।",true);return}
+  if(type==="transfer"&&(!destination||account===destination)){toast("Source ও destination account আলাদা হতে হবে।",true);return}
+  const direction=type==="transfer"?"out":(["withdrawal","expense","investment_loss"].includes(type)?"out":"in");
+  const button=e.currentTarget.querySelector('button[type="submit"]');
+  if(button)button.disabled=true;
+  const {error}=await supabase.rpc("post_financial_transaction",{
+   p_idempotency_key:crypto.randomUUID(),
+   p_transaction_type:type,
+   p_amount:amount,
+   p_transaction_date:date,
+   p_account_type:account,
+   p_direction:direction,
+   p_member_id:memberId,
+   p_description:desc||null,
+   p_reference_no:referenceNo,
+   p_category:null,
+   p_project_name:null,
+   p_destination_account_type:destination
+  });
+  if(error){
+   toast(error.message,true);
+   if(button)button.disabled=false;
+   return;
+  }
+  toast("লেনদেন সংরক্ষিত হয়েছে।");
+  renderAdmin();
+ });
  document.getElementById("noticeForm").addEventListener("submit",async e=>{e.preventDefault();const d=new FormData(e.currentTarget),type=d.get("type"),meeting=d.get("meeting_at");if(type==="meeting"&&!meeting){toast("সভা হলে সময় দিতে হবে।");return}const {error}=await supabase.from("notices").insert({title:d.get("title"),body:d.get("body"),notice_type:type,meeting_at:meeting?new Date(meeting).toISOString():null,published:true,published_at:new Date().toISOString(),created_by:access.session.user.id});if(error)toast(error.message);else{toast("নোটিশ প্রকাশ হয়েছে।");renderAdmin()}});
  const noticeRows=await supabase.from("notices").select("id,title,body,notice_type,meeting_at,published,created_at").order("created_at",{ascending:false}).limit(50);
  const noticeEditor=document.getElementById("adminNoticeEditor");
