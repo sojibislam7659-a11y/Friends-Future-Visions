@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 360" width="640" height="720">
+  <defs>
+    <linearGradient id="topArcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0C71B5"/>
+      <stop offset="52%" stop-color="#0E88A8"/>
+      <stop offset="100%" stop-color="#43AA35"/>
+    </linearGradient>
+    <style>
+      .title { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-weight: 800; font-size: 26px; letter-spacing: 1.5px; fill: #0C2C4C; }
+      .sub { font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-weight: 700; font-size: 11.5px; letter-spacing: 3.2px; fill: #43AA35; }
+    </style>
+  </defs>
+  <path d="M 66 168 A 94 94 0 0 1 254 168 C 254 176 248 184 245 186 A 84 84 0 0 0 75 186 C 72 184 66 176 66 168 Z" fill="url(#topArcGrad)"/>
+  <circle cx="115" cy="144" r="14" fill="#0C71B5"/>
+  <path d="M 94 185 C 94 168 103 161 115 161 C 125 161 132 165 135 172 C 130 179 128 189 128 201 C 117 194 105 189 94 185 Z" fill="#0C71B5"/>
+  <circle cx="205" cy="144" r="14" fill="#43AA35"/>
+  <path d="M 226 185 C 226 168 217 161 205 161 C 195 161 188 165 185 172 C 190 179 192 189 192 201 C 203 194 215 189 226 185 Z" fill="#43AA35"/>
+  <circle cx="160" cy="136" r="19" fill="#0C2C4C"/>
+  <path d="M 132 198 L 132 186 C 132 168 144 159 160 159 C 176 159 188 168 188 186 L 188 198 L 178 202 C 171 197 158 196 149 201 L 132 198 Z" fill="#0C2C4C"/>
+  <path d="M 60 163 C 62 185 95 203 128 220 L 114 244 C 78 225 56 198 60 163 Z" fill="#0C71B5"/>
+  <path d="M 260 163 C 258 185 225 203 192 220 L 206 244 C 242 225 264 198 260 163 Z" fill="#43AA35"/>
+  <path d="M 88 234 C 102 246 118 256 135 263 C 122 260 103 250 88 234 Z" fill="#0C2C4C"/>
+  <path d="M 232 234 C 218 246 202 256 185 263 C 198 260 217 250 232 234 Z" fill="#0C2C4C"/>
+  <g fill="#0C2C4C">
+    <path d="M 133 223 L 146 226 C 139 233 138 241 144 244 C 149 246 156 241 163 236 L 194 256 C 196 258 196 262 193 263 C 191 264 188 263 185 261 L 171 251 L 169 253 L 184 264 C 187 266 186 270 183 271 C 181 272 178 271 175 269 L 162 259 L 160 261 L 173 271 C 175 273 175 276 172 277 C 170 278 167 277 165 275 L 155 267 L 153 269 L 161 276 C 163 278 162 281 159 282 C 156 282 153 280 151 278 L 120 247 L 133 223 Z"/>
+    <path d="M 187 223 L 200 247 L 197 251 L 164 229 C 158 233 151 239 147 238 C 144 237 145 232 151 227 C 157 221 165 220 173 225 L 187 223 Z"/>
+    <rect x="128" y="252" width="7" height="11" rx="3.5" transform="rotate(38 131.5 257.5)"/>
+    <rect x="135" y="258" width="7" height="12" rx="3.5" transform="rotate(38 138.5 264)"/>
+    <rect x="142" y="264" width="7" height="12" rx="3.5" transform="rotate(38 145.5 270)"/>
+    <rect x="149" y="270" width="7" height="10" rx="3.5" transform="rotate(38 152.5 275)"/>
+  </g>
+  <text x="160" y="312" text-anchor="middle" class="title">FRIENDS FUTURE</text>
+  <line x1="56" y1="326" x2="88" y2="326" stroke="#7A8B99" stroke-width="1.2"/>
+  <text x="160" y="330" text-anchor="middle" class="sub">VISION FOREVER</text>
+  <line x1="232" y1="326" x2="264" y2="326" stroke="#7A8B99" stroke-width="1.2"/>
+</svg>
