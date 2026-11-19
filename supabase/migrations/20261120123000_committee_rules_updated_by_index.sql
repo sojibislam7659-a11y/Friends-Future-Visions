@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS committee_rules_updated_by_idx ON public.committee_rules(updated_by);
