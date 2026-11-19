@@ -108,16 +108,6 @@ async function renderDashboard(){
  if(!notices.error){document.getElementById("noticeList").innerHTML=notices.data.length?notices.data.map(n=>'<article class="list-item"><strong>'+esc(n.title)+'</strong><p>'+esc(n.body)+'</p><small>'+esc(n.notice_type==="meeting"&&n.meeting_at?new Date(n.meeting_at).toLocaleString():new Date(n.published_at).toLocaleString())+'</small></article>').join(""):empty(t("কোনো প্রকাশিত নোটিশ নেই।","No published notices."))}
  if(!inbox.error){document.getElementById("inboxList").innerHTML=inbox.data.length?inbox.data.map(n=>'<article class="list-item"><div class="row"><strong>'+esc(n.title)+'</strong>'+(n.read_at?'<span class="pill">Read</span>':'<span class="pill">New</span>')+'</div><p>'+esc(n.body)+'</p><small>'+esc(new Date(n.created_at).toLocaleString())+'</small>'+(n.read_at?"":' <button class="secondary mark-read" data-id="'+esc(n.id)+'">পড়া হয়েছে</button>')+'</article>').join(""):empty(t("কোনো নোটিফিকেশন নেই।","No notifications."));document.querySelectorAll(".mark-read").forEach(b=>b.addEventListener("click",async()=>{const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",b.dataset.id);if(error)toast(error.message);else{renderDashboard();refreshUnreadCount()}}))}
 }
-async function renderData(){
- const s=await summary();
- const rows=s.monthly_trend||[];
- const halves=s.half_yearly_trend||[];
- setPage('<h1>'+t("কমিটির আর্থিক তথ্য","Committee financial data")+'</h1><p class="lead">'+t("সবার জন্য প্রকাশযোগ্য সামগ্রিক হিসাব। ব্যক্তিগত জমা ও বকেয়া এখানে দেখানো হয় না।","Committee-wide figures only. Personal deposits and dues are not shown here.")+'</p><div class="grid">'+
- card(t("মোট সম্পদ","Total assets"),money(s.total_assets))+
- card(t("মোট জমা","Total contributions"),money(s.total_contributions))+
- card(t("ব্যয়","Expenses"),money(s.total_expenses))+
- card(t("নিট পরিচালন ফল","Net operating result"),money(s.net_operating_result))+'</div><section class="section"><h2>'+t("মাসভিত্তিক রিপোর্ট","Monthly report")+'</h2>'+ (rows.length?'<div class="table-wrap"><table><thead><tr><th>Month</th><th>Contributions</th><th>Expenses</th><th>Other income + profit</th><th>Investment loss</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(monthText(r.month))+'</td><td>'+money(r.contributions)+'</td><td>'+money(r.expenses)+'</td><td>'+money(r.income)+'</td><td>'+money(r.investment_loss)+'</td></tr>').join("")+'</tbody></table></div>':empty(t("এখনো কোনো আর্থিক লেনদেন নেই। Super Admin প্রথম লেনদেন যোগ করলে মাসিক রিপোর্ট তৈরি হবে।","No financial transactions yet. Monthly reports will appear after the Super Admin records transactions.")))+'</section><section class="section"><h2>'+t("অর্ধবার্ষিক রিপোর্ট","Half-yearly report")+'</h2>'+(halves.length?'<div class="table-wrap"><table><thead><tr><th>Period</th><th>Contributions</th><th>Expenses</th><th>Other income + profit</th><th>Investment loss</th></tr></thead><tbody>'+halves.map(r=>'<tr><td>'+esc(String(r.year)+(lang==="bn"?(r.half===1?" · জানুয়ারি–জুন":" · জুলাই–ডিসেম্বর"):" · H"+r.half))+'</td><td>'+money(r.contributions)+'</td><td>'+money(r.expenses)+'</td><td>'+money(r.income)+'</td><td>'+money(r.investment_loss)+'</td></tr>').join("")+'</tbody></table></div>':empty(t("এখনো অর্ধবার্ষিক রিপোর্ট তৈরির মতো কোনো লেনদেন নেই।","No transactions are available for half-yearly reporting yet.")))+'</section><div class="notice">'+t("কোনো Demo বা অনুমানভিত্তিক অঙ্ক ব্যবহার করা হচ্ছে না।","No demo or estimated amounts are used.")+'</div>');
-}
 function monthCount(start){
  if(!start)return 0;
  const a=new Date(start+"T00:00:00"),b=new Date();
@@ -592,21 +582,16 @@ async function renderAdmin(){
   });
  }
 }
-async function renderRules(){
- setPage('<h1>'+t("সমিতির নিয়মাবলি","Committee rules")+'</h1><p class="lead">'+t("নিচের অংশগুলো সিস্টেমের বর্তমান পরিচালননীতি। আর্থিক শর্তাবলি ও চুক্তির ধারা Super Admin-এর অনুমোদিত মূল নথি থেকে যোগ করতে হবে।","These are the current system operating rules. Financial terms and deed clauses must be added from the owner-approved documents.")+'</p><section class="section"><h2>১. ডেটা ও হিসাব</h2><p>সব আর্থিক লেনদেন, ব্যালেন্স, প্রমাণপত্র ও সদস্য-তথ্য শুধু Super Admin আপডেট করবেন।</p></section><section class="section"><h2>২. সদস্য অ্যাক্সেস</h2><p>সদস্যরা অনুমোদিত সামগ্রিক হিসাব, প্রকাশিত নোটিশ, সদস্যদের নাম/ছবি এবং নিজেদের ব্যক্তিগত তথ্য দেখতে পারবেন। অন্য সদস্যের ব্যক্তিগত তথ্য দেখা যাবে না।</p></section><section class="section"><h2>৩. প্রোফাইল পরিবর্তন</h2><p>নিজের তথ্য পরিবর্তনের অনুরোধ বা ছবি জমা দেওয়া যাবে। Super Admin অনুমোদন না করা পর্যন্ত মূল প্রোফাইলে পরিবর্তন হবে না।</p></section><section class="section"><h2>৪. আর্থিক শর্তাবলি</h2><div class="notice">মাসিক জমার পরিমাণ, জমার শেষ তারিখ, বিলম্ব ফি, উত্তোলন, লাভ-ক্ষতি বণ্টন ও সদস্যপদ বাতিলের শর্ত এখনো এখানে নির্ধারণ করা হয়নি। অনুমোদিত লিখিত নিয়ম না পাওয়া পর্যন্ত কোনো শর্ত অনুমান করে প্রকাশ করা হবে না।</div></section>');
-}
 async function renderPage(){
  try{
   if(page==="dashboard")await renderDashboard();
-  else if(page==="data")await renderData();
   else if(page==="personal-due")await renderDue();
   else if(page==="member-info")await renderMembers();
   else if(page==="proof")await renderProofs();
   else if(page==="member")await renderProfile();
   else if(page==="admin")await renderAdmin();
-  else if(page==="rules")await renderRules();
   else if(page==="payment")await renderPayment();
  }catch(error){console.error(error);setPage('<h1>তথ্য লোড করা যায়নি</h1><div class="error">'+esc(error.message||"Unknown error")+'</div><p class="muted">Supabase connection, permissions and table setup পরীক্ষা করো।</p>')}
 }
-access=await requireRole(page==="admin"?["super_admin"]:["super_admin","admin","member"]);
+access=await requireRole(page==="admin"?["super_admin"]:["super_admin","member"]);
 if(access){shell();await renderPage();if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(e=>console.warn("Service worker registration failed",e))}}
