@@ -2,6 +2,7 @@ import "./password-visibility.js";
 import { supabase } from "./supabase-client.js";
 import { requireRole } from "./auth-guard.js";
 import { enablePush } from "./push.js";
+import { installPwa, registerPwa } from "./pwa.js";
 
 const root=document.getElementById("app");
 const page=document.body.dataset.page||"dashboard";
@@ -78,11 +79,39 @@ function icon(name){
  return '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.data)+'</svg>';
 }
 function navItem(href,label,iconName){return '<a href="'+href+'" '+(page===href.replace(".html","")?'class="active"':'')+'>'+icon(iconName)+'<span>'+label+'</span></a>'}
+const DEFAULT_TICKER="আপনাকে ফ্রেন্ডস ফিউচার ভিশন ফরইভার এ স্বাগতম। আপনাকে আমাদের কোম্পানির পার্টনারশিপ ও মেম্বার হওয়ার জন্য অনেক অনেক শুভেচ্ছা জানাই। নিজের আইডি পাসওয়ার্ড নিজের কাছে রাখুন। অন্যদের সাথে শেয়ার করা থেকে বিরত থাকুন। নিজের বকেয়া প্রতি মাসের নির্ধারিত সময় (মাসের ১৫ তারিখের মধ্যে) এর মধ্যে দায়িত্বপ্রাপ্তদের হাতে বুঝিয়ে দিন। ধন্যবাদ। ইন শাহ আল্লাহ আমাদের স্বপ্ন বাস্তব হবে সকলে একসাথে থাকলে।";
+function applyTheme(theme){
+ const dark=theme==="dark";
+ document.body.classList.toggle("dark-theme",dark);
+ const button=document.getElementById("themeToggle");
+ if(button){button.textContent=dark?"☀ Light":"☾ Dark";button.setAttribute("aria-pressed",String(dark));button.title=dark?"Switch to light mode":"Switch to dark mode"}
+}
 function shell(){
  const isSuper=access.role==="super_admin",isPublic=access.role==="public";
  const roleLabel=isSuper?"Super Admin":"Member";
- const nav=navItem("dashboard.html",t("হোম","Home"),"home")+navItem("rules.html","RULES","rules")+navItem("member-info.html","MEMBER INFO","members")+navItem("data.html","DATA","data")+(isPublic?"":navItem("personal-due.html","PERSONAL DUE","due")+navItem("proof.html","PROOF","proof")+navItem("payment.html","PAYMENT","payment")+(isSuper?navItem("admin.html","SUPER ADMIN","admin"):"")+(access.role==="member"?navItem("member.html","MY PROFILE","profile"):""));
- root.innerHTML='<div class="shell"><header class="topbar"><button class="icon-button menu-button" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebarPanel">'+icon("menu")+'</button><div class="brand topbar-brand"><img src="friends-future-standard-logo.svg" alt="Friends Future Vision Forever" width="170" height="170" fetchpriority="high" decoding="async"></div><div class="actions">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<span class="role topbar-role">'+roleLabel+'</span><button class="icon-button notification-trigger" id="notificationBtn" aria-label="Notifications" title="Notifications">'+icon("bell")+'<span class="unread-count" id="unreadCount" hidden></span></button>')+'</div></header><div class="drawer-backdrop" id="drawerBackdrop" hidden></div><aside class="sidebar-panel" id="sidebarPanel" aria-label="Main navigation" hidden><div class="sidebar-head"><a class="sidebar-brand" href="dashboard.html"><img src="friends-future-standard-logo.svg" alt="Friends Future Vision Forever" width="170" height="170" fetchpriority="high" decoding="async"></a><button class="icon-button drawer-close" id="closeSidebar" aria-label="Close menu">×</button></div><nav class="nav sidebar-nav" id="mainNav">'+nav+'</nav><div class="sidebar-footer">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<div class="sidebar-account"><span class="account-role">'+roleLabel+'</span><span class="account-email">'+esc(access.session.user.email||"")+'</span></div><button class="secondary" id="languageBtn">'+(lang==="bn"?"English":"বাংলা")+'</button><button class="secondary" id="logoutBtn">লগআউট</button>')+'</div></aside><aside class="notification-panel" id="notificationPanel" aria-label="Notifications" hidden><div class="notification-head"><strong>'+t("নোটিফিকেশন","Notifications")+'</strong><button class="icon-button" id="closeNotifications" aria-label="Close notifications">×</button></div><div class="notification-list" id="notificationList">'+empty(t("লোড হচ্ছে…","Loading…"))+'</div></aside><main class="page" id="pageContent"><div class="empty">তথ্য লোড হচ্ছে…</div></main><footer class="footer">Friends Future Vision Forever · Secure member portal</footer></div>';
+ const nav=navItem("dashboard.html",t("হোম","Home"),"home")+navItem("rules.html","RULES","rules")+navItem("member-info.html","MEMBER INFO","members")+navItem("data.html","DATA","data")+(isPublic?"":navItem("personal-due.html","PERSONAL DUE","due")+navItem("proof.html","PROOF","proof")+navItem("payment.html","PAYMENT","payment")+(isSuper?navItem("admin.html","SUPER ADMIN","admin"):"")+(access.role==="member"?navItem("statement.html","MY STATEMENT","data")+navItem("member.html","MY PROFILE","profile"):""));
+ const exportMenu=isSuper?'<details class="export-menu"><summary>EXPORT</summary><div class="export-menu-panel"><button type="button" data-export-action="page-xlsx">এই পেজ · Excel</button><button type="button" data-export-action="page-docx">এই পেজ · Word</button><button type="button" data-export-action="full-xlsx">সম্পূর্ণ Website · Excel</button><button type="button" data-export-action="full-docx">সম্পূর্ণ Website · Word</button></div></details>':"";
+ const initialName=access.profile?.full_name||access.session.user.email?.split("@")[0]||roleLabel;
+ root.innerHTML='<div class="shell"><header class="topbar"><button class="icon-button menu-button" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebarPanel">'+icon("menu")+'</button><div class="brand topbar-brand"><img src="friends-future-community-emblem-optimized.webp" alt="Friends Future Vision Forever" width="44" height="44" decoding="async"><div class="topbar-identity"><strong id="headerUserName">'+esc(String(initialName).toLocaleUpperCase("en-US"))+'</strong><small>Friends Future Vision Forever</small></div></div><div class="actions">'+exportMenu+'<button class="secondary install-app-button" id="installAppBtn" type="button">Install App</button><button class="secondary theme-toggle" id="themeToggle" type="button" aria-pressed="false">☾ Dark</button>'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<span class="role topbar-role">'+roleLabel+'</span><button class="icon-button notification-trigger" id="notificationBtn" aria-label="Notifications" title="Notifications">'+icon("bell")+'<span class="unread-count" id="unreadCount" hidden></span></button>')+'</div></header><div class="site-ticker" id="siteTicker"><span class="site-ticker-label">NOTICE</span><div class="site-ticker-window"><span id="siteTickerText">'+esc(DEFAULT_TICKER)+'</span></div></div><nav class="nav primary-nav" id="primaryNav" aria-label="Main navigation">'+nav+'</nav><div class="drawer-backdrop" id="drawerBackdrop" hidden></div><aside class="sidebar-panel" id="sidebarPanel" aria-label="Main navigation" hidden><div class="sidebar-head"><a class="sidebar-brand" href="dashboard.html"><img src="friends-future-community-emblem-optimized.webp" alt="Friends Future Vision Forever" width="44" height="44" decoding="async"><strong>'+esc(String(initialName).toLocaleUpperCase("en-US"))+'</strong></a><button class="icon-button drawer-close" id="closeSidebar" aria-label="Close menu">×</button></div><nav class="nav sidebar-nav" id="mainNav">'+nav+'</nav><div class="sidebar-footer">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<div class="sidebar-account"><span class="account-role">'+roleLabel+'</span><span class="account-email">'+esc(access.session.user.email||"")+'</span></div><button class="secondary" id="languageBtn">'+(lang==="bn"?"English":"বাংলা")+'</button><button class="secondary" id="sidebarThemeToggle" type="button">Dark / Light</button><button class="secondary" id="logoutBtn">লগআউট</button>')+'</div></aside><aside class="notification-panel" id="notificationPanel" aria-label="Notifications" hidden><div class="notification-head"><strong>'+t("নোটিফিকেশন","Notifications")+'</strong><button class="icon-button" id="closeNotifications" aria-label="Close notifications">×</button></div><div class="notification-list" id="notificationList">'+empty(t("লোড হচ্ছে…","Loading…"))+'</div></aside><main class="page" id="pageContent"><div class="empty">তথ্য লোড হচ্ছে…</div></main><footer class="footer">Friends Future Vision Forever · Secure member portal</footer></div>';
+ let savedTheme="light";try{savedTheme=localStorage.getItem("ffv-theme")==="dark"?"dark":"light"}catch{}
+ applyTheme(savedTheme);
+ document.getElementById("themeToggle").addEventListener("click",()=>{const next=document.body.classList.contains("dark-theme")?"light":"dark";try{localStorage.setItem("ffv-theme",next)}catch{}applyTheme(next)});
+ document.getElementById("sidebarThemeToggle")?.addEventListener("click",()=>document.getElementById("themeToggle")?.click());
+ document.getElementById("installAppBtn").addEventListener("click",async()=>{try{const result=await installPwa();if(!result.available)toast("Chrome menu ⋮ থেকে Install app / Add to Home screen নির্বাচন করুন। iPhone হলে Share → Add to Home Screen চাপুন।");else if(result.outcome==="accepted")toast("App install শুরু হয়েছে।")}catch(error){toast(error.message||"Install prompt চালু করা যায়নি।")}});
+ document.querySelectorAll("[data-export-action]").forEach(button=>button.addEventListener("click",async()=>{
+  const action=button.dataset.exportAction,original=button.textContent;button.disabled=true;button.textContent="তৈরি হচ্ছে…";
+  try{
+   const tools=await import("./export-tools.js");
+   if(action==="page-xlsx")await tools.exportCurrentPage("xlsx");
+   else if(action==="page-docx")await tools.exportCurrentPage("docx");
+   else{
+    if(!confirm("সম্পূর্ণ Website Export-এ সদস্যদের ব্যক্তিগত তথ্য ও আর্থিক রেকর্ড থাকবে। ফাইলটি নিরাপদে রাখবেন। চালিয়ে যাবেন?"))return;
+    await tools.exportFullWebsite(supabase,action==="full-docx"?"docx":"xlsx");
+   }
+   toast("Export file তৈরি হয়েছে। Download folder পরীক্ষা করুন।");
+  }catch(error){console.error(error);toast("Export ব্যর্থ: "+(error.message||"Unknown error"),true)}
+  finally{button.disabled=false;button.textContent=original}
+ }));
  if(!isPublic){
   const sidebar=document.getElementById("sidebarPanel"),panel=document.getElementById("notificationPanel"),backdrop=document.getElementById("drawerBackdrop");
   const closeDrawers=()=>{sidebar.hidden=true;panel.hidden=true;backdrop.hidden=true;document.getElementById("menuBtn").setAttribute("aria-expanded","false")};
@@ -92,10 +121,35 @@ function shell(){
   backdrop.addEventListener("click",closeDrawers);
   document.getElementById("notificationBtn").addEventListener("click",async()=>{const open=panel.hidden;closeDrawers();if(open){panel.hidden=false;await loadNotificationPanel()}});
   document.getElementById("mainNav").addEventListener("click",e=>{if(e.target.closest("a"))closeDrawers()});
-  document.getElementById("logoutBtn").addEventListener("click",async()=>{const {error}=await supabase.auth.signOut();if(error)toast(error.message);else location.replace("login.html")});
+  document.getElementById("primaryNav").addEventListener("click",e=>{if(e.target.closest("a"))closeDrawers()});
+  document.getElementById("logoutBtn").addEventListener("click",async()=>{try{sessionStorage.removeItem("ffv:member-photo-cache")}catch{}const {error}=await supabase.auth.signOut();if(error)toast(error.message);else location.replace("login.html")});
   document.getElementById("languageBtn").addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";document.documentElement.lang=lang;shell();renderPage()});
   refreshUnreadCount();
  }
+}
+async function loadHeaderIdentity(){
+ let name=access.profile?.full_name||"";
+ if(access.role==="member"){
+  const {data,error}=await supabase.from("members").select("full_name").eq("auth_user_id",access.session.user.id).maybeSingle();
+  if(!error&&data?.full_name)name=data.full_name;
+ }
+ if(name){
+  const label=name.toLocaleUpperCase("en-US");
+  const target=document.getElementById("headerUserName");if(target)target.textContent=label;
+  const side=document.querySelector(".sidebar-brand strong");if(side)side.textContent=label;
+ }
+}
+async function loadTickerSettings(){
+ const ticker=document.getElementById("siteTicker"),textNode=document.getElementById("siteTickerText");
+ if(!ticker||!textNode)return;
+ try{
+  const {data,error}=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
+  if(error)throw error;
+  const values=new Map((data||[]).map(row=>[row.setting_key,row.setting_value]));
+  const message=String(values.get("ticker_message")||DEFAULT_TICKER).trim();
+  textNode.textContent=message||DEFAULT_TICKER;
+  ticker.hidden=values.get("ticker_enabled")==="false";
+ }catch(error){console.warn("Ticker settings unavailable; using default message",error);textNode.textContent=DEFAULT_TICKER}
 }
 async function loadNotificationPanel(){
  const box=document.getElementById("notificationList");if(!box)return;
@@ -826,4 +880,4 @@ async function renderPage(){
  }catch(error){console.error(error);setPage('<h1>তথ্য লোড করা যায়নি</h1><div class="error">'+esc(error.message||"Unknown error")+'</div><p class="muted">Supabase connection, permissions and table setup পরীক্ষা করো।</p>')}
 }
 access=await requireRole(page==="admin"?["super_admin"]:["super_admin","member"]);
-if(access){shell();await renderPage();if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(e=>console.warn("Service worker registration failed",e))}}
+if(access){shell();await Promise.all([loadHeaderIdentity(),loadTickerSettings()]);await renderPage();registerPwa()}
