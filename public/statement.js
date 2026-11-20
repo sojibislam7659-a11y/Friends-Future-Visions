@@ -27,7 +27,7 @@ function effectiveRate(rates, member, monthStart) {
   const match = rates
     .filter(rate => rate.effective_from <= end && (!rate.effective_to || rate.effective_to >= monthStart))
     .sort((a, b) => String(b.effective_from).localeCompare(String(a.effective_from)))[0];
-  return Number(match?.monthly_amount ?? member.monthly_contribution ?? 2000);
+  return Number(match?.monthly_amount ?? 2000);
 }
 
 async function main() {
