@@ -16,7 +16,7 @@ function dhakaMonth() {
 
 function currentMonthRows(rows, currentMonth) {
   return rows.filter(row => {
-    const month = String(row.month_start || "").slice(0, 7);
+    const month = String(row.contribution_month || "").slice(0, 7);
     return month >= "2027-01" && month < "2032-01" && (month <= currentMonth || Number(row.amount || 0) > 0);
   });
 }
@@ -65,10 +65,11 @@ async function main() {
   const monthRows = currentMonthRows(sharedRows, currentMonth);
   const paidTotal = Number(summary.total_paid || 0);
   const dueTotal = Number(summary.total_due || 0);
-  const startDate = member.contribution_start_date || member.joining_date || member.joined_at || "2027-01-01";
+  const rawStartDate = member.contribution_start_date || member.joining_date || member.joined_at || "2027-01-01";
+  const startDate = rawStartDate < "2027-01-01" ? "2027-01-01" : String(rawStartDate).slice(0, 10);
 
   const scheduleRows = monthRows.map(row => {
-    const month = String(row.month_start).slice(0, 10);
+    const month = String(row.contribution_month).slice(0, 10);
     const expected = effectiveRate(rates, member, month);
     const paid = Number(row.amount || 0);
     const due = month.slice(0, 7) <= currentMonth ? Math.max(0, expected - paid) : 0;
