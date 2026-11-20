@@ -68,7 +68,6 @@ async function encodeCanvas(canvas, originalSize, mode) {
     if (!highQuality) highQuality = blob;
     smallest = blob;
     if (blob.size <= targetBytes) return blob;
-    if (blob.size <= 5 * 1024 * 1024 && !highQuality) highQuality = blob;
   }
   const best = highQuality?.size <= 5 * 1024 * 1024 ? highQuality : smallest;
   if (!best || best.size > 5 * 1024 * 1024) throw new Error("Processed scan exceeds the 5MB upload limit. Original file is unchanged; upload it without scanning.");
@@ -97,7 +96,7 @@ export async function scanDocumentImage(file, mode = "bw", rotation = 0) {
   inputContext.restore();
   bitmap.close?.();
 
-  let src, gray, blurred, edges, hierarchy, contours, kernel, approx, warped, transform, srcPoints, dstPoints, output;
+  let src, gray, blurred, edges, hierarchy, contours, kernel, approx, warped, transform, srcPoints, dstPoints, output, mono;
   let cornersDetected = false;
   try {
     src = cv.imread(inputCanvas);
@@ -153,10 +152,9 @@ export async function scanDocumentImage(file, mode = "bw", rotation = 0) {
     if (mode === "color") {
       warped.copyTo(output);
     } else {
-      const mono = new cv.Mat();
+      mono = new cv.Mat();
       cv.cvtColor(warped, mono, cv.COLOR_RGBA2GRAY);
       cv.adaptiveThreshold(mono, output, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY, 31, 13);
-      mono.delete();
     }
 
     const outputCanvas = document.createElement("canvas");
@@ -167,6 +165,6 @@ export async function scanDocumentImage(file, mode = "bw", rotation = 0) {
     const scannedFile = new File([blob], base + "-scan." + extension, { type: blob.type, lastModified: Date.now() });
     return { file: scannedFile, cornersDetected, originalSize: file.size, outputSize: blob.size, width: outputCanvas.width, height: outputCanvas.height };
   } finally {
-    [src,gray,blurred,edges,hierarchy,contours,kernel,approx,warped,transform,srcPoints,dstPoints,output].forEach(item => item?.delete?.());
+    [src,gray,blurred,edges,hierarchy,contours,kernel,approx,warped,transform,srcPoints,dstPoints,mono,output].forEach(item => item?.delete?.());
   }
 }
