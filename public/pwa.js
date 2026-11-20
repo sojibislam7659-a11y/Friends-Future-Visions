@@ -29,3 +29,5 @@ export async function installPwa() {
   const choice = await prompt.userChoice;
   return { available: true, outcome: choice?.outcome || "dismissed" };
 }
+
+registerPwa();
