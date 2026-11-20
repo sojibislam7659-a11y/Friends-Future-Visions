@@ -51,7 +51,7 @@ async function loadMatrix() {
   }
   const isSuper = profile.role === "super_admin";
 
-  const { data: sharedRows, error: sharedError } = await supabase.rpc("get_member_shared_financial_data");
+  const { data: sharedRows, error: sharedError } = await supabase.rpc("get_member_shared_financial_data_v2");
   if (sharedError) throw sharedError;
   const memberMap = new Map();
   const transactionMap = new Map();
@@ -61,7 +61,7 @@ async function loadMatrix() {
     const month = String(row.contribution_month).slice(0, 7);
     const matrixRows = Number(row.matrix_count || 0) > 0 ? [{ id: null, amount: Number(row.amount || 0), reference_no: matrixPrefix + month + "|" + row.member_id }] : [];
     const manualRows = row.has_manual ? [{ id: null, amount: Number(row.amount || 0), reference_no: "MANUAL" }] : [];
-    transactionMap.set(row.member_id + "|" + month, { amount: Number(row.amount || 0), rows: matrixRows.concat(manualRows), latest: row.last_paid_at || "", paidDay: row.paid_day || null });
+    transactionMap.set(row.member_id + "|" + month, { amount: Number(row.amount || 0), rows: matrixRows.concat(manualRows), latest: row.last_paid_at || "", paidDay: row.paid_day || null, paidDate: row.paid_date || '' });
   });
   const members = Array.from(memberMap.values()).sort((a,b)=>String(a.member_no||"").localeCompare(String(b.member_no||"")));
   if (isSuper) {
@@ -90,16 +90,16 @@ async function loadMatrix() {
         yearTotal += amount;
         const locked = manualRows.length > 0 || matrixRows.length > 1;
         const selected = amount > 0;
-        const savedDay = record?.paidDay ? String(record.paidDay) : "";
+        const savedDate = record?.paidDate || "";
         const now = new Date();
         const todayKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
-        const defaultPaidDate = savedDay ? month + "-" + savedDay.padStart(2,"0") : (month === todayKey.slice(0,7) ? todayKey : month + "-01");
-        const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDay ? '<small class="cell-date paid-date">' + esc(savedDay) + '</small>' : ""));
+        const defaultPaidDate = savedDate || todayKey;
+        const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDate ? '<small class="cell-date paid-date">' + esc(paidDateLabel(savedDate)) + '</small>' : ""));
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
         const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
-        const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" min="' + month + '-01" max="' + month + '-' + String(new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate()).padStart(2,"0") + '" value="' + esc(defaultPaidDate) + '" aria-label="Payment date for ' + esc(member.full_name) + ' in ' + esc(month) + '">' : "";
+        const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" value="' + esc(defaultPaidDate) + '" aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">': "";
         if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
@@ -224,11 +224,9 @@ async function loadMatrix() {
     if (invalid) { toast("টিক দেওয়া প্রতিটি সদস্যের Amount শূন্যের বেশি হতে হবে।", true); return; }
     const invalidDay = entries.find(entry => {
       if (!entry.selected) return false;
-      const [year,month] = entry.month.split("-").map(Number);
-      const maxDay = new Date(year,month,0).getDate();
       const dayInput = root.querySelector('.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]');
-      const paidDate = dayInput?.value || entry.month + "-01";
-      return !/^\d{4}-\d{2}-\d{2}$/.test(paidDate) || paidDate.slice(0,7) !== entry.month || Number(paidDate.slice(8,10)) < 1 || Number(paidDate.slice(8,10)) > maxDay;
+      const paidDate = dayInput?.value || new Date().toISOString().slice(0,10);
+      return !/^\\d{4}-\\d{2}-\\d{2}$/.test(paidDate) || Number.isNaN(Date.parse(paidDate + "T00:00:00")) || paidDate > new Date(Date.now() + 86400000).toISOString().slice(0,10);
     });
     if (invalidDay) { toast("প্রতিটি নির্বাচিত জমার সঠিক তারিখের দিন লিখুন।", true); return; }
     if (!window.confirm("Contribution Matrix-এর সব পরিবর্তন Confirm করে Save করবেন?")) return;
@@ -240,7 +238,7 @@ async function loadMatrix() {
       const changes = entries.map(entry => {
         const daySelector = '.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]';
         const dayInput = root.querySelector(daySelector);
-        return { member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0, paid_date: dayInput?.value || entry.month + "-01" };
+        return { member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0, paid_date: dayInput?.value || new Date().toISOString().slice(0,10) };
       });
       const { data: saved, error } = await supabase.rpc("save_contribution_matrix", { p_idempotency_key: crypto.randomUUID(), p_changes: changes });
       if (error) throw error;
