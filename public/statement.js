@@ -68,12 +68,22 @@ async function main() {
   const rawStartDate = member.contribution_start_date || member.joining_date || member.joined_at || "2027-01-01";
   const startDate = rawStartDate < "2027-01-01" ? "2027-01-01" : String(rawStartDate).slice(0, 10);
 
+  let availablePaid = 0;
   const scheduleRows = monthRows.map(row => {
     const month = String(row.contribution_month).slice(0, 10);
+    const monthKey = month.slice(0, 7);
     const expected = effectiveRate(rates, member, month);
     const paid = Number(row.amount || 0);
-    const due = month.slice(0, 7) <= currentMonth ? Math.max(0, expected - paid) : 0;
-    const status = month.slice(0, 7) > currentMonth ? (paid > 0 ? "আগাম জমা" : "পরবর্তী মাস") : due <= 0 ? "পরিশোধিত" : paid > 0 ? "আংশিক জমা" : "বকেয়া";
+    let due = 0;
+    let status;
+    if (monthKey > currentMonth) {
+      status = paid > 0 ? "আগাম জমা" : "পরবর্তী মাস";
+    } else {
+      availablePaid += paid;
+      due = Math.max(0, expected - availablePaid);
+      availablePaid = Math.max(0, availablePaid - expected);
+      status = due <= 0 ? (paid > 0 ? "পরিশোধিত" : "ক্রেডিট সমন্বয়") : paid > 0 ? "আংশিক জমা" : "বকেয়া";
+    }
     return { month, expected, paid, due, paidDate: row.paid_date || null, status };
   });
 
