@@ -101,7 +101,10 @@ async function loadMatrix() {
   let reconciliationNotice = "";
   if (isSuper) {
     const { data: ledgerRows, error: ledgerError } = await supabase.from("financial_transactions")
-      .select("id,member_id,transaction_type,amount,transaction_date,reference_no,direction,reversal_of_id");
+      .select("id,member_id,transaction_type,amount,transaction_date,reference_no,direction,reversal_of_id")
+      .in("member_id", Array.from(memberMap.keys()))
+      .in("transaction_type", ["contribution", "reversal"])
+      .order("created_at", { ascending: true }).order("id", { ascending: true });
     if (ledgerError) throw ledgerError;
     const activeMemberIds = new Set(memberMap.keys());
     const matrixTotal = (sharedRows || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
