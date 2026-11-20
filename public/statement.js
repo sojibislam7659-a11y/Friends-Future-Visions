@@ -102,11 +102,11 @@ async function main() {
   const transactions = transactionResult.data || [];
   const reversedIds = new Set(transactions.map(row => row.reversal_of_id).filter(Boolean));
   const ledgerRows = transactions.filter(row => {
-    const match = String(row.reference_no || "").match(/^FFV_MATRIX\\|(\\d{4}-\\d{2})\\|/);
+    const match = String(row.reference_no || "").match(/^FFV_MATRIX\|(\d{4}-\d{2})\|/);
     const month = match ? match[1] : String(row.transaction_date || "").slice(0, 7);
     return month >= "2027-01" && month < "2032-01";
   }).map(row => {
-    const accountingMatch = String(row.reference_no || "").match(/^FFV_MATRIX\\|(\\d{4}-\\d{2})\\|/);
+    const accountingMatch = String(row.reference_no || "").match(/^FFV_MATRIX\|(\d{4}-\d{2})\|/);
     const accountingMonth = accountingMatch ? accountingMatch[1] : String(row.transaction_date || "").slice(0, 7);
     const isReversed = reversedIds.has(row.id);
     const typeLabel = row.transaction_type === "reversal" ? "সংশোধন / Reversal" : row.transaction_type === "contribution" ? "মাসিক জমা" : row.transaction_type;
