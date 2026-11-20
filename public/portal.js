@@ -285,7 +285,7 @@ async function loadProofMonth(month,allProofs){
      const result=await scanDocumentImage(file,document.getElementById("proofScanMode").value,Number(document.getElementById("proofScanRotation").value));
      scanned.set(file,result.file);
      const card=document.createElement("article");card.className="scanner-preview-card";
-     const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);scanPreviewUrls.push(image.src);
+     const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);image.dataset.scanMode=mode;scanPreviewUrls.push(image.src);
      const details=document.createElement("div");
      const ratio=file.size?Math.round((1-result.outputSize/file.size)*100):0;
      const edgeText=result.cornersDetected?"Edges detected · perspective corrected":"Page edges not detected · image enhanced without perspective correction";
@@ -312,7 +312,7 @@ async function loadProofMonth(month,allProofs){
          const canvas=cropper.getCroppedCanvas({maxWidth:2800,maxHeight:2800,imageSmoothingEnabled:true,imageSmoothingQuality:"high"});
          if(!canvas)throw new Error("Crop output is empty");
          const toBlob=(type,quality)=>new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not encode cropped image")),type,quality));
-         const isBw=document.getElementById("proofScanMode").value==="bw";
+         const isBw=image.dataset.scanMode==="bw";
          let blob=await toBlob(isBw?"image/png":"image/webp",isBw?undefined:.93);
          if(blob.size>2*1024*1024)blob=await toBlob("image/webp",.93);
          if(blob.size>5*1024*1024)blob=await toBlob("image/webp",.86);
