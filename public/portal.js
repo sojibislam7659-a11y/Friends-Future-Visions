@@ -10,6 +10,15 @@ const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{minimumFractionDigits:
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dateText=v=>v?new Date(v+"T00:00:00").toLocaleDateString("en-GB"):"—";
 const monthText=v=>v?new Date(v+"-01T00:00:00").toLocaleDateString("bn-BD",{month:"long",year:"numeric"}):"—";
+function contributionLedgerTotal(rows, activeMemberIds){
+ const reversedIds=new Set(rows.map(row=>row.reversal_of_id).filter(Boolean));
+ return rows.reduce((sum,row)=>{
+  if(!activeMemberIds.has(row.member_id)||row.transaction_type!=="contribution"||row.direction!=="in"||reversedIds.has(row.id))return sum;
+  const parts=String(row.reference_no||"").split("|");
+  const month=parts[0]==="FFV_MATRIX"&&/^\\d{4}-\\d{2}$/.test(parts[1]||"")?parts[1]:String(row.transaction_date||"").slice(0,7);
+  return month>="2027-01"&&month<"2032-01"?sum+Number(row.amount||0):sum;
+ },0);
+}
 const localDate=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const today=()=>localDate(new Date());
 let access=null,lang="bn";
@@ -184,26 +193,32 @@ function dashboardChartMarkup(summaryData){
  return "<section class=\"section matrix-charts\"><h2>"+t("আর্থিক চার্ট","Financial charts")+"</h2><div class=\"matrix-chart-grid\"><article class=\"card\"><strong>"+t("মাসিক জমা · Column","Monthly contributions · Column")+"</strong><div class=\"mini-bars\">"+bars+"</div></article><article class=\"card\"><strong>"+t("জমার প্রবণতা · Line","Contribution trend · Line")+"</strong>"+line+"</article><article class=\"card\"><strong>"+t("আর্থিক অনুপাত · Pie","Financial mix · Pie")+"</strong>"+pie+"</article></div></section>";
 }
 async function renderDashboard(){
- const [s,dueResult,memberCountResult]=await Promise.all([
+ const [s,dueResult,memberCountResult,ledgerResult]=await Promise.all([
   Promise.race([
    summary(),
    new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
   ]),
   supabase.rpc("get_member_shared_financial_data_v2"),
-  supabase.from("member_directory").select("member_id",{count:"exact",head:true})
+  supabase.from("member_directory").select("member_id",{count:"exact",head:true}),
+  access.role==="super_admin"
+   ? supabase.from("financial_transactions").select("id,member_id,transaction_type,amount,transaction_date,reference_no,direction,reversal_of_id")
+   : Promise.resolve({data:[],error:null})
  ]);
  const {data:dueRows,error:dueError}=dueResult;
  if(dueError)throw dueError;
  if(memberCountResult.error)throw memberCountResult.error;
+ if(ledgerResult.error)throw ledgerResult.error;
  const activeMemberCount=memberCountResult.count||0;
  const dueByMember=new Map();
  (dueRows||[]).forEach(row=>{if(!dueByMember.has(row.member_id))dueByMember.set(row.member_id,{due:Number(row.total_due||0),paid:Number(row.total_paid||0),configured:Boolean(row.due_configured)});});
  const memberTotals=Array.from(dueByMember.values());
  const totalDue=memberTotals.reduce((sum,item)=>sum+(item.configured?item.due:0),0);
  const totalMemberPaid=memberTotals.reduce((sum,item)=>sum+item.paid,0);
- const contributionDifference=Number(s.total_contributions||0)-totalMemberPaid;
+ const activeMemberIds=new Set((dueRows||[]).map(row=>row.member_id));
+ const activeLedgerContributions=contributionLedgerTotal(ledgerResult.data||[],activeMemberIds);
+ const contributionDifference=activeLedgerContributions-totalMemberPaid;
  const reconciliationNotice=access.role==="super_admin"&&Math.abs(contributionDifference)>0.01
-  ?'<div class="error" role="alert"><strong>হিসাব মিলছে না — যাচাই প্রয়োজন</strong><p>Dashboard contribution ledger ও DATA matrix-এর মধ্যে '+money(Math.abs(contributionDifference))+' পার্থক্য আছে। '+(contributionDifference>0?'Ledger-এ বেশি':'DATA matrix-এ বেশি')+'. DATA এবং Financial Ledger মিলিয়ে সংশোধন করুন।</p></div>'
+  ?'<div class="error" role="alert"><strong>হিসাব মিলছে না — যাচাই প্রয়োজন</strong><p>Active member ledger ও DATA matrix-এর মধ্যে '+money(Math.abs(contributionDifference))+' পার্থক্য আছে। '+(contributionDifference>0?'Ledger-এ বেশি':'DATA matrix-এ বেশি')+'. DATA এবং Financial Ledger মিলিয়ে সংশোধন করুন।</p></div>'
   :"";
 
  setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p>'+reconciliationNotice+'<div class=\"grid\">'+
