@@ -16,6 +16,7 @@ const t=(bn,en)=>lang==="bn"?bn:en;
 function toast(message){let n=document.createElement("div");n.className="toast";n.textContent=message;document.body.append(n);setTimeout(()=>n.remove(),4200)}
 async function optimizeImageFile(file,purpose="photo"){
  if(!file?.type?.startsWith("image/"))return file;
+ if(file.size>20*1024*1024)throw new Error("Original image exceeds the 20MB upload-processing limit.");
  const maxEdge=purpose==="document"?2600:purpose==="qr"?1800:1400;
  const targetBytes=purpose==="document"?1500*1024:purpose==="qr"?1500*1024:650*1024;
  let source=null,cleanup=()=>{};
