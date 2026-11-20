@@ -645,3 +645,11 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
 
 .member-directory-person-wrap{display:grid;gap:6px;min-width:0}.member-directory-edit{display:inline-flex;justify-content:center;align-items:center;padding:7px 10px;border:1px solid #b8d3c2;border-radius:9px;background:#edf5ef;color:#176653;text-decoration:none;font-size:12px;font-weight:700}.member-directory-edit:hover{background:#dfeee3}
 .matrix-day{width:132px;min-height:32px;padding:5px 6px;border:1px solid #a8c8b4;border-radius:7px;background:#f1f8f2;color:#173d36;font:600 11px Inter,"Noto Sans Bengali",sans-serif}.matrix-paid-day{font-size:10px;color:#58766c;font-weight:700}
+
+/* Lazy document scanner: controls and compact preview, only shown in Proof upload */
+.scanner-controls{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin:8px 0}
+.scanner-controls select{min-height:40px;max-width:260px;padding:8px 10px;border:1px solid var(--border,#cbd5d1);border-radius:9px;background:var(--surface,#fff);color:var(--text,#173d36);font:600 13px inherit}
+.scanner-preview{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:10px}
+.scanner-preview-card{min-width:0;padding:9px;border:1px solid var(--border,#d9e5df);border-radius:10px;background:var(--surface,#fff);font-size:11px;color:var(--muted,#58766c);overflow-wrap:anywhere}
+.scanner-preview-card img{display:block;width:100%;height:180px;object-fit:contain;background:#eef2ef;border-radius:7px;margin-bottom:7px}
+@media(max-width:640px){.scanner-controls{align-items:stretch;flex-direction:column}.scanner-controls select,.scanner-controls button{width:100%;max-width:none}.scanner-preview{grid-template-columns:repeat(2,minmax(0,1fr))}.scanner-preview-card img{height:145px}}
