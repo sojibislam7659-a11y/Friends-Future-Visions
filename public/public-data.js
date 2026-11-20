@@ -226,7 +226,8 @@ async function loadMatrix() {
       if (!entry.selected) return false;
       const dayInput = root.querySelector('.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]');
       const paidDate = dayInput?.value || new Date().toISOString().slice(0,10);
-      return !/^\d{4}-\d{2}-\d{2}$/.test(paidDate) || Number.isNaN(Date.parse(paidDate + "T00:00:00")) || paidDate > new Date(Date.now() + 86400000).toISOString().slice(0,10);
+      const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); const maxDate = tomorrow.getFullYear()+"-"+String(tomorrow.getMonth()+1).padStart(2,"0")+"-"+String(tomorrow.getDate()).padStart(2,"0");
+      return !/^\d{4}-\d{2}-\d{2}$/.test(paidDate) || Number.isNaN(Date.parse(paidDate + "T00:00:00")) || paidDate > maxDate;
     });
     if (invalidDay) { toast("প্রতিটি নির্বাচিত জমার সঠিক তারিখের দিন লিখুন।", true); return; }
     if (!window.confirm("Contribution Matrix-এর সব পরিবর্তন Confirm করে Save করবেন?")) return;
@@ -238,7 +239,7 @@ async function loadMatrix() {
       const changes = entries.map(entry => {
         const daySelector = '.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]';
         const dayInput = root.querySelector(daySelector);
-        return { member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0, paid_date: dayInput?.value || new Date().toISOString().slice(0,10) };
+        return { member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0, paid_date: dayInput?.value || (() => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })() };
       });
       const { data: saved, error } = await supabase.rpc("save_contribution_matrix", { p_idempotency_key: crypto.randomUUID(), p_changes: changes });
       if (error) throw error;
