@@ -59,7 +59,7 @@ async function encodeCanvas(canvas, originalSize, mode) {
   // Try to meet the 1MB target first. If that needs too much quality loss,
   // retain the highest-quality WebP instead of blindly choosing the smallest file.
   const targetBytes = Math.min(originalSize, 1 * 1024 * 1024);
-  const qualities = [0.94, 0.9, 0.86, 0.82];
+  const qualities = [0.94, 0.9, 0.86, 0.82, 0.78, 0.74, 0.7, 0.66];
   let highQuality = null;
   let smallest = null;
   for (const quality of qualities) {
@@ -68,9 +68,10 @@ async function encodeCanvas(canvas, originalSize, mode) {
     if (!highQuality) highQuality = blob;
     smallest = blob;
     if (blob.size <= targetBytes) return blob;
+    if (blob.size <= 5 * 1024 * 1024 && !highQuality) highQuality = blob;
   }
-  const best = highQuality || smallest;
-  if (!best) throw new Error("Processed image export করা যায়নি।");
+  const best = highQuality?.size <= 5 * 1024 * 1024 ? highQuality : smallest;
+  if (!best || best.size > 5 * 1024 * 1024) throw new Error("Processed scan exceeds the 5MB upload limit. Original file is unchanged; upload it without scanning.");
   return best;
 }
 
