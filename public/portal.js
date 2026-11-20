@@ -314,8 +314,15 @@ async function loadProofMonth(month,allProofs){
          const toBlob=(type,quality)=>new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not encode cropped image")),type,quality));
          const isBw=image.dataset.scanMode==="bw";
          let blob=await toBlob(isBw?"image/png":"image/webp",isBw?undefined:.93);
-         if(blob.size>2*1024*1024)blob=await toBlob("image/webp",.93);
-         if(blob.size>5*1024*1024)blob=await toBlob("image/webp",.86);
+         const targetBytes=Math.min(file.size,1*1024*1024);
+         if(blob.size>targetBytes){
+          let highQuality=blob,smallest=blob;
+          for(const quality of [.93,.9,.86,.82]){
+           const candidate=await toBlob("image/webp",quality);smallest=candidate;
+           if(candidate.size<=targetBytes){blob=candidate;break}
+          }
+          if(blob.size>targetBytes)blob=highQuality.size<=5*1024*1024?highQuality:smallest;
+         }
          if(blob.size>5*1024*1024)throw new Error("Cropped image is still over 5MB");
          const ext=blob.type==="image/png"?"png":"webp";
          const updated=new File([blob],file.name.replace(/\.[^.]+$/,"")+"_scan."+ext,{type:blob.type,lastModified:Date.now()});
