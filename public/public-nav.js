@@ -6,7 +6,7 @@ function setupPublicTheme(){
  const actions=document.querySelector(".actions");
  if(!actions||document.getElementById("publicThemeToggle"))return;
  const button=document.createElement("button");
- button.type="button";button.id="publicThemeToggle";button.className="secondary theme-toggle";
+ button.type="button";button.id="publicThemeToggle";button.className="secondary theme-toggle public-theme-toggle";
  const apply=()=>{const dark=document.body.classList.contains("dark-theme");button.textContent=dark?"☀ Light":"☾ Dark";button.setAttribute("aria-pressed",String(dark))};
  let dark=false;try{dark=localStorage.getItem("ffv-theme")==="dark"}catch{}
  document.body.classList.toggle("dark-theme",dark);apply();
@@ -33,6 +33,7 @@ function showPublicNavigation(){
  setupPublicTheme();
  home.href="index.html";
  nav.innerHTML=item("rules.html","RULES","rules");
+ const publicTheme=document.getElementById("publicThemeToggle");if(publicTheme)nav.append(publicTheme);
  addPublicMobileNav(false);
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
  menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
@@ -53,6 +54,7 @@ async function init(){
   const {data:member,error:memberError}=await supabase.from("members").select("full_name").eq("auth_user_id",session.user.id).maybeSingle();
   if(!memberError&&member?.full_name)displayName=member.full_name;
  }
+ displayName=displayName||session.user.email?.split("@")[0]||"";
  const brandName=document.querySelector(".brand strong");
  if(brandName&&displayName)brandName.textContent=displayName.toLocaleUpperCase("en-US");
  home.href="dashboard.html";
@@ -60,6 +62,7 @@ async function init(){
  const role=profile.role;
  const links=[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("statement.html","MY STATEMENT","data"),item("member.html","MY PROFILE","members")]:[])];
  nav.innerHTML=links.join("");
+ const publicTheme=document.getElementById("publicThemeToggle");if(publicTheme)nav.append(publicTheme);
  addPublicMobileNav(true);
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
  login.hidden=true;bell.hidden=false;
