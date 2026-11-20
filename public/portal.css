@@ -1087,3 +1087,7 @@ body.dark-theme .public-drawer-nav a{background:#1d3028;border-color:#3c5749;col
 body.dark-theme .public-drawer-nav a.active{background:#294b3d;border-color:#507562}
 .public-global-ticker{margin:9px 0 12px}
 @media(max-width:640px){.public-drawer{width:min(310px,88vw)}.public-global-ticker{margin:8px 0 10px}.sidebar-footer{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+
+/* Ensure every global notice ticker uses the same scrolling animation. */
+.site-ticker-window span{display:inline-block;min-width:max-content;color:#bd2028;font-weight:700;font-size:13px;animation:ffv-ticker-scroll 38s linear infinite}
+.site-ticker-window:hover span{animation-play-state:paused}
