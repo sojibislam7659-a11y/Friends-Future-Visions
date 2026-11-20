@@ -319,7 +319,7 @@ async function loadProofMonth(month,allProofs){
          const targetBytes=Math.min(file.size,1*1024*1024);
          if(blob.size>targetBytes){
           let highQuality=blob,smallest=blob;
-          for(const quality of [.93,.9,.86,.82]){
+          for(const quality of [.93,.9,.86,.82,.78,.74,.7,.66]){
            const candidate=await toBlob("image/webp",quality);smallest=candidate;
            if(candidate.size<=targetBytes){blob=candidate;break}
           }
