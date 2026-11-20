@@ -100,12 +100,12 @@ async function loadMatrix() {
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
         const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
-        const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(maxPaidDateKey) + '" value="' + esc(defaultPaidDate) + '" aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">': "";
+        const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(maxPaidDateKey) + '" value="' + esc(selected ? defaultPaidDate : "") + '"' + (selected ? "" : " disabled") + ' aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">': "";
         if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
           amountInput +
-          (dayInput ? dayInput + '<small class="matrix-paid-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '">' + esc(paidDateLabel(defaultPaidDate)) + '</small>' : cellStatus) +
+          (dayInput ? dayInput + '<small class="matrix-paid-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '">' + esc(selected ? paidDateLabel(defaultPaidDate) : "") + '</small>' : cellStatus) +
           '</div></td>';
       }).join("");
       const name = member.full_name_bn || member.full_name || "—";
@@ -190,9 +190,9 @@ async function loadMatrix() {
       if (!check.checked) amount.value = "0";
       const dayInput = root.querySelector(".matrix-day[data-member=\"" + check.dataset.member + "\"][data-month=\"" + check.dataset.month + "\"]");
       const today = new Date(); const todayKey = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
-      if (check.checked && dayInput && !dayInput.value) dayInput.value = todayKey;
+      if (dayInput) { dayInput.disabled = !check.checked; if (check.checked && !dayInput.value) dayInput.value = todayKey; if (!check.checked) dayInput.value = ""; }
       const label = root.querySelector(".matrix-paid-day[data-member=\"" + check.dataset.member + "\"][data-month=\"" + check.dataset.month + "\"]");
-      if (label && dayInput?.value) label.textContent = paidDateLabel(dayInput.value);
+      if (label) label.textContent = check.checked && dayInput?.value ? paidDateLabel(dayInput.value) : "";
       recalculate();
     });
   });
@@ -201,7 +201,7 @@ async function loadMatrix() {
     input.addEventListener("input", () => {
       const selector = '.matrix-check[data-member="' + input.dataset.member + '"][data-month="' + input.dataset.month + '"]';
       const check = root.querySelector(selector);
-      if (check) check.checked = Number(input.value) > 0;
+      if (check) { const wasChecked = check.checked; check.checked = Number(input.value) > 0; if (wasChecked !== check.checked) check.dispatchEvent(new Event("change", { bubbles: true })); }
       recalculate();
     });
     input.addEventListener("click", () => {
