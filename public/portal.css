@@ -653,3 +653,13 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
 .scanner-preview-card{min-width:0;padding:9px;border:1px solid var(--border,#d9e5df);border-radius:10px;background:var(--surface,#fff);font-size:11px;color:var(--muted,#58766c);overflow-wrap:anywhere}
 .scanner-preview-card img{display:block;width:100%;height:180px;object-fit:contain;background:#eef2ef;border-radius:7px;margin-bottom:7px}
 @media(max-width:640px){.scanner-controls{align-items:stretch;flex-direction:column}.scanner-controls select,.scanner-controls button{width:100%;max-width:none}.scanner-preview{grid-template-columns:repeat(2,minmax(0,1fr))}.scanner-preview-card img{height:145px}}
+
+/* Proof scanner: manual crop/rotation is loaded only when requested. */
+.scanner-crop-workspace{position:relative;width:100%;max-height:70vh;overflow:hidden;background:#17212b;border-radius:12px;padding:8px;box-sizing:border-box}
+.scanner-crop-workspace .cropper-container{max-width:100%;max-height:62vh;margin:auto}
+.scanner-crop-workspace .cropper-bg{background-image:none;background-color:#17212b}
+.scanner-crop-controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;padding:10px 0 2px}
+.scanner-crop-controls button{min-height:40px;padding:8px 12px;border:1px solid var(--border,#d8e1e8);border-radius:9px;background:var(--surface,#fff);color:var(--text,#17212b);font:inherit;cursor:pointer}
+.scanner-crop-controls button:nth-child(3){background:var(--primary,#176b50);color:#fff;border-color:transparent}
+.scanner-crop-button{margin-top:8px}
+@media(max-width:600px){.scanner-crop-workspace{padding:4px}.scanner-crop-controls{gap:6px}.scanner-crop-controls button{flex:1 1 calc(50% - 6px);font-size:14px}}
