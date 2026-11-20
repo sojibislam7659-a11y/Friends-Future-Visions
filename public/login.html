@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/svg+xml" href="friends-future-standard-logo.svg">
-<link rel="preload" as="image" href="friends-future-standard-logo.svg">
 <meta name="theme-color" content="#ffffff">
 <meta name="robots" content="noindex,nofollow">
 <title>সদস্য লগইন | Friends Future Vision Forever</title>
@@ -55,7 +54,7 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
 <body>
 <main class="login">
  <div class="language-row"><button class="language-toggle" id="languageToggle" type="button">English</button></div>
- <div class="brand"><img src="friends-future-standard-logo.svg" alt="Friends Future Vision Forever" width="300" height="342" fetchpriority="high" decoding="async"></div>
+ <div class="brand" id="loginBrandLogo" aria-label="Friends Future Vision Forever"></div>
  <h1 data-i18n="title">সদস্য লগইন</h1>
  <p class="muted intro" data-i18n="intro">আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।</p>
  <form id="loginForm">
@@ -88,6 +87,8 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
 </main>
 <script type="module">
 import "./password-visibility.js";
+import { BRAND_LOGO_SVG } from "./brand-logo.js";
+document.getElementById("loginBrandLogo").innerHTML = BRAND_LOGO_SVG;
 import {supabase,supabaseReady} from "./supabase-client.js";
 const form=document.getElementById("loginForm"),btn=document.getElementById("loginButton"),msg=document.getElementById("message");
 let lang="bn";
