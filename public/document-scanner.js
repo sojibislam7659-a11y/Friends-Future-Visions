@@ -50,7 +50,12 @@ function orderCorners(points) {
 
 function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
-async function encodeCanvas(canvas, originalSize) {
+async function encodeCanvas(canvas, originalSize, mode) {
+  // Lossless PNG keeps tiny Bengali/English glyphs and signatures razor-sharp.
+  if (mode === "bw") {
+    const lossless = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+    if (lossless && lossless.size <= 5 * 1024 * 1024) return lossless;
+  }
   const qualities = [0.9, 0.84, 0.78];
   let best = null;
   for (const quality of qualities) {
@@ -149,9 +154,10 @@ export async function scanDocumentImage(file, mode = "bw", rotation = 0) {
 
     const outputCanvas = document.createElement("canvas");
     cv.imshow(outputCanvas, output);
-    const blob = await encodeCanvas(outputCanvas, file.size);
+    const blob = await encodeCanvas(outputCanvas, file.size, mode);
     const base = file.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9._-]/g, "_").slice(-70) || "document";
-    const scannedFile = new File([blob], base + "-scan.webp", { type: "image/webp", lastModified: Date.now() });
+    const extension = blob.type === "image/png" ? "png" : "webp";
+    const scannedFile = new File([blob], base + "-scan." + extension, { type: blob.type, lastModified: Date.now() });
     return { file: scannedFile, cornersDetected, originalSize: file.size, outputSize: blob.size, width: outputCanvas.width, height: outputCanvas.height };
   } finally {
     [src,gray,blurred,edges,hierarchy,contours,kernel,approx,warped,transform,srcPoints,dstPoints,output].forEach(item => item?.delete?.());
