@@ -36,7 +36,7 @@ async function main() {
 
   const { data: member, error: memberError } = await supabase
     .from("members")
-    .select("id,member_no,full_name,full_name_bn,joined_at,joining_date,contribution_start_date,monthly_contribution")
+    .select("id,member_no,full_name,full_name_bn,status,joined_at,joining_date,contribution_start_date,monthly_contribution")
     .eq("auth_user_id", access.session.user.id)
     .maybeSingle();
   if (memberError) throw memberError;
@@ -88,7 +88,7 @@ async function main() {
 
   const schedule = scheduleRows.map(row => '<tr><td>' + esc(monthLabel(row.month.slice(0, 7))) + '</td><td class="amount">' + money(row.expected) + '</td><td class="amount">' + money(row.paid) + '</td><td class="amount">' + money(row.due) + '</td><td>' + esc(dateText(row.paidDate)) + '</td><td><span class="statement-status">' + esc(row.status) + '</span></td></tr>').join("");
 
-  root.innerHTML = '<div class="statement-shell"><header class="statement-header"><img src="friends-future-standard-logo.svg" alt="Friends Future Vision Forever"><div><strong>FRIENDS FUTURE VISION FOREVER</strong><span>সদস্য আর্থিক বিবরণী · Member Financial Statement</span></div></header>' +
+  root.innerHTML = '<div class="statement-shell"><header class="statement-header"><img src="friends-future-standard-logo.svg" alt="Friends Future Vision Forever"><div><strong>FRIENDS FUTURE VISION FOREVER</strong><span>সদস্য আর্থিক বিবরণী · Member Financial Statement</span></div><button class="secondary" id="statementThemeToggle" type="button">☾ Dark</button></header>' +
     '<div class="statement-actions"><a class="secondary" href="dashboard.html">← Dashboard</a><button id="downloadStatement">PDF ডাউনলোড / Print</button></div>' +
     '<h1>Member Statement</h1><p class="statement-subtitle">Official contribution and due statement · হিসাবের সময়সীমা ১ জানুয়ারি ২০২৭ থেকে</p>' +
     '<section class="statement-member"><div><small>সদস্যের নাম</small><strong>' + esc((member.full_name || "Member").toLocaleUpperCase("en-US")) + '</strong></div><div><small>Member ID</small><strong>' + esc(member.member_no || "—") + '</strong></div><div><small>জমা শুরু</small><strong>' + esc(dateText(startDate)) + '</strong></div><div><small>Statement Date</small><strong>' + esc(new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Dhaka" })) + '</strong></div></section>' +
@@ -97,7 +97,13 @@ async function main() {
     '<section class="statement-section"><h2>লেনদেনের বিস্তারিত / Transaction History</h2><div class="statement-table-wrap"><table><thead><tr><th>প্রকৃত তারিখ</th><th>যে মাসের জমা</th><th>লেনদেন</th><th>ধরন</th><th>Amount</th><th>বিবরণ / Reference</th></tr></thead><tbody>' + (ledgerRows || '<tr><td colspan="6">এখনো কোনো লেনদেন পাওয়া যায়নি।</td></tr>') + '</tbody></table></div></section>' +
     '<p class="statement-footnote">এই বিবরণী Website-এর হিসাব থেকে স্বয়ংক্রিয়ভাবে তৈরি হয়েছে। কোনো অমিল মনে হলে Super Admin-এর সঙ্গে যোগাযোগ করুন।</p><footer>Friends Future Vision Forever · Member Copy · Private</footer></div>';
 
-  document.getElementById("downloadStatement").addEventListener("click", async () => {
+  let statementTheme="light";try{statementTheme=localStorage.getItem("ffv-theme")==="dark"?"dark":"light"}catch{}
+ document.body.classList.toggle("dark-theme",statementTheme==="dark");
+ const themeButton=document.getElementById("statementThemeToggle");
+ const updateThemeButton=()=>{const dark=document.body.classList.contains("dark-theme");if(themeButton){themeButton.textContent=dark?"☀ Light":"☾ Dark";themeButton.setAttribute("aria-pressed",String(dark))}};
+ updateThemeButton();
+ themeButton?.addEventListener("click",()=>{const next=document.body.classList.contains("dark-theme")?"light":"dark";document.body.classList.toggle("dark-theme",next==="dark");try{localStorage.setItem("ffv-theme",next)}catch{}updateThemeButton()});
+ document.getElementById("downloadStatement").addEventListener("click", async () => {
     const button = document.getElementById("downloadStatement");
     button.disabled = true;
     button.textContent = "PDF প্রস্তুত হচ্ছে…";
