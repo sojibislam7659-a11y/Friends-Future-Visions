@@ -793,3 +793,39 @@ body.dark-theme .statement-shell footer{color:#a8beb1}
  body.dark-theme{background:#fff!important;color:#111!important}
  body.dark-theme .statement-shell,body.dark-theme .statement-member,body.dark-theme .statement-summary article,body.dark-theme .statement-table-wrap th,body.dark-theme .statement-table-wrap td{background:#fff!important;color:#111!important}
 }
+
+
+/* Mobile-first navigation and readable statement printing */
+@media(max-width:640px){
+  .topbar{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:center;gap:8px;flex-direction:initial}
+  .topbar-brand{min-width:0}
+  .topbar-brand img{width:36px;height:36px;flex-basis:36px}
+  .topbar-identity strong{font-size:11px;line-height:1.2}
+  .topbar-identity small{font-size:9px}
+  .actions{grid-column:1/-1;width:100%;display:flex;flex-wrap:nowrap;justify-content:flex-start;gap:7px;overflow-x:auto;padding-bottom:2px}
+  .actions>*{flex:0 0 auto}
+  .primary-nav{display:none}
+  .install-app-button,.theme-toggle{min-height:36px;padding:7px 9px;font-size:11px}
+  .export-menu summary{min-height:36px;padding:7px 9px}
+  .site-ticker{min-height:36px;gap:7px;padding:5px 8px}
+  #siteTickerText{font-size:12px}
+  .statement-shell{margin:8px auto;padding:14px;border-radius:10px}
+  .statement-member{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .statement-summary{grid-template-columns:1fr;gap:8px}
+  .statement-summary article{padding:11px}
+  .statement-summary strong{font-size:19px}
+  .statement-shell h1{font-size:22px}
+  .statement-section h2{font-size:15px}
+}
+@page{size:A4 landscape;margin:10mm}
+@media print{
+  body,body.dark-theme{background:#fff!important;color:#111!important}
+  .statement-shell,body.dark-theme .statement-shell{max-width:none;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:#fff!important;color:#111!important}
+  .statement-actions,.statement-header button,.footer{display:none!important}
+  .statement-table-wrap{overflow:visible!important;border:0!important}
+  .statement-table-wrap table{width:100%!important;min-width:0!important;table-layout:fixed}
+  .statement-table-wrap th,.statement-table-wrap td{font-size:8pt!important;padding:5px 6px!important;overflow-wrap:anywhere}
+  .statement-member,body.dark-theme .statement-member,.statement-summary article,body.dark-theme .statement-summary article{background:#fff!important;color:#111!important;break-inside:avoid}
+  .statement-section{break-inside:avoid}
+  .statement-status{border:1px solid #777;background:#fff!important;color:#111!important}
+}
