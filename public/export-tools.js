@@ -11,6 +11,8 @@ const exportTables = [
   ["Committee Proofs", "committee_proofs"],
   ["Committee Documents", "committee_documents"],
   ["Private Document Index", "member_private_documents"],
+  ["Profile Change Requests", "profile_change_requests"],
+  ["Site Settings", "site_settings"],
   ["Committee Rules", "committee_rules"],
   ["Notices", "notices"]
 ];
@@ -212,7 +214,7 @@ export async function exportFullWebsite(supabase, format) {
     ["Friends Future Vision Forever — Full Data Export"],
     ["Generated at (UTC)", generatedAt],
     ["Scope", "Application tables visible to the Super Admin under current RLS policies."],
-    ["Included", "Member data, profiles, directory, contribution rates, financial ledger and audit, payment records, committee documents metadata, rules and notices."],
+    ["Included", "Member data, profiles, directory, contribution rates, financial ledger and audit, payment records, document metadata, profile change requests, site settings, rules and notices."],
     ["Excluded", "Passwords, auth.users credentials, secret keys, push subscription endpoints, private schema internals, and the binary contents of uploaded files."],
     ["Privacy", "This workbook contains sensitive member information. Store and share it securely."]
   ] }];
