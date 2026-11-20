@@ -2,7 +2,7 @@ import "./password-visibility.js";
 import { supabase } from "./supabase-client.js";
 import { requireRole } from "./auth-guard.js";
 import { enablePush } from "./push.js";
-import { installPwa, registerPwa } from "./pwa.js";
+import { installPwa } from "./pwa.js";
 
 const root=document.getElementById("app");
 const page=document.body.dataset.page||"dashboard";
@@ -963,4 +963,4 @@ async function renderPage(){
  }catch(error){console.error(error);setPage('<h1>তথ্য লোড করা যায়নি</h1><div class="error">'+esc(error.message||"Unknown error")+'</div><p class="muted">Supabase connection, permissions and table setup পরীক্ষা করো।</p>')}
 }
 access=await requireRole(page==="admin"?["super_admin"]:["super_admin","member"]);
-if(access){shell();await Promise.all([loadHeaderIdentity(),loadTickerSettings()]);await renderPage();registerPwa()}
+if(access){shell();await Promise.all([loadHeaderIdentity(),loadTickerSettings()]);await renderPage()}
