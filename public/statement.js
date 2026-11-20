@@ -72,7 +72,8 @@ async function main() {
   const scheduleRows = monthRows.map(row => {
     const month = String(row.contribution_month).slice(0, 10);
     const monthKey = month.slice(0, 7);
-    const expected = effectiveRate(rates, member, month);
+    const beforeContributionStart = monthKey < startDate.slice(0, 7);
+    const expected = beforeContributionStart ? 0 : effectiveRate(rates, member, month);
     const paid = Number(row.amount || 0);
     let due = 0;
     let status;
@@ -82,7 +83,7 @@ async function main() {
       availablePaid += paid;
       due = Math.max(0, expected - availablePaid);
       availablePaid = Math.max(0, availablePaid - expected);
-      status = due <= 0 ? (paid > 0 ? "পরিশোধিত" : "ক্রেডিট সমন্বয়") : paid > 0 ? "আংশিক জমা" : "বকেয়া";
+      status = beforeContributionStart ? (paid > 0 ? "শুরুর আগের জমা" : "সদস্য হওয়ার আগে") : due <= 0 ? (paid > 0 ? "পরিশোধিত" : "ক্রেডিট সমন্বয়") : paid > 0 ? "আংশিক জমা" : "বকেয়া";
     }
     return { month, expected, paid, due, paidDate: row.paid_date || null, status };
   });
