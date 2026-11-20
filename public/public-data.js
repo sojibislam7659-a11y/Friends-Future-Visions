@@ -141,6 +141,16 @@ async function loadMatrix() {
     (isSuper ? '<div class="form-actions matrix-save-actions"><button type="button" id="saveMatrix">Confirm &amp; Save</button><span id="matrixSaveStatus" class="muted small"></span></div>' : "");
 
   document.getElementById("matrixYear")?.addEventListener("change", event => {
+    const hasUnsavedChanges = Array.from(root.querySelectorAll(".matrix-amount")).some(input => {
+      const amount = Number(input.value || 0);
+      const savedAmount = Number(input.dataset.savedAmount || 0);
+      const dayInput = root.querySelector('.matrix-day[data-member="' + input.dataset.member + '"][data-month="' + input.dataset.month + '"]');
+      return amount !== savedAmount || (amount > 0 && dayInput && dayInput.value !== (input.dataset.savedDate || ""));
+    });
+    if (hasUnsavedChanges && !window.confirm("এই বছরের কিছু জমার তথ্য Save হয়নি। Save না করে অন্য বছর খুলবেন?")) {
+      event.target.value = String(selectedYear);
+      return;
+    }
     window.location.search = "?year=" + encodeURIComponent(event.target.value);
   });
 
