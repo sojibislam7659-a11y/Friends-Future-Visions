@@ -930,3 +930,23 @@ body.dark-theme #siteTickerText{color:#ff9c9c}
  #siteTickerText{animation-duration:28s}
 }
 @media(prefers-reduced-motion:reduce){#siteTickerText{animation:none;white-space:normal;min-width:0}}
+
+/* Public Data and Rules pages must inherit the selected theme across the full viewport */
+body.login-theme.dark-theme{background:#0d1714!important;color:#e5efe9!important}
+body.login-theme.dark-theme .topbar,body.login-theme.dark-theme .nav,body.login-theme.dark-theme .page{background:#192722!important;border-color:#344a40!important;color:#e5efe9!important}
+body.login-theme.dark-theme .page h1,body.login-theme.dark-theme .page h2,body.login-theme.dark-theme .page strong,body.login-theme.dark-theme .page label,body.login-theme.dark-theme .page th{color:#e5f2eb!important}
+body.login-theme.dark-theme .page p,body.login-theme.dark-theme .page li,body.login-theme.dark-theme .page td,body.login-theme.dark-theme .page small,body.login-theme.dark-theme .page .muted,body.login-theme.dark-theme .page .lead{color:#b8cec2!important}
+body.login-theme.dark-theme .page .card,body.login-theme.dark-theme .page .list-item{background:#1d3028!important;border-color:#3c5749!important;color:#e5efe9!important}
+body.login-theme.dark-theme .page .contribution-matrix .sticky-col{background:#1b3028!important;color:#e3f0e8!important}
+body.login-theme.dark-theme .page .contribution-matrix th.sticky-col{background:#263d33!important}
+body.login-theme.dark-theme .page .matrix-amount,body.login-theme.dark-theme .page .matrix-day{background:#20382e!important;color:#edf5f0!important;border-color:#4c6c5b!important}
+#publicData{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+body.login-theme .shell{width:100%;max-width:1180px}
+@media(max-width:640px){
+ body.login-theme .shell{width:100%;padding:10px;overflow-x:clip}
+ body.login-theme .topbar{width:100%;min-width:0;gap:6px;padding:9px 10px}
+ body.login-theme .topbar .actions{display:flex;flex-wrap:nowrap;gap:5px;min-width:0;max-width:55%;overflow:visible}
+ body.login-theme .topbar .actions .theme-toggle,body.login-theme .topbar .actions .menu-button{min-height:34px;padding:6px 8px;font-size:10px;white-space:nowrap}
+ body.login-theme .topbar .actions .icon-button{width:36px;min-width:36px;min-height:34px}
+ body.login-theme .page{width:100%;min-width:0;overflow-x:clip}
+}
