@@ -76,7 +76,6 @@ async function loadMatrix() {
   const years = [2026, 2027, 2028, 2029, 2030, 2031];
   const localToday = new Date();
   const todayKey = localToday.getFullYear() + "-" + String(localToday.getMonth()+1).padStart(2,"0") + "-" + String(localToday.getDate()).padStart(2,"0");
-  const editorRows = [];
   const tables = years.map(year => {
     const yearMonths = months.filter(month => Number(month.slice(0, 4)) === year);
     const headers = yearMonths.map(month => '<th class="matrix-month-head">' + esc(monthName(month)) + '</th>').join("");
@@ -101,7 +100,6 @@ async function loadMatrix() {
         const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" data-saved-date="' + esc(savedDate) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
         const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(maxPaidDateKey) + '" value="' + esc(selected ? defaultPaidDate : "") + '"' + (selected ? "" : " disabled") + ' aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">': "";
-        if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
           amountInput +
