@@ -228,7 +228,7 @@ async function loadMatrix() {
       const maxDay = new Date(year,month,0).getDate();
       const dayInput = root.querySelector('.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]');
       const paidDate = dayInput?.value || entry.month + "-01";
-      return !/^\\d{4}-\\d{2}-\\d{2}$/.test(paidDate) || paidDate.slice(0,7) !== entry.month || Number(paidDate.slice(8,10)) < 1 || Number(paidDate.slice(8,10)) > maxDay;
+      return !/^\d{4}-\d{2}-\d{2}$/.test(paidDate) || paidDate.slice(0,7) !== entry.month || Number(paidDate.slice(8,10)) < 1 || Number(paidDate.slice(8,10)) > maxDay;
     });
     if (invalidDay) { toast("প্রতিটি নির্বাচিত জমার সঠিক তারিখের দিন লিখুন।", true); return; }
     if (!window.confirm("Contribution Matrix-এর সব পরিবর্তন Confirm করে Save করবেন?")) return;
