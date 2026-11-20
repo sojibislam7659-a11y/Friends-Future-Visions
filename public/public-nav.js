@@ -1,6 +1,7 @@
 import {supabase,supabaseReady} from "./supabase-client.js";
 import { BRAND_LOGO_SVG } from "./brand-logo.js";
 const home=document.getElementById("siteHome"),menu=document.getElementById("siteMenu"),nav=document.getElementById("siteNav"),bell=document.getElementById("siteBell"),login=document.getElementById("siteLogin");
+let publicThemeButton=null;
 const icon={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/>'};
 function setupPublicTheme(){
  const actions=document.querySelector(".actions");
@@ -11,7 +12,7 @@ function setupPublicTheme(){
  let dark=false;try{dark=localStorage.getItem("ffv-theme")==="dark"}catch{}
  document.body.classList.toggle("dark-theme",dark);apply();
  button.addEventListener("click",()=>{const next=!document.body.classList.contains("dark-theme");document.body.classList.toggle("dark-theme",next);try{localStorage.setItem("ffv-theme",next?"dark":"light")}catch{}apply()});
- actions.insertBefore(button,menu);
+ publicThemeButton=button;
 }
 const svg=n=>'<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+icon[n]+'</svg>';
 const item=(href,label,n)=>'<a href="'+href+'"'+(location.pathname.split("/").pop()===href?' class="active" aria-current="page"':'')+'>'+svg(n)+'<span>'+label+'</span></a>';
@@ -29,14 +30,26 @@ function addPublicMobileNav(isAuthenticated){
  more.addEventListener("click",()=>menu.click());
  document.querySelector(".shell")?.append(mobileNav);
 }
+function buildPublicDrawer(isAuthenticated,role,displayName){
+ const shell=document.querySelector(".shell");if(!shell)return;
+ const backdrop=document.createElement("div");backdrop.className="public-drawer-backdrop";backdrop.hidden=true;
+ const drawer=document.createElement("aside");drawer.className="public-drawer";drawer.hidden=true;drawer.setAttribute("aria-label","Main menu");
+ const links=isAuthenticated?[...(role==="super_admin"?[["admin.html","SUPER ADMIN","admin"]]:[]),["personal-due.html","PERSONAL DUE","due"],["proof.html","PROOF","proof"],["payment.html","PAYMENT","payment"],...(role==="member"?[["statement.html","MY STATEMENT","data"],["member.html","MY PROFILE","members"]]:[])]:[["login.html","LOGIN","profile"]];
+ drawer.innerHTML='<div class="public-drawer-head"><a class="public-drawer-brand" href="dashboard.html">'+BRAND_LOGO_SVG+'<strong>'+String(displayName||"Friends Future Vision Forever")+'</strong></a><button type="button" class="icon-button public-drawer-close" aria-label="Close menu">×</button></div><nav class="public-drawer-nav">'+links.map(([href,label,name])=>item(href,label,name)).join("")+'</nav><div class="public-drawer-footer"></div>';
+ if(publicThemeButton)drawer.querySelector(".public-drawer-footer").append(publicThemeButton);
+ shell.append(backdrop,drawer);
+ const close=()=>{drawer.hidden=true;backdrop.hidden=true;menu?.setAttribute("aria-expanded","false")};
+ const toggle=()=>{const open=drawer.hidden;close();drawer.hidden=!open;backdrop.hidden=!open;menu?.setAttribute("aria-expanded",String(!open))};
+ menu?.addEventListener("click",toggle);backdrop.addEventListener("click",close);drawer.querySelector(".public-drawer-close").addEventListener("click",close);drawer.querySelectorAll("a").forEach(a=>a.addEventListener("click",close));document.querySelector(".public-more-button")?.addEventListener("click",toggle);nav.hidden=true;
+}
+async function loadPublicTicker(){if(!supabaseReady)return;try{const {data,error}=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();if(error||!data)return;const ticker=document.createElement("div");ticker.className="site-ticker public-global-ticker";ticker.setAttribute("role","region");ticker.setAttribute("aria-label","Latest notice");const label=document.createElement("strong");label.className="site-ticker-label";label.textContent="নোটিশ";const w=document.createElement("div");w.className="site-ticker-window";const t=document.createElement("span");t.textContent=data.body||data.title||"";w.append(t);ticker.append(label,w);document.querySelector(".shell > .topbar")?.insertAdjacentElement("afterend",ticker)}catch(error){console.warn("Public notice unavailable",error)}}
 function showPublicNavigation(){
  setupPublicTheme();
  home.href="index.html";
  nav.innerHTML=item("rules.html","RULES","rules");
- const publicTheme=document.getElementById("publicThemeToggle");if(publicTheme)nav.append(publicTheme);
  addPublicMobileNav(false);
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
- menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
+ buildPublicDrawer(false,"public","Friends Future Vision Forever");
  login.hidden=false;bell.hidden=true;
  document.body.classList.remove("auth-pending");
 }
@@ -64,12 +77,14 @@ async function init(){
  nav.innerHTML=links.join("");
  const publicTheme=document.getElementById("publicThemeToggle");if(publicTheme)nav.append(publicTheme);
  addPublicMobileNav(true);
- menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
+ menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
+ buildPublicDrawer(true,role,displayName);
  login.hidden=true;bell.hidden=false;
 
  const {count}=await supabase.from("notifications").select("id",{count:"exact",head:true}).eq("user_id",session.user.id).is("read_at",null);
  const badge=document.getElementById("siteUnread");if(count>0){badge.textContent=count>99?"99+":String(count);badge.hidden=false}
  bell.addEventListener("click",()=>location.href="dashboard.html");
  document.body.classList.remove("auth-pending");
+ loadPublicTicker();
 }
 init().catch(()=>location.replace("login.html"));

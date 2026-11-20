@@ -73,7 +73,7 @@ async function loadMatrix() {
   const transactionMap = new Map();
   const matrixPrefix = "FFV_MATRIX|";
   (sharedRows || []).forEach(row => {
-    if (!memberMap.has(row.member_id)) memberMap.set(row.member_id, { id: row.member_id, member_no: row.member_no, full_name: row.full_name, full_name_bn: row.full_name_bn, status: "active" });
+    if (!memberMap.has(row.member_id)) memberMap.set(row.member_id, { id: row.member_id, member_no: row.member_no, status: "active" });
     const month = String(row.contribution_month).slice(0, 7);
     const matrixRows = Number(row.matrix_count || 0) > 0 ? [{ id: null, amount: Number(row.amount || 0), reference_no: matrixPrefix + month + "|" + row.member_id }] : [];
     const manualRows = row.has_manual ? [{ id: null, amount: Number(row.amount || 0), reference_no: "MANUAL" }] : [];
@@ -115,11 +115,6 @@ async function loadMatrix() {
     }
   }
   if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
-  let tickerMarkup = "";
-  try {
-    const { data: latestNotices, error: noticeError } = await supabase.from("notices").select("title,body").eq("published", true).order("published_at", { ascending: false }).limit(1);
-    if (!noticeError && latestNotices?.length) tickerMarkup = '<div class="site-ticker" role="region" aria-label="Latest notice"><strong class="site-ticker-label">নোটিশ</strong><div class="site-ticker-window"><span id="siteTickerText">' + esc(latestNotices[0].title + " — " + latestNotices[0].body) + '</span></div></div>';
-  } catch (noticeLoadError) { console.warn("Notice ticker unavailable", noticeLoadError); }
   const months = monthList();
   const years = [2027, 2028, 2029, 2030, 2031];
   const requestedYear = Number(new URLSearchParams(window.location.search).get("year") || 2027);
@@ -131,12 +126,13 @@ async function loadMatrix() {
   const todayKey = localToday.getFullYear() + "-" + String(localToday.getMonth()+1).padStart(2,"0") + "-" + String(localToday.getDate()).padStart(2,"0");
   const tables = years.filter(year => year === selectedYear).map(year => {
     const yearMonths = months.filter(month => Number(month.slice(0, 4)) === year);
-    const periods = [yearMonths.slice(0, 6), yearMonths.slice(6, 12)];
+    const periods = [yearMonths.slice(0, 4), yearMonths.slice(4, 8), yearMonths.slice(8, 12)];
     return periods.map((periodMonths, periodIndex) => {
-      const periodKey = year + "-H" + (periodIndex + 1);
-      const periodLabel = periodIndex === 0 ? "Jan–Jun" : "Jul–Dec";
+      const periodKey = year + "-P" + (periodIndex + 1);
+      const periodLabel = monthName(periodMonths[0]) + "–" + monthName(periodMonths[periodMonths.length - 1]);
       const headers = periodMonths.map(month => '<th class="matrix-month-head" data-month="' + esc(month) + '">' + esc(monthName(month)) + '</th>').join("");
       const body = members.map(member => {
+        const memberNo = String(member.member_no || "—").split("-").pop();
         let periodTotal = 0;
         const cells = periodMonths.map(month => {
           const key = member.id + "|" + month;
@@ -152,20 +148,20 @@ async function loadMatrix() {
           const defaultPaidDate = savedDate || todayKey;
           const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDate ? '<small class="cell-date paid-date">' + esc(paidDateLabel(savedDate)) + '</small>' : ""));
           const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
-            (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
+            (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + memberNo) + '">';
           const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + contributionRateForMonth(member, month) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" data-saved-date="' + esc(savedDate) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
-            ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
-          const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(todayKey) + '" value="' + esc(selected ? defaultPaidDate : "") + '"' + (selected ? "" : " disabled") + ' aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">' : "";
+            ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + memberNo) + '">';
+          const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(todayKey) + '" value="' + esc(selected ? defaultPaidDate : "") + '"' + (selected ? "" : " disabled") + ' aria-label="Actual payment date for ' + esc(memberNo) + ' contribution month ' + esc(month) + '">' : "";
           return '<td><div class="matrix-cell">' +
             (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
             amountInput +
             (dayInput ? dayInput + '<small class="matrix-paid-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '">' + esc(selected ? paidDateLabel(defaultPaidDate) : "") + '</small>' : cellStatus) +
             '</div></td>';
         }).join("");
-        const name = member.full_name_bn || member.full_name || "—";
+
         return '<tr data-member-row="' + esc(member.id) + '" data-period="' + periodKey + '">' +
-          '<td class="sticky-col">' + esc(member.member_no || "—") + '</td>' +
-          '<td class="sticky-col name-col"><span class="matrix-member-name">' + esc(name) + '</span></td>' +
+          '<td class="sticky-col">' + esc(memberNo) + '</td>' +
+
           cells +
           '<td class="matrix-period-total" data-period-total="' + periodKey + '" data-member="' + esc(member.id) + '"><strong>' + money(periodTotal) + '</strong></td>' +
           '</tr>';
@@ -176,12 +172,12 @@ async function loadMatrix() {
       }).join("");
       const periodTotal = members.reduce((sum, member) => sum + periodMonths.reduce((inner, month) => inner + (transactionMap.get(member.id + "|" + month)?.amount || 0), 0), 0);
       return '<section class="section matrix-period-section" data-period="' + periodKey + '"><div class="section-head"><h2>' + year + " · " + periodLabel + ' · Monthly contribution</h2><strong class="muted">' + money(periodTotal) + '</strong></div>' +
-        '<p class="matrix-scroll-hint">← টেবিলটি ডানে-বামে সরিয়ে সব মাসের তথ্য দেখুন →</p><div class="table-wrap matrix-wrap"><table class="contribution-matrix matrix-editable"><thead><tr><th class="sticky-col">Member No.</th><th class="sticky-col name-col">Member Name</th>' + headers + '<th>Period Total</th></tr></thead>' +
-        '<tbody>' + body + '<tr class="total-row"><td colspan="2">TOTAL</td>' + monthTotals + '<td data-period-grand-total="' + periodKey + '"><strong>' + money(periodTotal) + '</strong></td></tr></tbody></table></div></section>';
+        '<p class="matrix-scroll-hint">← টেবিলটি ডানে-বামে সরিয়ে সব মাসের তথ্য দেখুন →</p><div class="table-wrap matrix-wrap"><table class="contribution-matrix matrix-editable"><thead><tr><th class="sticky-col">Member No.</th>' + headers + '<th>Period Total</th></tr></thead>' +
+        '<tbody>' + body + '<tr class="total-row"><td>TOTAL</td>' + monthTotals + '<td data-period-grand-total="' + periodKey + '"><strong>' + money(periodTotal) + '</strong></td></tr></tbody></table></div></section>';
     }).join("");
   }).join("");
 
-  root.innerHTML = tickerMarkup + '<h1>Member Contribution Matrix</h1>' +
+  root.innerHTML = '<h1>Member Contribution Matrix</h1>' +
     reconciliationNotice +
     '<p class="lead">' + (isSuper
       ? 'প্রতি মাসে সদস্যের জমা Checkbox দিয়ে নির্বাচন করুন। Amount পরিবর্তন করা যাবে; সব পরিবর্তন Confirm & Save করলে সংরক্ষিত হবে।'
@@ -213,7 +209,7 @@ async function loadMatrix() {
   const barHtml=chartKeys.map((k,i)=>"<div class=\"mini-bar-item\"><span>"+esc(k.slice(5))+"</span><i style=\"height:"+Math.max(3,100*chartValues[i]/chartMax)+"%\"></i></div>").join("");
   const points=chartValues.map((v,i)=>{const x=12+(i*476/Math.max(1,chartValues.length-1));const y=178-(150*v/chartMax);return x+","+y;}).join(" ");
   const lineHtml="<svg viewBox=\"0 0 500 200\" class=\"matrix-chart-svg\" role=\"img\" aria-label=\"Monthly contribution trend\"><line x1=\"8\" y1=\"180\" x2=\"492\" y2=\"180\" stroke=\"currentColor\" opacity=\".2\"/><polyline points=\""+points+"\" fill=\"none\" stroke=\"#3976d2\" stroke-width=\"4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>";
-  const memberTotals=members.map(m=>({name:m.full_name_bn||m.full_name,value:(sharedRows||[]).filter(r=>r.member_id===m.id).reduce((n,r)=>n+Number(r.amount||0),0)}));
+  const memberTotals=members.map(m=>({name:String(m.member_no||"—").split("-").pop(),value:(sharedRows||[]).filter(r=>r.member_id===m.id).reduce((n,r)=>n+Number(r.amount||0),0)}));
   const pieTotal=memberTotals.reduce((n,x)=>n+x.value,0);let angle=0;const colors=["#15966f","#3976d2","#e0a43b","#9a72ce","#d56d72","#48a9b5"];
   const stops=memberTotals.filter(x=>x.value>0).map((x,i)=>{const begin=angle;angle+=pieTotal?x.value/pieTotal*360:0;return colors[i%colors.length]+" "+begin+"deg "+angle+"deg";}).join(",");
   const legend=memberTotals.map((x,i)=>"<span><i style=\"background:"+colors[i%colors.length]+"\"></i>"+esc(x.name)+" · "+money(x.value)+"</span>").join("");
