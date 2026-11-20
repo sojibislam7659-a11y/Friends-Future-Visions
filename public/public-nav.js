@@ -1,7 +1,7 @@
 import {supabase,supabaseReady} from "./supabase-client.js";
+import { BRAND_LOGO_SVG } from "./brand-logo.js";
 const home=document.getElementById("siteHome"),menu=document.getElementById("siteMenu"),nav=document.getElementById("siteNav"),bell=document.getElementById("siteBell"),login=document.getElementById("siteLogin");
 const icon={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/>'};
-const DEFAULT_TICKER="আপনাকে ফ্রেন্ডস ফিউচার ভিশন ফরইভার এ স্বাগতম। আপনাকে আমাদের কোম্পানির পার্টনারশিপ ও মেম্বার হওয়ার জন্য অনেক অনেক শুভেচ্ছা জানাই। নিজের আইডি পাসওয়ার্ড নিজের কাছে রাখুন। অন্যদের সাথে শেয়ার করা থেকে বিরত থাকুন। নিজের বকেয়া প্রতি মাসের নির্ধারিত সময় (মাসের ১৫ তারিখের মধ্যে) এর মধ্যে দায়িত্বপ্রাপ্তদের হাতে বুঝিয়ে দিন। ধন্যবাদ। ইন শাহ আল্লাহ আমাদের স্বপ্ন বাস্তব হবে সকলে একসাথে থাকলে।";
 function setupPublicTheme(){
  const actions=document.querySelector(".actions");
  if(!actions||document.getElementById("publicThemeToggle"))return;
@@ -24,30 +24,10 @@ function setupPublicTheme(){
  button.addEventListener("click",()=>{const next=!document.body.classList.contains("dark-theme");document.body.classList.toggle("dark-theme",next);try{localStorage.setItem("ffv-theme",next?"dark":"light")}catch{}apply()});
  actions.insertBefore(button,menu);
 }
-function ensurePublicTicker(){
- if(document.getElementById("siteTicker"))return;
- const main=document.querySelector("main.page");if(!main)return;
- const ticker=document.createElement("div");ticker.className="site-ticker";ticker.id="siteTicker";
- ticker.innerHTML='<span class="site-ticker-label">NOTICE</span><div class="site-ticker-window"><span id="siteTickerText"></span></div>';
- main.parentNode.insertBefore(ticker,main);
- const textNode=document.getElementById("siteTickerText");if(textNode)textNode.textContent=DEFAULT_TICKER;
-}
-async function loadPublicTicker(){
- ensurePublicTicker();
- const ticker=document.getElementById("siteTicker"),textNode=document.getElementById("siteTickerText");
- if(!ticker||!textNode||!supabaseReady)return;
- try{
-  const {data,error}=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
-  if(error)throw error;
-  const values=new Map((data||[]).map(row=>[row.setting_key,row.setting_value]));
-  textNode.textContent=String(values.get("ticker_message")||DEFAULT_TICKER).trim()||DEFAULT_TICKER;
-  ticker.hidden=values.get("ticker_enabled")==="false";
- }catch(error){console.warn("Public ticker settings unavailable; default message retained",error)}
-}
 const svg=n=>'<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+icon[n]+'</svg>';
 const item=(href,label,n)=>'<a href="'+href+'"'+(location.pathname.split("/").pop()===href?' class="active" aria-current="page"':'')+'>'+svg(n)+'<span>'+label+'</span></a>';
 function showPublicNavigation(){
- setupPublicTheme();ensurePublicTicker();loadPublicTicker();
+ setupPublicTheme();
  home.href="index.html";
  nav.innerHTML=item("rules.html","RULES","rules");
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
@@ -57,6 +37,7 @@ function showPublicNavigation(){
 }
 async function init(){
  document.body.classList.add("auth-pending");
+ const brandSlot=document.getElementById("publicBrandLogo");if(brandSlot)brandSlot.innerHTML=BRAND_LOGO_SVG;
  if(!supabaseReady){showPublicNavigation();return}
  const {data:s,error}=await supabase.auth.getSession();
  const session=s?.session;
@@ -71,7 +52,7 @@ async function init(){
  const brandName=document.querySelector(".brand strong");
  if(brandName&&displayName)brandName.textContent=displayName.toLocaleUpperCase("en-US");
  home.href="dashboard.html";
- setupPublicTheme();await loadPublicTicker();
+ setupPublicTheme();
  const role=profile.role;
  const links=[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("statement.html","MY STATEMENT","data"),item("member.html","MY PROFILE","members")]:[])];
  nav.innerHTML=links.join("");
