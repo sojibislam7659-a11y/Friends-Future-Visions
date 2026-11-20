@@ -259,6 +259,8 @@ async function loadProofMonth(month,allProofs){
   input.addEventListener("change",()=>{preparedFiles=null;clearScanPreview();scanStatus.textContent="";drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
   scanButton.addEventListener("click",async()=>{
    const originals=Array.from(input.files||[]);
+   const tooLarge=originals.find(file=>file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024);
+   if(tooLarge){toast("ফাইলের সাইজ সীমা অতিক্রম করেছে: "+tooLarge.name,true);return}
    const images=originals.filter(file=>file.type.startsWith("image/"));
    if(!originals.length){toast("আগে image অথবা PDF নির্বাচন করুন।");return}
    if(!images.length){scanStatus.textContent="নির্বাচিত ফাইলগুলো PDF; PDF অপরিবর্তিত upload হবে।";preparedFiles=originals;return}
