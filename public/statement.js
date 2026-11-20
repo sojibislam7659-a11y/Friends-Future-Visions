@@ -101,12 +101,16 @@ async function main() {
 
   const transactions = transactionResult.data || [];
   const reversedIds = new Set(transactions.map(row => row.reversal_of_id).filter(Boolean));
-  const ledgerRows = transactions.map(row => {
-    const accountingMatch = String(row.reference_no || "").match(/^FFV_MATRIX\|(\d{4}-\d{2})\|/);
-    const accountingMonth = accountingMatch ? accountingMatch[1] : row.transaction_type === "contribution" ? String(row.transaction_date).slice(0, 7) : "—";
+  const ledgerRows = transactions.filter(row => {
+    const match = String(row.reference_no || "").match(/^FFV_MATRIX\\|(\\d{4}-\\d{2})\\|/);
+    const month = match ? match[1] : String(row.transaction_date || "").slice(0, 7);
+    return month >= "2027-01" && month < "2032-01";
+  }).map(row => {
+    const accountingMatch = String(row.reference_no || "").match(/^FFV_MATRIX\\|(\\d{4}-\\d{2})\\|/);
+    const accountingMonth = accountingMatch ? accountingMatch[1] : String(row.transaction_date || "").slice(0, 7);
     const isReversed = reversedIds.has(row.id);
     const typeLabel = row.transaction_type === "reversal" ? "সংশোধন / Reversal" : row.transaction_type === "contribution" ? "মাসিক জমা" : row.transaction_type;
-    return '<tr><td>' + esc(dateText(row.transaction_date)) + '</td><td>' + esc(accountingMonth === "—" ? "—" : monthLabel(accountingMonth)) + '</td><td>' + esc(typeLabel) + (isReversed ? '<span class="statement-status reversed">Reversed</span>' : '') + '</td><td>' + esc(row.direction === "in" ? "জমা / Credit" : "বিয়োগ / Debit") + '</td><td class="amount">' + money(row.amount) + '</td><td>' + esc(row.description || row.reference_no || "—") + '</td></tr>';
+    return '<tr><td>' + esc(dateText(row.transaction_date)) + '</td><td>' + esc(monthLabel(accountingMonth)) + '</td><td>' + esc(typeLabel) + (isReversed ? '<span class="statement-status reversed">Reversed</span>' : '') + '</td><td>' + esc(row.direction === "in" ? "জমা / Credit" : "বিয়োগ / Debit") + '</td><td class="amount">' + money(row.amount) + '</td><td>' + esc(row.description || row.reference_no || "—") + '</td></tr>';
   }).join("");
 
   const schedule = scheduleRows.map(row => '<tr><td>' + esc(monthLabel(row.month.slice(0, 7))) + '</td><td class="amount">' + money(row.expected) + '</td><td class="amount">' + money(row.paid) + '</td><td class="amount">' + money(row.due) + '</td><td>' + esc(dateText(row.paidDate)) + '</td><td><span class="statement-status">' + esc(row.status) + '</span></td></tr>').join("");
