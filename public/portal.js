@@ -326,7 +326,7 @@ async function loadProofMonth(month,allProofs){
          const savedRatio=file.size?Math.round((1-updated.size/file.size)*100):0;
          details.textContent=edgeText+" · Manual crop applied · "+(updated.size/1024).toFixed(0)+" KB"+(savedRatio>0?" · "+savedRatio+"% smaller":"");
          card.insertBefore(image,details);workspace.remove();cropButton.disabled=false;cropButton.textContent="Adjust Crop / Rotate";
-        }catch(error){apply.disabled=false;apply.textContent="Apply Crop";throw error}
+        }catch(error){console.error("Crop apply failed",error);apply.disabled=false;apply.textContent="Apply Crop";toast("Crop save হয়নি: "+(error.message||"Unknown error"),true)}
        });
       }catch(error){
        console.error("Manual crop failed",error);if(cropper)cropper.destroy();if(workspace){card.insertBefore(image,details);workspace.remove()}cropButton.disabled=false;toast("Manual crop চালু হয়নি: "+(error.message||"Unknown error"),true);
