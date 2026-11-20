@@ -61,8 +61,15 @@ async function init(){
  const {data:s,error}=await supabase.auth.getSession();
  const session=s?.session;
  if(error||!session?.user?.id){showPublicNavigation();return}
- const {data:profile,error:pe}=await supabase.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
+ const {data:profile,error:pe}=await supabase.from("profiles").select("role,full_name").eq("id",session.user.id).maybeSingle();
  if(pe||!profile||!["super_admin","member"].includes(profile.role)){await supabase.auth.signOut();location.replace("login.html");return}
+ let displayName=profile.full_name||"";
+ if(profile.role==="member"){
+  const {data:member,error:memberError}=await supabase.from("members").select("full_name").eq("auth_user_id",session.user.id).maybeSingle();
+  if(!memberError&&member?.full_name)displayName=member.full_name;
+ }
+ const brandName=document.querySelector(".brand strong");
+ if(brandName&&displayName)brandName.textContent=displayName.toLocaleUpperCase("en-US");
  home.href="dashboard.html";
  setupPublicTheme();await loadPublicTicker();
  const role=profile.role;
