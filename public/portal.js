@@ -178,15 +178,18 @@ function dashboardChartMarkup(summaryData){
  return "<section class=\"section matrix-charts\"><h2>"+t("আর্থিক চার্ট","Financial charts")+"</h2><div class=\"matrix-chart-grid\"><article class=\"card\"><strong>"+t("মাসিক জমা · Column","Monthly contributions · Column")+"</strong><div class=\"mini-bars\">"+bars+"</div></article><article class=\"card\"><strong>"+t("জমার প্রবণতা · Line","Contribution trend · Line")+"</strong>"+line+"</article><article class=\"card\"><strong>"+t("আর্থিক অনুপাত · Pie","Financial mix · Pie")+"</strong>"+pie+"</article></div></section>";
 }
 async function renderDashboard(){
- const [s,dueResult]=await Promise.all([
+ const [s,dueResult,memberCountResult]=await Promise.all([
   Promise.race([
    summary(),
    new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
   ]),
-  supabase.rpc("get_member_shared_financial_data_v2")
+  supabase.rpc("get_member_shared_financial_data_v2"),
+  supabase.from("member_directory").select("member_id",{count:"exact",head:true})
  ]);
  const {data:dueRows,error:dueError}=dueResult;
  if(dueError)throw dueError;
+ if(memberCountResult.error)throw memberCountResult.error;
+ const activeMemberCount=memberCountResult.count||0;
  const dueByMember=new Map();
  (dueRows||[]).forEach(row=>{if(!dueByMember.has(row.member_id))dueByMember.set(row.member_id,{due:Number(row.total_due||0),paid:Number(row.total_paid||0),configured:Boolean(row.due_configured)});});
  const memberTotals=Array.from(dueByMember.values());
@@ -202,6 +205,7 @@ async function renderDashboard(){
  card(t("ব্যাংক ব্যালেন্স","Bank balance"),money(s.bank_balance))+
  card(t("হাতে নগদ","Cash in hand"),money(s.cash_balance))+
  card(t("মোট বিনিয়োগ","Investment balance"),money(s.investment_balance))+
+ card(t("মোট সদস্য","Total members"),String(activeMemberCount),t("অনুমোদিত সক্রিয় সদস্য","Approved active members"))+
  card(t("সদস্যদের মোট জমা","Member contributions"),money(s.total_contributions))+
  card(t("সদস্যদের মোট বকেয়া","Total member due"),money(totalDue))+
  card(t("মোট ব্যয়","Total expenses"),money(s.total_expenses))+
