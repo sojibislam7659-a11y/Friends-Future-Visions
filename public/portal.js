@@ -241,13 +241,15 @@ async function loadProofMonth(month,allProofs){
   const scanButton=document.getElementById("prepareProofScans");
   const scanStatus=document.getElementById("proofScanStatus");
   const scanPreview=document.getElementById("proofScanPreview");
-  input.addEventListener("change",()=>{preparedFiles=null;scanPreview.replaceChildren();scanStatus.textContent="";drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
+  const scanPreviewUrls=[];
+  const clearScanPreview=()=>{scanPreviewUrls.forEach(url=>URL.revokeObjectURL(url));scanPreviewUrls.length=0;scanPreview.replaceChildren()};
+  input.addEventListener("change",()=>{preparedFiles=null;clearScanPreview();scanStatus.textContent="";drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
   scanButton.addEventListener("click",async()=>{
    const originals=Array.from(input.files||[]);
    const images=originals.filter(file=>file.type.startsWith("image/"));
    if(!originals.length){toast("আগে image অথবা PDF নির্বাচন করুন।");return}
    if(!images.length){scanStatus.textContent="নির্বাচিত ফাইলগুলো PDF; PDF অপরিবর্তিত upload হবে।";preparedFiles=originals;return}
-   scanButton.disabled=true;scanStatus.textContent="Scanner engine load হচ্ছে…";scanPreview.replaceChildren();preparedFiles=null;
+   scanButton.disabled=true;scanStatus.textContent="Scanner engine load হচ্ছে…";clearScanPreview();preparedFiles=null;
    try{
     const {scanDocumentImage}=await import("./document-scanner.js");
     const scanned=new Map();
@@ -258,7 +260,7 @@ async function loadProofMonth(month,allProofs){
      const result=await scanDocumentImage(file,document.getElementById("proofScanMode").value);
      scanned.set(file,result.file);
      const card=document.createElement("article");card.className="scanner-preview-card";
-     const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);
+     const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);scanPreviewUrls.push(image.src);
      const details=document.createElement("div");
      const ratio=file.size?Math.round((1-result.outputSize/file.size)*100):0;
      details.textContent=(result.cornersDetected?"Edges detected · perspective corrected":"Page edges not detected · image enhanced without perspective correction")+" · "+(result.outputSize/1024).toFixed(0)+" KB"+(ratio>0?" · "+ratio+"% smaller":"");
