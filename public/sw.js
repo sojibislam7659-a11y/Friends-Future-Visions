@@ -1,9 +1,8 @@
-const CACHE_NAME = "ffv-static-v2";
+const CACHE_NAME = "ffv-static-v3";
 const STATIC_FILE = /\.(?:css|js|svg|webp|png|woff2|webmanifest)$/i;
 const PRECACHE = [
   "/portal.css",
   "/friends-future-standard-logo.svg",
-  "/friends-future-community-emblem-optimized.webp",
   "/manifest.webmanifest"
 ];
 
@@ -46,8 +45,8 @@ self.addEventListener("fetch", event => {
 self.addEventListener("push", event => {
   event.waitUntil(self.registration.showNotification("Friends Future Vision", {
     body: "You have a notification from Friends Future Vision.",
-    icon: "/friends-future-community-emblem-optimized.webp",
-    badge: "/friends-future-community-emblem-optimized.webp",
+    icon: "/friends-future-standard-logo.svg",
+    badge: "/friends-future-standard-logo.svg",
     data: { url: "/dashboard.html" }
   }));
 });
