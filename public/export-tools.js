@@ -21,7 +21,7 @@ let xlsxPromise;
 let zipPromise;
 
 async function loadXlsx() {
-  xlsxPromise ||= import("https://cdn.jsdelivr.net/npm/xlsx@0.18.5/+esm");
+  xlsxPromise ||= import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
   return xlsxPromise;
 }
 
