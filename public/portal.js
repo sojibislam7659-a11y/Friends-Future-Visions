@@ -14,6 +14,43 @@ const today=()=>localDate(new Date());
 let access=null,lang="bn";
 const t=(bn,en)=>lang==="bn"?bn:en;
 function toast(message){let n=document.createElement("div");n.className="toast";n.textContent=message;document.body.append(n);setTimeout(()=>n.remove(),4200)}
+async function optimizeImageFile(file,purpose="photo"){
+ if(!file?.type?.startsWith("image/"))return file;
+ const maxEdge=purpose==="document"?2600:purpose==="qr"?1800:1400;
+ const targetBytes=purpose==="document"?1500*1024:purpose==="qr"?1500*1024:650*1024;
+ let source=null,cleanup=()=>{};
+ try{
+  if(typeof createImageBitmap==="function"){
+   source=await createImageBitmap(file);
+   cleanup=()=>source?.close?.();
+  }else{
+   const url=URL.createObjectURL(file),image=new Image();
+   image.src=url;await image.decode();source=image;cleanup=()=>URL.revokeObjectURL(url);
+  }
+  const scale=Math.min(1,maxEdge/Math.max(source.width,source.height));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(source.width*scale));
+  canvas.height=Math.max(1,Math.round(source.height*scale));
+  const context=canvas.getContext("2d",{alpha:false});
+  if(!context)throw new Error("Image processing canvas unavailable");
+  context.fillStyle="#fff";context.fillRect(0,0,canvas.width,canvas.height);
+  context.drawImage(source,0,0,canvas.width,canvas.height);
+  const outputType=purpose==="qr"?"image/png":"image/webp";
+  const encode=quality=>new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Image encoding failed")),outputType,quality));
+  let blob;
+  if(purpose==="qr")blob=await encode();
+  else{
+   for(const quality of [.92,.88,.84,.80,.76,.72]){
+    const candidate=await encode(quality);blob=candidate;
+    if(candidate.size<=targetBytes)break;
+   }
+  }
+  if(!blob||blob.size>=file.size)return file;
+  const extension=blob.type==="image/png"?"png":"webp";
+  const base=file.name.replace(/\.[^.]+$/,"")||"upload";
+  return new File([blob],base+"-optimized."+extension,{type:blob.type,lastModified:file.lastModified});
+ }finally{cleanup()}
+}
 async function refreshUnreadCount(){
  const badge=document.getElementById("unreadCount");
  const userId=access?.session?.user?.id;
@@ -224,7 +261,7 @@ async function loadProofMonth(month,allProofs){
   ?'<form id="proofMetaForm" class="section"><h3>এই মাসের Proof তথ্য সম্পাদনা</h3><p class="muted small">Title, note, month এবং প্রকাশের অবস্থা একবারে Save হবে।</p>'+rows.map(p=>'<div class="proof-meta-row" data-proof-meta-row><input type="hidden" name="id" value="'+esc(p.id)+'"><div class="field"><label>Title</label><input name="title" maxlength="180" required value="'+esc(p.title)+'"></div><div class="field"><label>Proof month</label><input name="proof_month" type="date" value="'+esc(p.proof_month)+'" required></div><div class="field"><label>Note</label><textarea name="note" rows="2" maxlength="500">'+esc(p.note||"")+'</textarea></div><label class="inline-check"><input name="published" type="checkbox" '+(p.published?"checked":"")+'> Published</label></div>').join("")+'<div class="form-actions"><button type="submit" id="saveProofMeta">Save Changes</button><span id="proofMetaStatus" class="muted small"></span></div></form>'
   :"";
  const uploadForm=access.role==="super_admin"
-  ?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><h3>Upload new proof</h3><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">ছবি সর্বোচ্চ 5MB, PDF সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>Document Scanner</label><div class="scanner-controls"><select id="proofScanMode" aria-label="Scan output mode"><option value="bw">Black &amp; White · Recommended</option><option value="color">Keep original colour</option></select><select id="proofScanRotation" aria-label="Rotate document"><option value="0">Rotation: 0° (default)</option><option value="90">Rotate 90° clockwise</option><option value="180">Rotate 180°</option><option value="270">Rotate 90° counter-clockwise</option></select><button type="button" class="secondary" id="prepareProofScans">Scan &amp; Enhance Images</button><span id="proofScanStatus" class="muted small"></span></div><div id="proofScanPreview" class="scanner-preview" aria-live="polite"></div><small class="muted">শুধু ছবি scan হবে; PDF অপরিবর্তিত থাকবে। Scanner চালালে edge detection, crop/straighten, text enhancement এবং WebP compression হবে।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>'
+  ?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><h3>Upload new proof</h3><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">ছবি সর্বোচ্চ 5MB, PDF সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>Document Scanner</label><div class="scanner-controls"><select id="proofScanMode" aria-label="Scan output mode"><option value="bw">Black &amp; White · Recommended</option><option value="color">Keep original colour</option></select><select id="proofScanRotation" aria-label="Rotate document"><option value="0">Rotation: 0° (default)</option><option value="90">Rotate 90° clockwise</option><option value="180">Rotate 180°</option><option value="270">Rotate 90° counter-clockwise</option></select><button type="button" class="secondary" id="prepareProofScans">Scan &amp; Enhance Images</button><span id="proofScanStatus" class="muted small"></span></div><div id="proofScanPreview" class="scanner-preview" aria-live="polite"></div><small class="muted">Upload করলে ছবি স্বয়ংক্রিয়ভাবে scan ও optimize হবে; PDF অপরিবর্তিত থাকবে। Preview ও Manual Crop / Rotate চাইলে আগে Scan & Enhance Images চাপুন।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>'
   :"";
  root.innerHTML='<h2>'+esc(monthText(month))+'</h2><div class="muted small">'+rows.length+' file(s)</div><div id="proofFiles" class="list">'+empty("ফাইল লোড হচ্ছে…")+'</div>'+metaEditor+uploadForm;
  const fileBox=document.getElementById("proofFiles");
@@ -360,12 +397,34 @@ async function loadProofMonth(month,allProofs){
   drop.addEventListener("drop",event=>{event.preventDefault();drop.classList.remove("dragover");if(event.dataTransfer?.files?.length){input.files=event.dataTransfer.files;drop.dataset.selected=event.dataTransfer.files.length+" file(s) selected";input.dispatchEvent(new Event("change",{bubbles:true}))}});
   input.addEventListener("change",()=>{drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
   form.addEventListener("submit",async event=>{
-   event.preventDefault();const files=Array.from(input.files||[]);const uploadFiles=preparedFiles||files;
+   event.preventDefault();const files=Array.from(input.files||[]);
    if(!files.length){toast("কমপক্ষে একটি ফাইল নির্বাচন করুন।");return}
    const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
-   const bad=uploadFiles.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024));
-   if(bad){toast("ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+bad.name,true);return}
-   const button=document.getElementById("proofUploadButton"),status=document.getElementById("proofUploadStatus");button.disabled=true;let success=0;
+   const invalidOriginal=files.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024));
+   if(invalidOriginal){toast("ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+invalidOriginal.name,true);return}
+   const button=document.getElementById("proofUploadButton"),status=document.getElementById("proofUploadStatus");
+   button.disabled=true;
+   let uploadFiles=preparedFiles||files;
+   if(!preparedFiles&&files.some(file=>file.type.startsWith("image/"))){
+    status.textContent="ছবি স্বয়ংক্রিয়ভাবে scan ও optimize হচ্ছে…";
+    try{
+     const {scanDocumentImage}=await import("./document-scanner.js");
+     const scanMode=document.getElementById("proofScanMode").value;
+     const scanRotation=Number(document.getElementById("proofScanRotation").value);
+     uploadFiles=await Promise.all(files.map(async file=>{
+      if(!file.type.startsWith("image/"))return file;
+      try{return (await scanDocumentImage(file,scanMode,scanRotation)).file}
+      catch(scanError){console.warn("Automatic document scan failed; using compression",scanError);return await optimizeImageFile(file,"document").catch(()=>file)}
+     }));
+    }catch(scannerError){
+     console.warn("Automatic scanner unavailable; compressing images only",scannerError);
+     uploadFiles=await Promise.all(files.map(file=>file.type.startsWith("image/")?optimizeImageFile(file,"document").catch(()=>file):file));
+     scanStatus.textContent="Scanner পাওয়া যায়নি; ছবি compress করে upload হবে।";
+    }
+   }
+   const invalidProcessed=uploadFiles.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024));
+   if(invalidProcessed){button.disabled=false;toast("প্রসেস করা ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+invalidProcessed.name,true);return}
+   let success=0;
    for(const file of uploadFiles){
     status.textContent=(success+1)+" / "+uploadFiles.length+" uploading…";
     const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-80),path=month+"/"+crypto.randomUUID()+"-"+safeName;
@@ -420,9 +479,10 @@ async function loadProofMonth(month,allProofs){
    let paymentSaved=false;
    try{
     for(const item of uploads){
-     const ext=item.file.type==="image/png"?"png":item.file.type==="image/jpeg"?"jpg":"webp";
+     const uploadFile=await optimizeImageFile(item.file,"qr").catch(()=>item.file);
+     const ext=uploadFile.type==="image/png"?"png":uploadFile.type==="image/jpeg"?"jpg":"webp";
      const path=item.method+"/"+crypto.randomUUID()+"."+ext;
-     const {error}=await supabase.storage.from("payment-qr").upload(path,item.file,{upsert:false,contentType:item.file.type});
+     const {error}=await supabase.storage.from("payment-qr").upload(path,uploadFile,{upsert:false,contentType:uploadFile.type});
      if(error)throw error;
      item.newPath=path;newPaths.push(path);
      const row=updates.find(x=>x.method===item.method);row.qr_path=path;
@@ -533,9 +593,10 @@ async function renderProfile(){
   try{
    let photoPath=null;
    if(photo?.size){
-    const ext=photo.type==="image/png"?"png":photo.type==="image/webp"?"webp":"jpg";
+    const uploadPhoto=await optimizeImageFile(photo,"photo").catch(()=>photo);
+    const ext=uploadPhoto.type==="image/png"?"png":uploadPhoto.type==="image/webp"?"webp":"jpg";
     photoPath=access.session.user.id+"/"+crypto.randomUUID()+"."+ext;
-    const {error:upErr}=await supabase.storage.from("member-profile-photos").upload(photoPath,photo,{upsert:false,contentType:photo.type});
+    const {error:upErr}=await supabase.storage.from("member-profile-photos").upload(photoPath,uploadPhoto,{upsert:false,contentType:uploadPhoto.type});
     if(upErr)throw upErr;
    }
    if(Object.keys(changes).length||photoPath){
@@ -546,9 +607,10 @@ async function renderProfile(){
    let uploaded=0;
    for(const [docType,file] of uploads){
     if(!file?.size)continue;
-    const ext=file.type==="application/pdf"?"pdf":file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
+    const uploadFile=file.type.startsWith("image/")?await optimizeImageFile(file,docType==="nominee_photo"?"photo":"document").catch(()=>file):file;
+    const ext=uploadFile.type==="application/pdf"?"pdf":uploadFile.type==="image/png"?"png":uploadFile.type==="image/webp"?"webp":"jpg";
     const path=access.session.user.id+"/"+crypto.randomUUID()+"."+ext;
-    const {error:upError}=await supabase.storage.from("member-private-documents").upload(path,file,{upsert:false,contentType:file.type});
+    const {error:upError}=await supabase.storage.from("member-private-documents").upload(path,uploadFile,{upsert:false,contentType:uploadFile.type});
     if(upError)throw upError;
     const {error:rowError}=await supabase.from("member_private_documents").insert({member_id:m.id,owner_user_id:access.session.user.id,document_type:docType,storage_path:path,status:"pending"});
     if(rowError){await supabase.storage.from("member-private-documents").remove([path]);throw rowError}
