@@ -16,6 +16,15 @@ const monthList = () => {
 };
 const monthName = key => new Date(key + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short" });
 const paidDateLabel = value => { if (!value) return ""; const d = new Date(value + "T00:00:00"); return d.getDate() + " " + d.toLocaleDateString("en-US", { weekday: "short" }); };
+function contributionLedgerTotal(rows, activeMemberIds){
+  const reversedIds = new Set(rows.map(row => row.reversal_of_id).filter(Boolean));
+  return rows.reduce((sum, row) => {
+    if (!activeMemberIds.has(row.member_id) || row.transaction_type !== "contribution" || row.direction !== "in" || reversedIds.has(row.id)) return sum;
+    const parts = String(row.reference_no || "").split("|");
+    const month = parts[0] === "FFV_MATRIX" && /^\\d{4}-\\d{2}$/.test(parts[1] || "") ? parts[1] : String(row.transaction_date || "").slice(0, 7);
+    return month >= "2027-01" && month < "2032-01" ? sum + Number(row.amount || 0) : sum;
+  }, 0);
+}
 const dateTime = value => {
   if (!value) return "";
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
@@ -71,13 +80,15 @@ async function loadMatrix() {
   }
   let reconciliationNotice = "";
   if (isSuper) {
-    const { data: financialSummary, error: summaryError } = await supabase.rpc("get_financial_summary");
-    if (summaryError) throw summaryError;
+    const { data: ledgerRows, error: ledgerError } = await supabase.from("financial_transactions")
+      .select("id,member_id,transaction_type,amount,transaction_date,reference_no,direction,reversal_of_id");
+    if (ledgerError) throw ledgerError;
+    const activeMemberIds = new Set(memberMap.keys());
     const matrixTotal = (sharedRows || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
-    const ledgerTotal = Number(financialSummary?.total_contributions || 0);
+    const ledgerTotal = contributionLedgerTotal(ledgerRows || [], activeMemberIds);
     const difference = ledgerTotal - matrixTotal;
     if (Math.abs(difference) > 0.01) {
-      reconciliationNotice = '<div class="error" role="alert"><strong>হিসাব মিলছে না — Super Admin যাচাই করুন</strong><p>Financial Ledger ও DATA Matrix-এর মধ্যে ' + money(Math.abs(difference)) + ' পার্থক্য আছে। ' + (difference > 0 ? 'Ledger-এ বেশি' : 'DATA Matrix-এ বেশি') + '। Save করার আগে সংশ্লিষ্ট লেনদেন ও মাসের হিসাব মিলিয়ে নিন।</p></div>';
+      reconciliationNotice = '<div class="error" role="alert"><strong>হিসাব মিলছে না — Super Admin যাচাই করুন</strong><p>Active member ledger ও DATA Matrix-এর মধ্যে ' + money(Math.abs(difference)) + ' পার্থক্য আছে। ' + (difference > 0 ? 'Ledger-এ বেশি' : 'DATA Matrix-এ বেশি') + '। Save করার আগে সংশ্লিষ্ট লেনদেন ও মাসের হিসাব মিলিয়ে নিন।</p></div>';
     }
   }
   if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
