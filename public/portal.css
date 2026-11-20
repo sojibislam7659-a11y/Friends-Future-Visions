@@ -879,3 +879,5 @@ body.signup-page .brand-mark .ffv-brand-title{fill:#f0f4ff}
   body.dark-theme .mobile-bottom-nav a.active{background:#294b3d!important;color:#fff}
   body.dark-theme .mobile-bottom-nav button:active,body.dark-theme .mobile-bottom-nav a:active{background:#294b3d!important}
 }
+
+@media(max-width:640px){.mobile-bottom-nav.public-mobile-nav{grid-template-columns:repeat(4,minmax(0,1fr))}}
