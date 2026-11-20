@@ -201,7 +201,7 @@ async function renderDashboard(){
   supabase.rpc("get_member_shared_financial_data_v2"),
   supabase.from("member_directory").select("member_id",{count:"exact",head:true}),
   access.role==="super_admin"
-   ? supabase.from("financial_transactions").select("id,member_id,transaction_type,amount,transaction_date,reference_no,direction,reversal_of_id")
+   ? supabase.from("financial_transactions").select("id,member_id,transaction_type,amount,transaction_date,reference_no,direction,reversal_of_id").in("transaction_type",["contribution","reversal"]).order("created_at",{ascending:true}).order("id",{ascending:true})
    : Promise.resolve({data:[],error:null})
  ]);
  const {data:dueRows,error:dueError}=dueResult;
