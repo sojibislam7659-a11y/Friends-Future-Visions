@@ -33,15 +33,10 @@ self.addEventListener("fetch", event => {
   event.respondWith((async () => {
     const cache = await caches.open(CACHE_NAME);
     const cached = await cache.match(request);
-    const network = fetch(request).then(response => {
-      if (response.ok && response.type === "basic") cache.put(request, response.clone());
-      return response;
-    });
-    if (cached) {
-      event.waitUntil(network.catch(() => {}));
-      return cached;
-    }
-    return network;
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (response.ok && response.type === "basic") await cache.put(request, response.clone());
+    return response;
   })());
 });
 
