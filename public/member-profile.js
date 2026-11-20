@@ -174,6 +174,7 @@ async function main(){
     button.disabled=false;
    }
   });
+  if(new URLSearchParams(location.search).get("edit")==="1")editorToggle?.click();
 
  }
 }
