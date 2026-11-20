@@ -16,6 +16,15 @@ const monthList = () => {
 };
 const monthName = key => new Date(key + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short" });
 const paidDateLabel = value => { if (!value) return ""; const d = new Date(value + "T00:00:00"); return d.getDate() + " " + d.toLocaleDateString("en-US", { weekday: "short" }); };
+const contributionRateForMonth = (member, monthKey) => {
+  const [year, month] = monthKey.split("-").map(Number);
+  const monthStart = monthKey + "-01";
+  const monthEnd = year + "-" + String(month).padStart(2, "0") + "-" + String(new Date(year, month, 0).getDate()).padStart(2, "0");
+  const rate = (member.contribution_rates || [])
+    .filter(item => item.effective_from <= monthEnd && (!item.effective_to || item.effective_to >= monthStart))
+    .sort((a, b) => String(b.effective_from).localeCompare(String(a.effective_from)))[0];
+  return Number(rate?.monthly_amount ?? member.monthly_contribution ?? 2000);
+};
 function contributionLedgerTotal(rows, activeMemberIds){
   const reversedIds = new Set(rows.map(row => row.reversal_of_id).filter(Boolean));
   return rows.reduce((sum, row) => {
@@ -72,11 +81,22 @@ async function loadMatrix() {
   });
   const members = Array.from(memberMap.values()).sort((a,b)=>String(a.member_no||"").localeCompare(String(b.member_no||"")));
   if (isSuper) {
-    const { data: rateMembers, error: rateError } = await supabase.from("members")
-      .select("id,monthly_contribution").eq("status", "active");
-    if (rateError) throw rateError;
-    const rateMap = new Map((rateMembers || []).map(member => [member.id, Number(member.monthly_contribution || 2000)]));
-    members.forEach(member => { member.monthly_contribution = rateMap.get(member.id) || 0; });
+    const [rateMembersResult, rateHistoryResult] = await Promise.all([
+      supabase.from("members").select("id,monthly_contribution").eq("status", "active"),
+      supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to")
+    ]);
+    if (rateMembersResult.error) throw rateMembersResult.error;
+    if (rateHistoryResult.error) throw rateHistoryResult.error;
+    const rateMap = new Map((rateMembersResult.data || []).map(member => [member.id, Number(member.monthly_contribution || 2000)]));
+    const historyMap = new Map();
+    (rateHistoryResult.data || []).forEach(rate => {
+      if (!historyMap.has(rate.member_id)) historyMap.set(rate.member_id, []);
+      historyMap.get(rate.member_id).push(rate);
+    });
+    members.forEach(member => {
+      member.monthly_contribution = rateMap.get(member.id) || 2000;
+      member.contribution_rates = historyMap.get(member.id) || [];
+    });
   }
   let reconciliationNotice = "";
   if (isSuper) {
@@ -125,7 +145,7 @@ async function loadMatrix() {
           const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDate ? '<small class="cell-date paid-date">' + esc(paidDateLabel(savedDate)) + '</small>' : ""));
           const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
             (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
-          const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 2000) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" data-saved-date="' + esc(savedDate) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
+          const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + contributionRateForMonth(member, month) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" data-saved-date="' + esc(savedDate) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
             ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
           const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(todayKey) + '" value="' + esc(selected ? defaultPaidDate : "") + '"' + (selected ? "" : " disabled") + ' aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">' : "";
           return '<td><div class="matrix-cell">' +
