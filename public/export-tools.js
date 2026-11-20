@@ -137,16 +137,17 @@ function paragraph(text, style) {
 function wordTable(rows) {
   if (!rows?.length) return "";
   const columnCount = Math.max(1, ...rows.map(row => row.length));
-  const grid = Array.from({ length: columnCount }, () => "<w:gridCol w:w=\"2200\"/>").join("");
+  const columnWidth = Math.max(220, Math.floor(15398 / columnCount));
+  const grid = Array.from({ length: columnCount }, () => "<w:gridCol w:w=\"" + columnWidth + "\"/>").join("");
   const tableRows = rows.map((row, rowIndex) => {
     const cells = Array.from({ length: columnCount }, (_, index) => {
       const value = row[index] ?? "";
       const fill = rowIndex === 0 ? '<w:shd w:fill="DCECE0"/>' : "";
-      return "<w:tc><w:tcPr><w:tcW w:w=\"2200\" w:type=\"dxa\"/>" + fill + "</w:tcPr>" + paragraph(value) + "</w:tc>";
+      return "<w:tc><w:tcPr><w:tcW w:w=\"" + columnWidth + "\" w:type=\"dxa\"/>" + fill + "</w:tcPr>" + paragraph(value) + "</w:tc>";
     }).join("");
     return "<w:tr>" + cells + "</w:tr>";
   }).join("");
-  return "<w:tbl><w:tblPr><w:tblStyle w:val=\"TableGrid\"/><w:tblW w:w=\"0\" w:type=\"auto\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:left w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:bottom w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:right w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:insideV w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/></w:tblBorders></w:tblPr><w:tblGrid>" + grid + "</w:tblGrid>" + tableRows + "</w:tbl>";
+  return "<w:tbl><w:tblPr><w:tblStyle w:val=\"TableGrid\"/><w:tblW w:w=\"15398\" w:type=\"dxa\"/><w:tblLayout w:type=\"fixed\"/><w:tblBorders><w:top w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:left w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:bottom w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:right w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:insideH w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/><w:insideV w:val=\"single\" w:sz=\"4\" w:color=\"B8C9BE\"/></w:tblBorders></w:tblPr><w:tblGrid>" + grid + "</w:tblGrid>" + tableRows + "</w:tbl>";
 }
 
 export async function downloadWordDocument(title, sections, filename) {
@@ -159,7 +160,7 @@ export async function downloadWordDocument(title, sections, filename) {
     for (const line of section.paragraphs || []) body.push(paragraph(line));
     if (section.rows?.length) body.push(wordTable(section.rows));
   }
-  body.push('<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr>');
+  body.push('<w:sectPr><w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr>');
   const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>' + body.join("") + "</w:body></w:document>";
   const stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
