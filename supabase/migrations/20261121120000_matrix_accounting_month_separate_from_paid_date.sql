@@ -219,7 +219,7 @@ BEGIN
   attributed AS (
     SELECT t.*,
       CASE
-        WHEN split_part(t.reference_no,'|',1)='FFV_MATRIX' AND split_part(t.reference_no,'|',2) ~ '^[0-9]{4}-[0-9]{2}(split_part(t.reference_no,'|',2)||'-01','YYYY-MM-DD')
+        WHEN split_part(t.reference_no,'|',1)='FFV_MATRIX' AND split_part(t.reference_no,'|',2) ~ '^[0-9]{4}-[0-9]{2}$' THEN to_date(split_part(t.reference_no,'|',2)||'-01','YYYY-MM-DD')
         ELSE date_trunc('month',t.transaction_date)::date
       END AS contribution_month_key
     FROM public.financial_transactions t
