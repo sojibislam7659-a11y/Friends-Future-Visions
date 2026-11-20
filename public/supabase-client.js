@@ -3,7 +3,7 @@
  * Only the public anon/publishable key belongs here.
  * NEVER add service_role, secret keys, or database passwords.
  */
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/+esm";
 
 const SUPABASE_URL = "https://tvdxbyzvkjiebwslmnvj.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_uHCRkBNpkJNNoIB_Egjpkw_eX5QW2YI";
