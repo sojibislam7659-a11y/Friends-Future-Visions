@@ -1061,3 +1061,5 @@ body.dark-theme .member-directory-edit{background:#1c3d34!important;color:#e8f5e
 @media(prefers-reduced-motion:reduce){.site-ticker-window span{animation:none;padding-left:0}}
 
 @media(max-width:640px){.topbar .actions .language-toggle{display:inline-flex!important;min-height:34px!important;padding:5px 8px!important;font-size:10px!important;flex:0 0 auto!important}.topbar .actions .notification-trigger{display:flex!important}}
+
+body.login-theme a.member-directory-edit{background:#e5f1e8!important;color:#14543f!important;border-color:#a8c8b5!important;text-shadow:none!important}body.login-theme a.member-directory-edit:hover{background:#d4e9da!important;color:#104b39!important}
