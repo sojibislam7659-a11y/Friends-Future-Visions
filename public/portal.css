@@ -642,3 +642,6 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
 .sidebar-panel .sidebar-footer{
   border-color:rgba(12,44,76,.16)!important;
 }
+
+.member-directory-person-wrap{display:grid;gap:6px;min-width:0}.member-directory-edit{display:inline-flex;justify-content:center;align-items:center;padding:7px 10px;border:1px solid #b8d3c2;border-radius:9px;background:#edf5ef;color:#176653;text-decoration:none;font-size:12px;font-weight:700}.member-directory-edit:hover{background:#dfeee3}
+.matrix-day{width:132px;min-height:32px;padding:5px 6px;border:1px solid #a8c8b4;border-radius:7px;background:#f1f8f2;color:#173d36;font:600 11px Inter,"Noto Sans Bengali",sans-serif}.matrix-paid-day{font-size:10px;color:#58766c;font-weight:700}
