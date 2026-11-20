@@ -225,6 +225,29 @@ export async function exportFullWebsite(supabase, format) {
     "Passwords, authentication credentials, secret keys, push subscription endpoints, private schema internals and uploaded file bytes are intentionally excluded.",
     "This document contains sensitive member information. Store and share it securely."
   ] }];
+  const { data: financialSummary, error: summaryError } = await supabase.rpc("get_member_shared_financial_data_v2");
+  if (summaryError) throw new Error("Member financial summary export failed: " + summaryError.message);
+  const summaryRows = (financialSummary || []).map(row => [
+    row.member_id, row.member_no, row.full_name, row.full_name_bn,
+    row.contribution_month, row.amount, row.paid_date, row.paid_day,
+    row.last_paid_at, row.total_paid, row.total_due, row.due_configured,
+    row.has_manual, row.matrix_count
+  ]);
+  const summaryHeaders = [
+    "Member ID", "Member No", "Full Name", "Full Name (Bangla)",
+    "Contribution Month", "Amount", "Actual Paid Date", "Paid Day",
+    "Last Updated", "Total Paid", "Total Due", "Due Configured",
+    "Has Manual Entry", "Matrix Entry Count"
+  ];
+  sheets.push({ name: "Member Statement Summary", rows: [summaryHeaders, ...summaryRows] });
+  docSections.push({
+    name: "Member Statement Summary (" + summaryRows.length + " monthly rows)",
+    rows: [
+      ["Member No", "Member Name", "Contribution Month", "Amount", "Actual Paid Date", "Total Paid", "Total Due", "Due Configured"],
+      ...summaryRows.map(row => [row[1], row[2], row[4], row[5], row[6], row[9], row[10], row[11] ? "Yes" : "No"])
+    ]
+  });
+
   for (const [sheetName, table] of exportTables) {
     const rows = await readAllRows(supabase, table);
     const keys = [...new Set(rows.flatMap(row => Object.keys(row)))];
