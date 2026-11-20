@@ -15,10 +15,25 @@ function setupPublicTheme(){
 }
 const svg=n=>'<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+icon[n]+'</svg>';
 const item=(href,label,n)=>'<a href="'+href+'"'+(location.pathname.split("/").pop()===href?' class="active" aria-current="page"':'')+'>'+svg(n)+'<span>'+label+'</span></a>';
+function addPublicMobileNav(isAuthenticated){
+ if(document.querySelector(".public-mobile-nav"))return;
+ const current=location.pathname.split("/").pop()||"index.html";
+ const nav=document.createElement("nav");
+ nav.className="mobile-bottom-nav public-mobile-nav";
+ nav.setAttribute("aria-label","Quick navigation");
+ const link=(href,label,name)=>'<a href="'+href+'"'+(current===href?' class="active" aria-current="page"':'')+'>'+svg(name)+'<span>'+label+'</span></a>';
+ nav.innerHTML=link(isAuthenticated?"dashboard.html":"index.html","Home","home")+
+  link("member-info.html","Members","members")+link("data.html","Data","data")+link("rules.html","Rules","rules")+
+  '<button type="button" class="public-more-button" aria-label="More">'+svg("menu")+'<span>More</span></button>';
+ const more=nav.querySelector(".public-more-button");
+ more.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden));});
+ document.querySelector(".shell")?.append(nav);
+}
 function showPublicNavigation(){
  setupPublicTheme();
  home.href="index.html";
  nav.innerHTML=item("rules.html","RULES","rules");
+ addPublicMobileNav(false);
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
  menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
  login.hidden=false;bell.hidden=true;
@@ -45,6 +60,7 @@ async function init(){
  const role=profile.role;
  const links=[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("statement.html","MY STATEMENT","data"),item("member.html","MY PROFILE","members")]:[])];
  nav.innerHTML=links.join("");
+ addPublicMobileNav(true);
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
  login.hidden=true;bell.hidden=false;
 

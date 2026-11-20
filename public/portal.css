@@ -950,3 +950,41 @@ body.login-theme .shell{width:100%;max-width:1180px}
  body.login-theme .topbar .actions .icon-button{width:36px;min-width:36px;min-height:34px}
  body.login-theme .page{width:100%;min-width:0;overflow-x:clip}
 }
+
+/* Mobile header: notification remains visible; theme selection is in sidebar */
+@media(max-width:640px){
+ .topbar .actions .theme-toggle{display:none!important}
+ .topbar .actions .notification-trigger{display:inline-flex!important;flex:0 0 36px;width:36px;min-width:36px;height:36px;min-height:36px;padding:6px!important}
+ .topbar .actions .notification-trigger .ui-icon{width:20px;height:20px}
+ .topbar .actions .topbar-role,.topbar .actions .language-toggle{display:none!important}
+ .topbar .actions{flex:0 0 auto!important;max-width:none!important}
+ .topbar-brand{flex:1 1 0!important}
+ .topbar-identity strong{max-width:100%!important;font-size:12px!important}
+ .mobile-bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+ .mobile-bottom-nav a,.mobile-bottom-nav button{font-size:10px!important;min-height:46px!important}
+ .mobile-bottom-nav .ui-icon{width:19px!important;height:19px!important}
+ .matrix-wrap{width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:hidden!important;-webkit-overflow-scrolling:touch}
+ .contribution-matrix{width:max-content!important;min-width:1050px!important;max-width:none!important}
+ .page{overflow-x:hidden!important}
+}
+.contribution-matrix th{background:#29483c;color:#eaf5ee}
+.contribution-matrix td{background:#1b3028;color:#dcebe3}
+body.dark-theme .contribution-matrix th{background:#29483c!important;color:#eff8f2!important}
+body.dark-theme .contribution-matrix td{background:#1b3028!important;color:#dcebe3!important}
+body.dark-theme .contribution-matrix tr:nth-child(even) td{background:#20372e!important;color:#e4f0e8!important}
+body.dark-theme .contribution-matrix .total-row td{background:#29483a!important;color:#eff8f2!important}
+.matrix-member-name{display:block;min-width:135px;max-width:210px;white-space:normal;overflow-wrap:anywhere;line-height:1.45}
+.site-ticker{display:flex;align-items:center;gap:10px;min-width:0;overflow:hidden;padding:9px 12px;margin:0 0 16px;border:1px solid #a64b4b;border-radius:10px;background:#3b2224;color:#ffb5b5}
+.site-ticker-label{flex:0 0 auto;color:#ffd0d0;font-weight:800;font-size:11px;letter-spacing:.08em}
+.site-ticker-window{min-width:0;overflow:hidden;white-space:nowrap;flex:1}
+#siteTickerText{display:inline-block;min-width:max-content;color:#ffaaaa;font-weight:700;animation:ffv-notice-marquee 24s linear infinite}
+@keyframes ffv-notice-marquee{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+@media(prefers-reduced-motion:reduce){#siteTickerText{animation:none;white-space:normal;min-width:0}}
+body.login-theme .public-mobile-nav{display:none}
+@media(max-width:640px){
+ body.login-theme .public-mobile-nav{display:grid!important;position:fixed;left:0;right:0;bottom:0;z-index:80;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;padding:5px 3px calc(5px + env(safe-area-inset-bottom));background:rgba(20,35,29,.97);border-top:1px solid #344a40;box-shadow:0 -5px 22px rgba(0,0,0,.22);backdrop-filter:blur(14px)}
+ body.login-theme .public-mobile-nav a,body.login-theme .public-mobile-nav button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:46px;padding:4px 1px;background:transparent!important;color:#c6ddd0;border:0;border-radius:9px;font:600 10px/1.2 Inter,"Noto Sans Bengali",sans-serif}
+ body.login-theme .public-mobile-nav .ui-icon{width:19px;height:19px}
+ body.login-theme .public-mobile-nav a.active{background:#294b3d!important;color:#fff}
+ body.login-theme .shell{padding-bottom:calc(80px + env(safe-area-inset-bottom))}
+}

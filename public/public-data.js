@@ -115,6 +115,11 @@ async function loadMatrix() {
     }
   }
   if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
+  let tickerMarkup = "";
+  try {
+    const { data: latestNotices, error: noticeError } = await supabase.from("notices").select("title,body").eq("published", true).order("published_at", { ascending: false }).limit(1);
+    if (!noticeError && latestNotices?.length) tickerMarkup = '<div class="site-ticker" role="region" aria-label="Latest notice"><strong class="site-ticker-label">নোটিশ</strong><div class="site-ticker-window"><span id="siteTickerText">' + esc(latestNotices[0].title + " — " + latestNotices[0].body) + '</span></div></div>';
+  } catch (noticeLoadError) { console.warn("Notice ticker unavailable", noticeLoadError); }
   const months = monthList();
   const years = [2027, 2028, 2029, 2030, 2031];
   const requestedYear = Number(new URLSearchParams(window.location.search).get("year") || 2027);
@@ -176,7 +181,7 @@ async function loadMatrix() {
     }).join("");
   }).join("");
 
-  root.innerHTML = '<h1>Member Contribution Matrix</h1>' +
+  root.innerHTML = tickerMarkup + '<h1>Member Contribution Matrix</h1>' +
     reconciliationNotice +
     '<p class="lead">' + (isSuper
       ? 'প্রতি মাসে সদস্যের জমা Checkbox দিয়ে নির্বাচন করুন। Amount পরিবর্তন করা যাবে; সব পরিবর্তন Confirm & Save করলে সংরক্ষিত হবে।'
