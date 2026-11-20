@@ -97,7 +97,7 @@ function readCell(cell) {
 }
 
 function pageSnapshot() {
-  const root = document.getElementById("pageContent") || document.getElementById("publicData") || document.querySelector("main.page");
+  const root = document.getElementById("pageContent") || document.getElementById("publicData") || document.getElementById("statementApp") || document.querySelector("main.page");
   if (!root) throw new Error("বর্তমান পেজ পাওয়া যায়নি।");
   const title = root.querySelector("h1")?.innerText?.trim() || document.title || "Page Export";
   const sections = [];
