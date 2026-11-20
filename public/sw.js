@@ -30,14 +30,17 @@ self.addEventListener("fetch", event => {
   if (url.pathname.includes("/rest/v1/") || url.pathname.includes("/auth/") || url.pathname.includes("/storage/")) return;
   if (!STATIC_FILE.test(url.pathname)) return;
 
-  event.respondWith((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    const cached = await cache.match(request);
-    if (cached) return cached;
+  const updatePromise = caches.open(CACHE_NAME).then(async cache => {
     const response = await fetch(request);
     if (response.ok && response.type === "basic") await cache.put(request, response.clone());
     return response;
-  })());
+  });
+  event.waitUntil(updatePromise.catch(() => {}));
+  event.respondWith(caches.open(CACHE_NAME).then(async cache => {
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    return updatePromise;
+  }));
 });
 
 self.addEventListener("push", event => {
