@@ -74,6 +74,8 @@ async function loadMatrix() {
   if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
   const months = monthList();
   const years = [2026, 2027, 2028, 2029, 2030, 2031];
+  const localToday = new Date();
+  const todayKey = localToday.getFullYear() + "-" + String(localToday.getMonth()+1).padStart(2,"0") + "-" + String(localToday.getDate()).padStart(2,"0");
   const editorRows = [];
   const tables = years.map(year => {
     const yearMonths = months.filter(month => Number(month.slice(0, 4)) === year);
@@ -91,14 +93,12 @@ async function loadMatrix() {
         const locked = manualRows.length > 0 || matrixRows.length > 1;
         const selected = amount > 0;
         const savedDate = record?.paidDate || "";
-        const now = new Date();
-        const todayKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
         const maxPaidDateKey = todayKey;
         const defaultPaidDate = savedDate || todayKey;
         const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDate ? '<small class="cell-date paid-date">' + esc(paidDateLabel(savedDate)) + '</small>' : ""));
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
-        const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
+        const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" data-saved-date="' + esc(savedDate) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
         const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(maxPaidDateKey) + '" value="' + esc(selected ? defaultPaidDate : "") + '"' + (selected ? "" : " disabled") + ' aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">': "";
         if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
@@ -219,29 +219,32 @@ async function loadMatrix() {
       const selector = '.matrix-check[data-member="' + input.dataset.member + '"][data-month="' + input.dataset.month + '"]';
       const check = root.querySelector(selector);
       const selected = Boolean(check?.checked);
-      return { memberId: input.dataset.member, month: input.dataset.month, selected, amount: selected ? Number(input.value) : 0 };
+      const amount = selected ? Number(input.value) : 0;
+      const dayInput = root.querySelector('.matrix-day[data-member="' + input.dataset.member + '"][data-month="' + input.dataset.month + '"]');
+      const paidDate = dayInput?.value || todayKey;
+      const savedAmount = Number(input.dataset.savedAmount || 0);
+      const changed = amount !== savedAmount || (selected && paidDate !== (input.dataset.savedDate || ""));
+      return { memberId: input.dataset.member, month: input.dataset.month, selected, amount, paidDate, changed };
     });
     const invalid = entries.find(entry => entry.selected && (!(entry.amount > 0) || !Number.isFinite(entry.amount)));
     if (invalid) { toast("টিক দেওয়া প্রতিটি সদস্যের Amount শূন্যের বেশি হতে হবে।", true); return; }
-    const invalidDay = entries.find(entry => {
-      if (!entry.selected) return false;
-      const dayInput = root.querySelector('.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]');
-      const localToday = new Date(); const todayKey = localToday.getFullYear()+"-"+String(localToday.getMonth()+1).padStart(2,"0")+"-"+String(localToday.getDate()).padStart(2,"0");
-      const paidDate = dayInput?.value || todayKey;
-      return !/^\d{4}-\d{2}-\d{2}$/.test(paidDate) || Number.isNaN(Date.parse(paidDate + "T00:00:00")) || paidDate > todayKey;
-    });
+    const invalidDay = entries.find(entry => entry.selected &&
+      (!/^\d{4}-\d{2}-\d{2}$/.test(entry.paidDate) || Number.isNaN(Date.parse(entry.paidDate + "T00:00:00")) || entry.paidDate > todayKey));
     if (invalidDay) { toast("প্রতিটি নির্বাচিত জমার Actual Payment Date সঠিকভাবে নির্বাচন করুন। ভবিষ্যতের তারিখ দেওয়া যাবে না।", true); return; }
-    if (!window.confirm("Contribution Matrix-এর সব পরিবর্তন Confirm করে Save করবেন?")) return;
+    const changedEntries = entries.filter(entry => entry.changed);
+    if (!changedEntries.length) { toast("কোনো পরিবর্তন করা হয়নি।"); return; }
+    if (!window.confirm(changedEntries.length + "টি পরিবর্তন Confirm করে Save করবেন?")) return;
 
     saveButton.disabled = true;
     status.textContent = "সংরক্ষণ হচ্ছে…";
     let changed = 0;
     try {
-      const changes = entries.map(entry => {
-        const daySelector = '.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]';
-        const dayInput = root.querySelector(daySelector);
-        return { member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0, paid_date: dayInput?.value || (() => { const d = new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })() };
-      });
+      const changes = changedEntries.map(entry => ({
+        member_id: entry.memberId,
+        month: entry.month + "-01",
+        amount: entry.selected ? entry.amount : 0,
+        paid_date: entry.paidDate
+      }));
       const { data: saved, error } = await supabase.rpc("save_contribution_matrix", { p_idempotency_key: crypto.randomUUID(), p_changes: changes });
       if (error) throw error;
       changed = (saved || []).filter(item => item.status !== "unchanged").length;
