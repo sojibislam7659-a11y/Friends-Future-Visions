@@ -51,12 +51,13 @@ function orderCorners(points) {
 function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
 async function encodeCanvas(canvas, originalSize, mode) {
-  // Lossless PNG keeps tiny Bengali/English glyphs and signatures razor-sharp.
+  // Keep lossless PNG for crisp small glyphs when it remains reasonably compact.
   if (mode === "bw") {
     const lossless = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
-    if (lossless && lossless.size <= 5 * 1024 * 1024) return lossless;
+    if (lossless && lossless.size <= 2 * 1024 * 1024) return lossless;
   }
-  const qualities = [0.9, 0.84, 0.78];
+  // Try high-quality WebP first; reduce quality only when needed to control storage.
+  const qualities = [0.94, 0.9, 0.86, 0.82];
   let best = null;
   for (const quality of qualities) {
     const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", quality));
@@ -73,7 +74,7 @@ export async function scanDocumentImage(file, mode = "bw", rotation = 0) {
   const cv = await loadOpenCv();
   const bitmap = await loadImageBitmap(file);
   const sourceWidth = bitmap.width, sourceHeight = bitmap.height;
-  const scale = Math.min(1, 2400 / Math.max(sourceWidth, sourceHeight));
+  const scale = Math.min(1, 2800 / Math.max(sourceWidth, sourceHeight));
   const scaledWidth = Math.max(1, Math.round(sourceWidth * scale));
   const scaledHeight = Math.max(1, Math.round(sourceHeight * scale));
   const angle = ((Number(rotation) || 0) % 360 + 360) % 360;
