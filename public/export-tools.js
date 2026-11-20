@@ -102,15 +102,15 @@ function pageSnapshot() {
   const title = root.querySelector("h1")?.innerText?.trim() || document.title || "Page Export";
   const sections = [];
   const tables = [...root.querySelectorAll("table")];
-  const cards = [...root.querySelectorAll(".card")];
+  const cards = [...root.querySelectorAll(".card,.statement-summary article")];
   const headings = [...root.querySelectorAll("h2,h3")].map(node => node.innerText.trim()).filter(Boolean);
   const paragraphs = [...root.querySelectorAll("p,.lead,.notice,.success,.error")].map(node => node.innerText.trim()).filter(Boolean);
   if (cards.length) {
     sections.push({
       name: "Summary",
       rows: [["Field", "Value"], ...cards.map(card => [
-        card.querySelector(".label")?.innerText || card.querySelector("strong")?.innerText || "Summary",
-        card.querySelector(".value")?.innerText || card.innerText.trim()
+        card.querySelector(".label")?.innerText || card.querySelector("small")?.innerText || card.querySelector("strong")?.innerText || "Summary",
+        card.querySelector(".value")?.innerText || (card.querySelector("small") ? card.querySelector("strong")?.innerText : card.innerText.trim())
       ])]
     });
   }
