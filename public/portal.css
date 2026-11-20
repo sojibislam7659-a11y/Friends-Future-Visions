@@ -853,7 +853,6 @@ body.dark-theme .brand-mark .ffv-brand-title{fill:#e5f2eb}
 body.signup-page .brand-mark .ffv-brand-title{fill:#f0f4ff}
 .mobile-bottom-nav{display:none}
 @media(max-width:640px){
-  body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
   .shell{padding-bottom:calc(86px + env(safe-area-inset-bottom))}
   .topbar{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;gap:8px!important;padding:9px 10px!important}
   .topbar .menu-button{display:none!important}
@@ -881,3 +880,5 @@ body.signup-page .brand-mark .ffv-brand-title{fill:#f0f4ff}
 }
 
 @media(max-width:640px){.mobile-bottom-nav.public-mobile-nav{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+.brand-mark-slot{display:flex;align-items:center;flex:0 0 auto}
