@@ -53,7 +53,7 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
 </head>
 <body>
 <main class="login signup">
- <div class="brand"><img src="friends-future-standard-logo.svg" alt=""><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div>
+ <div class="brand" id="signupBrandLogo" aria-label="Friends Future Vision Forever"></div>
  <h1>নিজের অ্যাকাউন্ট তৈরি করুন</h1>
  <p class="muted">Google Form-এ দেওয়া একই ইমেইল ব্যবহার করুন। ইমেইল যাচাই এবং Super Admin-এর অনুমোদন না হওয়া পর্যন্ত ওয়েবসাইটে প্রবেশ করা যাবে না।</p>
  <form id="signupForm">
@@ -68,6 +68,8 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
  <p class="small signup-links"><a href="login.html">আগে থেকেই অ্যাকাউন্ট আছে? Login করুন</a></p>
 </main>
 <script type="module">
+import { BRAND_LOGO_SVG } from "./brand-logo.js";
+document.getElementById("signupBrandLogo").innerHTML = BRAND_LOGO_SVG;
 import "./password-visibility.js";
 import {supabase,supabaseReady} from "./supabase-client.js";
 const form=document.getElementById("signupForm"),button=document.getElementById("signupButton"),message=document.getElementById("message");
