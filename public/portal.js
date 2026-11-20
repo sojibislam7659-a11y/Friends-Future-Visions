@@ -205,7 +205,7 @@ async function loadProofMonth(month,allProofs){
   ?'<form id="proofMetaForm" class="section"><h3>এই মাসের Proof তথ্য সম্পাদনা</h3><p class="muted small">Title, note, month এবং প্রকাশের অবস্থা একবারে Save হবে।</p>'+rows.map(p=>'<div class="proof-meta-row" data-proof-meta-row><input type="hidden" name="id" value="'+esc(p.id)+'"><div class="field"><label>Title</label><input name="title" maxlength="180" required value="'+esc(p.title)+'"></div><div class="field"><label>Proof month</label><input name="proof_month" type="date" value="'+esc(p.proof_month)+'" required></div><div class="field"><label>Note</label><textarea name="note" rows="2" maxlength="500">'+esc(p.note||"")+'</textarea></div><label class="inline-check"><input name="published" type="checkbox" '+(p.published?"checked":"")+'> Published</label></div>').join("")+'<div class="form-actions"><button type="submit" id="saveProofMeta">Save Changes</button><span id="proofMetaStatus" class="muted small"></span></div></form>'
   :"";
  const uploadForm=access.role==="super_admin"
-  ?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><h3>Upload new proof</h3><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">ছবি সর্বোচ্চ 5MB, PDF সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>'
+  ?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><h3>Upload new proof</h3><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">ছবি সর্বোচ্চ 5MB, PDF সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>Document Scanner</label><div class="scanner-controls"><select id="proofScanMode" aria-label="Scan output mode"><option value="bw">Black &amp; White · Recommended</option><option value="color">Keep original colour</option></select><button type="button" class="secondary" id="prepareProofScans">Scan &amp; Enhance Images</button><span id="proofScanStatus" class="muted small"></span></div><div id="proofScanPreview" class="scanner-preview" aria-live="polite"></div><small class="muted">শুধু ছবি scan হবে; PDF অপরিবর্তিত থাকবে। Scanner চালালে edge detection, crop/straighten, text enhancement এবং WebP compression হবে।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>'
   :"";
  root.innerHTML='<h2>'+esc(monthText(month))+'</h2><div class="muted small">'+rows.length+' file(s)</div><div id="proofFiles" class="list">'+empty("ফাইল লোড হচ্ছে…")+'</div>'+metaEditor+uploadForm;
  const fileBox=document.getElementById("proofFiles");
@@ -237,19 +237,52 @@ async function loadProofMonth(month,allProofs){
    toast("Proof তথ্য সংরক্ষণ সম্পন্ন।");await renderProofs();[...document.querySelectorAll("[data-proof-month]")].find(button=>button.dataset.proofMonth===month)?.click();
   });
   const form=document.getElementById("proofUploadForm"),input=document.getElementById("proofFilesInput"),drop=document.getElementById("proofDropzone");
+  let preparedFiles=null;
+  const scanButton=document.getElementById("prepareProofScans");
+  const scanStatus=document.getElementById("proofScanStatus");
+  const scanPreview=document.getElementById("proofScanPreview");
+  input.addEventListener("change",()=>{preparedFiles=null;scanPreview.replaceChildren();scanStatus.textContent="";drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
+  scanButton.addEventListener("click",async()=>{
+   const originals=Array.from(input.files||[]);
+   const images=originals.filter(file=>file.type.startsWith("image/"));
+   if(!originals.length){toast("আগে image অথবা PDF নির্বাচন করুন।");return}
+   if(!images.length){scanStatus.textContent="নির্বাচিত ফাইলগুলো PDF; PDF অপরিবর্তিত upload হবে।";preparedFiles=originals;return}
+   scanButton.disabled=true;scanStatus.textContent="Scanner engine load হচ্ছে…";scanPreview.replaceChildren();preparedFiles=null;
+   try{
+    const {scanDocumentImage}=await import("./document-scanner.js");
+    const scanned=new Map();
+    for(let index=0;index<originals.length;index++){
+     const file=originals[index];
+     if(!file.type.startsWith("image/"))continue;
+     scanStatus.textContent="Scanning "+(scanned.size+1)+" / "+images.length+" · "+file.name;
+     const result=await scanDocumentImage(file,document.getElementById("proofScanMode").value);
+     scanned.set(file,result.file);
+     const card=document.createElement("article");card.className="scanner-preview-card";
+     const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);
+     const details=document.createElement("div");
+     const ratio=file.size?Math.round((1-result.outputSize/file.size)*100):0;
+     details.textContent=(result.cornersDetected?"Edges detected · perspective corrected":"Page edges not detected · image enhanced without perspective correction")+" · "+(result.outputSize/1024).toFixed(0)+" KB"+(ratio>0?" · "+ratio+"% smaller":"");
+     card.append(image,details);scanPreview.append(card);
+    }
+    preparedFiles=originals.map(file=>scanned.get(file)||file);
+    scanStatus.textContent="Preview ready · "+scanned.size+" image(s) processed. Upload করলে এই enhanced files সংরক্ষিত হবে।";
+   }catch(error){
+    console.error("Document scanner failed",error);preparedFiles=null;scanStatus.textContent="Scan করা যায়নি: "+(error.message||"Unknown error");toast("Scanner কাজ করেনি। Original files এখনো অপরিবর্তিত আছে।",true);
+   }finally{scanButton.disabled=false}
+  });
   drop.addEventListener("dragover",event=>{event.preventDefault();drop.classList.add("dragover")});
   drop.addEventListener("dragleave",()=>drop.classList.remove("dragover"));
-  drop.addEventListener("drop",event=>{event.preventDefault();drop.classList.remove("dragover");if(event.dataTransfer?.files?.length){input.files=event.dataTransfer.files;drop.dataset.selected=event.dataTransfer.files.length+" file(s) selected"}});
+  drop.addEventListener("drop",event=>{event.preventDefault();drop.classList.remove("dragover");if(event.dataTransfer?.files?.length){input.files=event.dataTransfer.files;drop.dataset.selected=event.dataTransfer.files.length+" file(s) selected";input.dispatchEvent(new Event("change",{bubbles:true}))}});
   input.addEventListener("change",()=>{drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
   form.addEventListener("submit",async event=>{
-   event.preventDefault();const files=Array.from(input.files||[]);
+   event.preventDefault();const files=Array.from(input.files||[]);const uploadFiles=preparedFiles||files;
    if(!files.length){toast("কমপক্ষে একটি ফাইল নির্বাচন করুন।");return}
    const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
-   const bad=files.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024));
+   const bad=uploadFiles.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024));
    if(bad){toast("ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+bad.name,true);return}
    const button=document.getElementById("proofUploadButton"),status=document.getElementById("proofUploadStatus");button.disabled=true;let success=0;
-   for(const file of files){
-    status.textContent=(success+1)+" / "+files.length+" uploading…";
+   for(const file of uploadFiles){
+    status.textContent=(success+1)+" / "+uploadFiles.length+" uploading…";
     const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-80),path=month+"/"+crypto.randomUUID()+"-"+safeName;
     const {error:upError}=await supabase.storage.from("committee-proofs").upload(path,file,{upsert:false,contentType:file.type});
     if(upError){toast(file.name+": "+upError.message,true);continue}
@@ -257,7 +290,8 @@ async function loadProofMonth(month,allProofs){
     if(rowError){await supabase.storage.from("committee-proofs").remove([path]);toast(file.name+": "+rowError.message,true);continue}
     success++;
    }
-   status.textContent=success+" / "+files.length+" uploaded";
+   status.textContent=success+" / "+uploadFiles.length+" uploaded";
+   preparedFiles=null;
    toast(success+"টি ফাইল আপলোড হয়েছে।");await renderProofs();[...document.querySelectorAll("[data-proof-month]")].find(button=>button.dataset.proofMonth===month)?.click();
   });
  }
