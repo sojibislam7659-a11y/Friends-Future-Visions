@@ -1,1 +1,60 @@
-self.addEventListener("push",event=>{event.waitUntil(self.registration.showNotification("Friends Future Vision",{body:"You have a notification from Friends Future Vision.",icon:"/friends-future-community-emblem.webp?v=20261117-2",badge:"/friends-future-community-emblem.webp?v=20261117-2",data:{url:"/login.html"}}))});self.addEventListener("notificationclick",event=>{event.notification.close();event.waitUntil(clients.openWindow("/login.html"))});
+const CACHE_NAME = "ffv-static-v1";
+const STATIC_FILE = /\.(?:css|js|svg|webp|png|woff2|webmanifest)$/i;
+const PRECACHE = [
+  "/portal.css",
+  "/friends-future-standard-logo.svg",
+  "/friends-future-community-emblem-optimized.webp",
+  "/manifest.webmanifest"
+];
+
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(PRECACHE)).catch(error => {
+    console.warn("Static asset precache skipped", error);
+  }));
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(
+    keys.filter(key => key.startsWith("ffv-static-") && key !== CACHE_NAME).map(key => caches.delete(key))
+  )));
+  self.clients.claim();
+});
+
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+  if (request.mode === "navigate" || url.pathname.endsWith(".html")) return;
+  if (url.pathname.includes("/rest/v1/") || url.pathname.includes("/auth/") || url.pathname.includes("/storage/")) return;
+  if (!STATIC_FILE.test(url.pathname)) return;
+
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(request);
+    const network = fetch(request).then(response => {
+      if (response.ok && response.type === "basic") cache.put(request, response.clone());
+      return response;
+    });
+    if (cached) {
+      event.waitUntil(network.catch(() => {}));
+      return cached;
+    }
+    return network;
+  })());
+});
+
+self.addEventListener("push", event => {
+  event.waitUntil(self.registration.showNotification("Friends Future Vision", {
+    body: "You have a notification from Friends Future Vision.",
+    icon: "/friends-future-community-emblem-optimized.webp",
+    badge: "/friends-future-community-emblem-optimized.webp",
+    data: { url: "/dashboard.html" }
+  }));
+});
+
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow(event.notification.data?.url || "/dashboard.html"));
+});
