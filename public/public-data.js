@@ -17,6 +17,7 @@ const monthList = () => {
   return result;
 };
 const monthName = key => new Date(key + "-01T00:00:00").toLocaleDateString("en-GB", { month: "short" });
+const paidDateLabel = value => { if (!value) return ""; const d = new Date(value + "T00:00:00"); return d.getDate() + " " + d.toLocaleDateString("en-US", { weekday: "short" }); };
 const dateTime = value => {
   if (!value) return "";
   const parts = Object.fromEntries(new Intl.DateTimeFormat("en-GB", {
@@ -90,17 +91,20 @@ async function loadMatrix() {
         const locked = manualRows.length > 0 || matrixRows.length > 1;
         const selected = amount > 0;
         const savedDay = record?.paidDay ? String(record.paidDay) : "";
+        const now = new Date();
+        const todayKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+        const defaultPaidDate = savedDay ? month + "-" + savedDay.padStart(2,"0") : (month === todayKey.slice(0,7) ? todayKey : month + "-01");
         const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDay ? '<small class="cell-date paid-date">' + esc(savedDay) + '</small>' : ""));
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
         const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
-        const dayInput = isSuper && !locked ? '<input type="number" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" min="1" max="' + new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate() + '" step="1" inputmode="numeric" value="' + esc(savedDay || "1") + '" aria-label="Payment day for ' + esc(member.full_name) + ' in ' + esc(month) + '">' : "";
+        const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" min="' + month + '-01" max="' + month + '-' + String(new Date(Number(month.slice(0,4)),Number(month.slice(5,7)),0).getDate()).padStart(2,"0") + '" value="' + esc(defaultPaidDate) + '" aria-label="Payment date for ' + esc(member.full_name) + ' in ' + esc(month) + '">' : "";
         if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
           amountInput +
-          (dayInput || cellStatus) +
+          (dayInput ? dayInput + '<small class="matrix-paid-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '">' + esc(paidDateLabel(defaultPaidDate)) + '</small>' : cellStatus) +
           '</div></td>';
       }).join("");
       const name = member.full_name_bn || member.full_name || "—";
@@ -125,7 +129,7 @@ async function loadMatrix() {
     '<p class="lead">' + (isSuper
       ? 'প্রতি মাসে সদস্যের জমা Checkbox দিয়ে নির্বাচন করুন। Amount পরিবর্তন করা যাবে; সব পরিবর্তন Confirm & Save করলে সংরক্ষিত হবে।'
       : 'এখানে সব সক্রিয় সদস্যের মাসভিত্তিক জমা দেখা যাবে। আপনি শুধু দেখতে পারবেন; পরিবর্তন করতে পারবেন না।') + '</p>' +
-    (isSuper ? '<div class="notice">সদস্যের নির্ধারিত মাসিক জমার হার থাকলে সেটি প্রাথমিক Amount হিসেবে আসবে। হার নির্ধারিত না থাকলে Amount নিজে লিখুন। Checkbox উঠালে Amount হবে ৳0।</div>' : "") +
+    (isSuper ? '<div class="notice">মাসিক হার নির্ধারিত থাকলে সেটি আসবে; হার না থাকলে Checkbox টিক দিলে ডিফল্ট ৳2,000 হবে। Amount পরিবর্তনযোগ্য। তারিখ আজকের দিন থেকে স্বয়ংক্রিয়ভাবে আসবে, প্রয়োজনে বদলাতে পারবেন।</div>' : "") +
     tables +
     (isSuper ? '<div class="form-actions matrix-save-actions"><button type="button" id="saveMatrix">Confirm &amp; Save</button><span id="matrixSaveStatus" class="muted small"></span></div>' : "");
 
@@ -181,11 +185,17 @@ async function loadMatrix() {
       const selector = '.matrix-amount[data-member="' + check.dataset.member + '"][data-month="' + check.dataset.month + '"]';
       const amount = root.querySelector(selector);
       if (!amount) return;
-      if (check.checked && Number(amount.value) <= 0) { const defaultAmount = Number(amount.dataset.defaultAmount || 0); if (defaultAmount > 0) amount.value = String(defaultAmount); else toast("এই সদস্যের মাসিক জমার হার সেট করা নেই। Amount লিখুন।", true); }
+      if (check.checked && Number(amount.value) <= 0) { const defaultAmount = Number(amount.dataset.defaultAmount || 0); amount.value = String(defaultAmount > 0 ? defaultAmount : 2000); }
       if (!check.checked) amount.value = "0";
+      const dayInput = root.querySelector(".matrix-day[data-member=\"" + check.dataset.member + "\"][data-month=\"" + check.dataset.month + "\"]");
+      const today = new Date(); const todayKey = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
+      if (check.checked && dayInput && !dayInput.value) dayInput.value = check.dataset.month === todayKey.slice(0,7) ? todayKey : check.dataset.month + "-01";
+      const label = root.querySelector(".matrix-paid-day[data-member=\"" + check.dataset.member + "\"][data-month=\"" + check.dataset.month + "\"]");
+      if (label && dayInput?.value) label.textContent = paidDateLabel(dayInput.value);
       recalculate();
     });
   });
+  root.querySelectorAll(".matrix-day").forEach(input => input.addEventListener("change", () => { const label = root.querySelector(".matrix-paid-day[data-member=\"" + input.dataset.member + "\"][data-month=\"" + input.dataset.month + "\"]"); if (label) label.textContent = paidDateLabel(input.value); }));
   root.querySelectorAll(".matrix-amount").forEach(input => {
     input.addEventListener("input", () => {
       const selector = '.matrix-check[data-member="' + input.dataset.member + '"][data-month="' + input.dataset.month + '"]';
@@ -217,8 +227,8 @@ async function loadMatrix() {
       const [year,month] = entry.month.split("-").map(Number);
       const maxDay = new Date(year,month,0).getDate();
       const dayInput = root.querySelector('.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]');
-      const paidDay = Number(dayInput?.value || 1);
-      return !Number.isInteger(paidDay) || paidDay < 1 || paidDay > maxDay;
+      const paidDate = dayInput?.value || entry.month + "-01";
+      return !/^\\d{4}-\\d{2}-\\d{2}$/.test(paidDate) || paidDate.slice(0,7) !== entry.month || Number(paidDate.slice(8,10)) < 1 || Number(paidDate.slice(8,10)) > maxDay;
     });
     if (invalidDay) { toast("প্রতিটি নির্বাচিত জমার সঠিক তারিখের দিন লিখুন।", true); return; }
     if (!window.confirm("Contribution Matrix-এর সব পরিবর্তন Confirm করে Save করবেন?")) return;
@@ -230,7 +240,7 @@ async function loadMatrix() {
       const changes = entries.map(entry => {
         const daySelector = '.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]';
         const dayInput = root.querySelector(daySelector);
-        return { member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0, paid_day: Number(dayInput?.value || 1) };
+        return { member_id: entry.memberId, month: entry.month + "-01", amount: entry.selected ? entry.amount : 0, paid_date: dayInput?.value || entry.month + "-01" };
       });
       const { data: saved, error } = await supabase.rpc("save_contribution_matrix", { p_idempotency_key: crypto.randomUUID(), p_changes: changes });
       if (error) throw error;
