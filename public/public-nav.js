@@ -25,6 +25,28 @@ async function init(){
  nav.innerHTML=links.join("");
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
  login.hidden=true;bell.hidden=false;
+  if(role==="super_admin"){
+   const actions=document.querySelector(".actions");
+   const menuBox=document.createElement("details");
+   menuBox.className="export-menu";
+   menuBox.innerHTML='<summary>EXPORT</summary><div class="export-menu-panel"><button type="button" data-export-action="page-xlsx">এই পেজ · Excel</button><button type="button" data-export-action="page-docx">এই পেজ · Word</button><button type="button" data-export-action="full-xlsx">সম্পূর্ণ Website · Excel</button><button type="button" data-export-action="full-docx">সম্পূর্ণ Website · Word</button></div>';
+   actions?.insertBefore(menuBox,menu);
+   menuBox.querySelectorAll("[data-export-action]").forEach(button=>button.addEventListener("click",async()=>{
+    const action=button.dataset.exportAction,original=button.textContent;
+    button.disabled=true;button.textContent="তৈরি হচ্ছে…";
+    try{
+     const tools=await import("./export-tools.js");
+     if(action==="page-xlsx")await tools.exportCurrentPage("xlsx");
+     else if(action==="page-docx")await tools.exportCurrentPage("docx");
+     else{
+      if(!confirm("সম্পূর্ণ Website Export-এ সদস্যদের ব্যক্তিগত তথ্য ও আর্থিক রেকর্ড থাকবে। ফাইলটি নিরাপদে রাখবেন। চালিয়ে যাবেন?"))return;
+      await tools.exportFullWebsite(supabase,action==="full-docx"?"docx":"xlsx");
+     }
+     alert("Export file তৈরি হয়েছে। Download folder পরীক্ষা করুন।");
+    }catch(error){console.error(error);alert("Export ব্যর্থ: "+(error.message||"Unknown error"))}
+    finally{button.disabled=false;button.textContent=original}
+   }));
+  }
  const {count}=await supabase.from("notifications").select("id",{count:"exact",head:true}).eq("user_id",session.user.id).is("read_at",null);
  const badge=document.getElementById("siteUnread");if(count>0){badge.textContent=count>99?"99+":String(count);badge.hidden=false}
  bell.addEventListener("click",()=>location.href="dashboard.html");
