@@ -51,20 +51,25 @@ function orderCorners(points) {
 function distance(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
 
 async function encodeCanvas(canvas, originalSize, mode) {
-  // Keep lossless PNG for crisp small glyphs when it remains reasonably compact.
+  // Prefer lossless PNG for small Bengali/English text; aim for ~1MB per scan.
   if (mode === "bw") {
     const lossless = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
-    if (lossless && lossless.size <= 2 * 1024 * 1024) return lossless;
+    if (lossless && lossless.size <= 1 * 1024 * 1024) return lossless;
   }
-  // Try high-quality WebP first; reduce quality only when needed to control storage.
+  // Try to meet the 1MB target first. If that needs too much quality loss,
+  // retain the highest-quality WebP instead of blindly choosing the smallest file.
+  const targetBytes = Math.min(originalSize, 1 * 1024 * 1024);
   const qualities = [0.94, 0.9, 0.86, 0.82];
-  let best = null;
+  let highQuality = null;
+  let smallest = null;
   for (const quality of qualities) {
     const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", quality));
     if (!blob) continue;
-    best = blob;
-    if (blob.size <= Math.min(originalSize, 1.8 * 1024 * 1024)) break;
+    if (!highQuality) highQuality = blob;
+    smallest = blob;
+    if (blob.size <= targetBytes) return blob;
   }
+  const best = highQuality || smallest;
   if (!best) throw new Error("Processed image export করা যায়নি।");
   return best;
 }
