@@ -545,7 +545,7 @@ async function loadProofMonth(month,allProofs){
   const {data:u}=m.qr_path?await supabase.storage.from("payment-qr").createSignedUrl(m.qr_path,1800):{data:null};
   return '<article class="payment-method-card"><div class="row"><strong>'+esc(m.method.toUpperCase())+'</strong><span class="pill">Active</span></div><p>'+esc(m.account_name||"")+'</p><p class="payment-number">'+esc(m.account_number||"নম্বর সেট করা হয়নি")+'</p>'+(m.account_number?'<button class="secondary" type="button" data-copy-payment-number="'+esc(m.account_number)+'">নম্বর কপি করুন</button>':"")+(u?.signedUrl?'<img class="payment-qr" loading="lazy" src="'+esc(u.signedUrl)+'" alt="Payment QR">':"")+'</article>';
  }));
- const base='<h1>Payment</h1><p class="lead">bKash অথবা Nagad-এ টাকা পাঠানোর পর Transaction ID জমা দিন। Super Admin যাচাই করে অনুমোদন করবেন।</p><div class="payment-method-grid">'+(cards.join("")||empty("Super Admin এখনো bKash/Nagad নম্বর সেট করেননি।"))+'</div>';
+ const base='<h1>Payment</h1><p class="lead">QR Scan করুন অথবা নম্বর কপি করে bKash / Nagad-এ Send Money করুন। তারপর Transaction ID জমা দিন; Super Admin যাচাই করে অনুমোদন করবেন।</p><div class="payment-method-grid">'+(cards.join("")||empty("Super Admin এখনো bKash/Nagad নম্বর সেট করেননি।"))+'</div>';
  if(isSuper){
   const settings=["bkash","nagad"].map(method=>{
    const existing=methods.find(m=>m.method===method);
