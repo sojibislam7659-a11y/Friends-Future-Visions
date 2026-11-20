@@ -22,7 +22,7 @@ function loadOpenCv() {
     script.onload = ready;
     script.onerror = () => reject(new Error("Document scanner engine লোড হয়নি। Internet connection পরীক্ষা করে আবার চেষ্টা করুন।"));
     if (!existing) document.head.append(script);
-  });
+  }).catch(error => { openCvPromise = null; throw error; });
   return openCvPromise;
 }
 
