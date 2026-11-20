@@ -144,7 +144,7 @@ function shell(){
   document.getElementById("mainNav").addEventListener("click",e=>{if(e.target.closest("a"))closeDrawers()});
   document.getElementById("primaryNav").addEventListener("click",e=>{if(e.target.closest("a"))closeDrawers()});
   document.getElementById("logoutBtn").addEventListener("click",async()=>{try{sessionStorage.removeItem("ffv:member-photo-cache")}catch{}const {error}=await supabase.auth.signOut();if(error)toast(error.message);else location.replace("login.html")});
-  
+
   refreshUnreadCount();
  }
 }
