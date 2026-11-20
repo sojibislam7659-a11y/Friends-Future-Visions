@@ -16,7 +16,7 @@ function loadOpenCv() {
     };
     if (window.cv) { ready(); return; }
     const script = existing || document.createElement("script");
-    script.src = "https://docs.opencv.org/4.x/opencv.js";
+    script.src = "https://docs.opencv.org/4.9.0/opencv.js";
     script.async = true;
     script.dataset.ffvOpencv = "true";
     script.onload = ready;
@@ -63,16 +63,26 @@ async function encodeCanvas(canvas, originalSize) {
   return best;
 }
 
-export async function scanDocumentImage(file, mode = "bw") {
+export async function scanDocumentImage(file, mode = "bw", rotation = 0) {
   if (!file?.type?.startsWith("image/")) throw new Error("শুধু image file scan করা যাবে।");
   const cv = await loadOpenCv();
   const bitmap = await loadImageBitmap(file);
   const sourceWidth = bitmap.width, sourceHeight = bitmap.height;
   const scale = Math.min(1, 2400 / Math.max(sourceWidth, sourceHeight));
+  const scaledWidth = Math.max(1, Math.round(sourceWidth * scale));
+  const scaledHeight = Math.max(1, Math.round(sourceHeight * scale));
+  const angle = ((Number(rotation) || 0) % 360 + 360) % 360;
+  const swapDimensions = angle === 90 || angle === 270;
   const inputCanvas = document.createElement("canvas");
-  inputCanvas.width = Math.max(1, Math.round(sourceWidth * scale));
-  inputCanvas.height = Math.max(1, Math.round(sourceHeight * scale));
-  inputCanvas.getContext("2d", { alpha: false }).drawImage(bitmap, 0, 0, inputCanvas.width, inputCanvas.height);
+  inputCanvas.width = swapDimensions ? scaledHeight : scaledWidth;
+  inputCanvas.height = swapDimensions ? scaledWidth : scaledHeight;
+  const inputContext = inputCanvas.getContext("2d", { alpha: false });
+  inputContext.save();
+  if (angle === 90) { inputContext.translate(inputCanvas.width, 0); inputContext.rotate(Math.PI / 2); }
+  else if (angle === 180) { inputContext.translate(inputCanvas.width, inputCanvas.height); inputContext.rotate(Math.PI); }
+  else if (angle === 270) { inputContext.translate(0, inputCanvas.height); inputContext.rotate(-Math.PI / 2); }
+  inputContext.drawImage(bitmap, 0, 0, scaledWidth, scaledHeight);
+  inputContext.restore();
   bitmap.close?.();
 
   let src, gray, blurred, edges, hierarchy, contours, kernel, approx, warped, transform, srcPoints, dstPoints, output;
