@@ -225,7 +225,8 @@ async function loadMatrix() {
     const invalidDay = entries.find(entry => {
       if (!entry.selected) return false;
       const dayInput = root.querySelector('.matrix-day[data-member="' + entry.memberId + '"][data-month="' + entry.month + '"]');
-      const paidDate = dayInput?.value || new Date().toISOString().slice(0,10);
+      const localToday = new Date(); const todayKey = localToday.getFullYear()+"-"+String(localToday.getMonth()+1).padStart(2,"0")+"-"+String(localToday.getDate()).padStart(2,"0");
+      const paidDate = dayInput?.value || todayKey;
       const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate()+1); const maxDate = tomorrow.getFullYear()+"-"+String(tomorrow.getMonth()+1).padStart(2,"0")+"-"+String(tomorrow.getDate()).padStart(2,"0");
       return !/^\d{4}-\d{2}-\d{2}$/.test(paidDate) || Number.isNaN(Date.parse(paidDate + "T00:00:00")) || paidDate > maxDate;
     });
