@@ -72,9 +72,14 @@ async function loadMatrix() {
   if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
   const months = monthList();
   const years = [2027, 2028, 2029, 2030, 2031];
+  const requestedYear = Number(new URLSearchParams(window.location.search).get("year") || 2027);
+  const selectedYear = years.includes(requestedYear) ? requestedYear : 2027;
+  const yearSelector = '<div class="field matrix-year-selector"><label for="matrixYear">Accounting year</label><select id="matrixYear">' +
+    years.map(year => '<option value="' + year + '"' + (year === selectedYear ? ' selected' : '') + '>' + year + '</option>').join("") +
+    '</select></div>';
   const localToday = new Date();
   const todayKey = localToday.getFullYear() + "-" + String(localToday.getMonth()+1).padStart(2,"0") + "-" + String(localToday.getDate()).padStart(2,"0");
-  const tables = years.map(year => {
+  const tables = years.filter(year => year === selectedYear).map(year => {
     const yearMonths = months.filter(month => Number(month.slice(0, 4)) === year);
     const periods = [yearMonths.slice(0, 6), yearMonths.slice(6, 12)];
     return periods.map((periodMonths, periodIndex) => {
@@ -131,8 +136,13 @@ async function loadMatrix() {
       ? 'প্রতি মাসে সদস্যের জমা Checkbox দিয়ে নির্বাচন করুন। Amount পরিবর্তন করা যাবে; সব পরিবর্তন Confirm & Save করলে সংরক্ষিত হবে।'
       : 'এখানে সব সক্রিয় সদস্যের মাসভিত্তিক জমা দেখা যাবে। আপনি শুধু দেখতে পারবেন; পরিবর্তন করতে পারবেন না।') + '</p>' +
     (isSuper ? '<div class="notice">মাসিক হার নির্ধারিত থাকলে সেটি আসবে; হার না থাকলে Checkbox টিক দিলে ডিফল্ট ৳2,000 হবে। Amount ও Actual Payment Date দুটোই Super Admin পরিবর্তন করতে পারবেন। কলামের Month হলো হিসাবের মাস; Date হলো টাকা বাস্তবে পাওয়ার দিন—দুটি আলাদা মাসও হতে পারে। Weekday স্বয়ংক্রিয়ভাবে দেখাবে।</div>' : "") +
+    yearSelector +
     tables +
     (isSuper ? '<div class="form-actions matrix-save-actions"><button type="button" id="saveMatrix">Confirm &amp; Save</button><span id="matrixSaveStatus" class="muted small"></span></div>' : "");
+
+  document.getElementById("matrixYear")?.addEventListener("change", event => {
+    window.location.search = "?year=" + encodeURIComponent(event.target.value);
+  });
 
   const monthlyTotals = new Map();
   (sharedRows || []).forEach(row => { const k=String(row.contribution_month).slice(0,7); monthlyTotals.set(k,(monthlyTotals.get(k)||0)+Number(row.amount||0)); });
