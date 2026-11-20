@@ -23,7 +23,7 @@ function addPublicMobileNav(isAuthenticated){
  mobileNav.setAttribute("aria-label","Quick navigation");
  const link=(href,label,name)=>'<a href="'+href+'"'+(current===href?' class="active" aria-current="page"':'')+'>'+svg(name)+'<span>'+label+'</span></a>';
  mobileNav.innerHTML=link(isAuthenticated?"dashboard.html":"index.html","Home","home")+
-  link("member-info.html","Members","members")+link("data.html","Data","data")+link("rules.html","Rules","rules")+
+  link("member-info.html","Members","members")+link("rules.html","Rules","rules")+link("data.html","Data","data")+
   '<button type="button" class="public-more-button" aria-label="More">'+svg("menu")+'<span>More</span></button>';
  const more=mobileNav.querySelector(".public-more-button");
  more.addEventListener("click",()=>menu.click());

@@ -176,7 +176,7 @@ async function loadMatrix() {
       }).join("");
       const periodTotal = members.reduce((sum, member) => sum + periodMonths.reduce((inner, month) => inner + (transactionMap.get(member.id + "|" + month)?.amount || 0), 0), 0);
       return '<section class="section matrix-period-section" data-period="' + periodKey + '"><div class="section-head"><h2>' + year + " · " + periodLabel + ' · Monthly contribution</h2><strong class="muted">' + money(periodTotal) + '</strong></div>' +
-        '<div class="table-wrap matrix-wrap"><table class="contribution-matrix matrix-editable"><thead><tr><th class="sticky-col">Member No.</th><th class="sticky-col name-col">Member Name</th>' + headers + '<th>Period Total</th></tr></thead>' +
+        '<p class="matrix-scroll-hint">← টেবিলটি ডানে-বামে সরিয়ে সব মাসের তথ্য দেখুন →</p><div class="table-wrap matrix-wrap"><table class="contribution-matrix matrix-editable"><thead><tr><th class="sticky-col">Member No.</th><th class="sticky-col name-col">Member Name</th>' + headers + '<th>Period Total</th></tr></thead>' +
         '<tbody>' + body + '<tr class="total-row"><td colspan="2">TOTAL</td>' + monthTotals + '<td data-period-grand-total="' + periodKey + '"><strong>' + money(periodTotal) + '</strong></td></tr></tbody></table></div></section>';
     }).join("");
   }).join("");

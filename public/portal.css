@@ -990,3 +990,73 @@ body.login-theme .public-mobile-nav{display:none}
 }
 
 .public-theme-toggle{width:100%;margin-top:8px;justify-content:center}
+
+/* November 2026 mobile navigation, contrast and notice ticker refinements */
+.site-ticker{display:flex;align-items:center;gap:12px;min-height:42px;margin:10px 0 14px;padding:8px 12px;overflow:hidden;border:1px solid #d8a0a0;border-radius:11px;background:#fff0ef;color:#8f2028}
+.site-ticker-label{flex:0 0 auto;padding-right:10px;border-right:1px solid #d99a9a;color:#9b202b;font-size:12px;font-weight:800}
+.site-ticker-window{min-width:0;overflow:hidden;white-space:nowrap;flex:1}
+.site-ticker-window span{display:inline-block;min-width:max-content;padding-left:100%;color:#b4232f;font-weight:700;animation:ffv-notice-marquee 24s linear infinite}
+@keyframes ffv-notice-marquee{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+.site-ticker:hover .site-ticker-window span{animation-play-state:paused}
+body.dark-theme .site-ticker{background:#321f22;border-color:#704044}
+body.dark-theme .site-ticker-label{color:#ffb4b4;border-color:#704044}
+body.dark-theme .site-ticker-window span{color:#ff9c9c}
+.sidebar-panel{background:#101e35!important;color:#f0f5ff!important;border-color:#2b4263!important}
+.sidebar-head{border-bottom-color:#314766!important}
+.sidebar-brand,.sidebar-brand strong,.account-role{color:#f4f7ff!important}
+.sidebar-brand small,.account-email{color:#c2cfe2!important}
+.sidebar-nav a{background:#1a2d49!important;color:#e0e9f7!important;border:1px solid #304765!important}
+.sidebar-nav a:hover,.sidebar-nav a.active{background:#29466d!important;color:#fff!important;border-color:#6688c0!important}
+.sidebar-footer{border-top-color:#314766!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+.sidebar-footer .sidebar-account{grid-column:1/-1}
+.sidebar-footer>button,.sidebar-footer>.export-menu>summary{min-height:34px!important;padding:6px 8px!important;font-size:11px!important;border-radius:9px!important;background:#1b3554!important;color:#f0f5ff!important;border:1px solid #496487!important;display:flex;align-items:center;justify-content:center;text-align:center}
+.sidebar-footer>.export-menu{min-width:0}
+.sidebar-footer>.export-menu>summary{list-style:none;cursor:pointer}
+.sidebar-footer>.export-menu>summary::-webkit-details-marker{display:none}
+.sidebar-footer .export-menu-panel{position:absolute;bottom:calc(100% + 6px);left:0;right:0;z-index:3;background:#142641;border:1px solid #496487;border-radius:10px;padding:7px;box-shadow:0 8px 25px #0006}
+.sidebar-footer .export-menu-panel button{width:100%;min-height:34px;margin:2px 0;background:#203b5c;color:#f3f7ff;border:1px solid #496487;border-radius:7px;font-size:11px}
+.sidebar-footer #logoutBtn{background:#482c39!important;border-color:#805064!important;color:#ffe9ef!important}
+.matrix-scroll-hint{display:none}
+.matrix-wrap{max-width:100%;overflow:auto;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.contribution-matrix{min-width:1120px;border-collapse:separate;border-spacing:0}
+.contribution-matrix th{background:#e5eee8;color:#183f32}
+.contribution-matrix td{background:#f7faf8;color:#1e3b31}
+.contribution-matrix .sticky-col{background:#edf4ef!important;color:#173e32!important}
+.contribution-matrix th.sticky-col{background:#dce9e0!important;color:#153e31!important}
+.contribution-matrix .matrix-member-name{font-weight:700;white-space:normal;display:block;min-width:130px;max-width:190px;line-height:1.4}
+.matrix-cell{min-width:116px;display:grid;gap:6px;align-content:start}
+.matrix-cell input[type=number],.matrix-cell input[type=date]{width:100%;min-width:0;min-height:36px;padding:6px 8px;border:1px solid #b9cfc1;border-radius:8px;background:#fff;color:#193c30;font-size:12px}
+.matrix-toggle{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:#244f40}
+.matrix-scroll-hint{font-size:11px;color:#58766a;margin:7px 0}
+body.dark-theme .contribution-matrix th{background:#294438!important;color:#eff8f1!important}
+body.dark-theme .contribution-matrix td,body.dark-theme .contribution-matrix tr:nth-child(even) td{background:#1c3027!important;color:#e1eee5!important;border-color:#3c584a!important}
+body.dark-theme .contribution-matrix .sticky-col{background:#243d32!important;color:#edf6ef!important}
+body.dark-theme .contribution-matrix th.sticky-col{background:#315342!important;color:#fff!important}
+body.dark-theme .matrix-cell input[type=number],body.dark-theme .matrix-cell input[type=date]{background:#20372d;color:#f0f7f2;border-color:#4c6a59}
+body.dark-theme .matrix-toggle{color:#e1eee5}
+body.dark-theme .matrix-scroll-hint{color:#b7cbbd}
+body.dark-theme .page,body.dark-theme .card,body.dark-theme .person,body.dark-theme .list-item,body.dark-theme .member-directory-person{color:#e7f0ea}
+body.dark-theme .member-directory-person{background:#1b2d3e;border-color:#354d69}
+body.dark-theme .member-directory-name{color:#f1f6ff!important}
+body.dark-theme .member-directory-edit{background:#1c3d34!important;color:#e8f5ec!important;border-color:#456b59!important}
+@media(max-width:640px){
+ .site-ticker{display:flex!important;min-height:38px;margin:8px 0 12px;padding:6px 9px}
+ .site-ticker-window span{animation-duration:20s}
+ .mobile-bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+ .mobile-bottom-nav a,.mobile-bottom-nav button{color:#315a4b!important}
+ .mobile-bottom-nav a.active{background:#dcece2!important;color:#145a43!important}
+ body.dark-theme .mobile-bottom-nav{background:rgba(17,34,27,.98)!important;border-color:#344c40!important}
+ body.dark-theme .mobile-bottom-nav a,body.dark-theme .mobile-bottom-nav button{color:#c6d9cd!important}
+ body.dark-theme .mobile-bottom-nav a.active{background:#294b3d!important;color:#fff!important}
+ .topbar .actions .notification-trigger{display:flex!important;flex:0 0 36px!important;width:36px!important;min-width:36px!important;height:36px!important}
+ .topbar .actions .language-toggle{display:none!important}
+ .matrix-scroll-hint{display:block}
+ .matrix-wrap{border-radius:10px}
+ .contribution-matrix{min-width:1080px}
+ .contribution-matrix th,.contribution-matrix td{font-size:11px;padding:8px 7px}
+ .contribution-matrix .name-col{min-width:145px;left:102px}
+ .matrix-cell{min-width:108px}
+ .sidebar-panel{width:min(300px,86vw);background:#101e35!important}
+ .sidebar-footer{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(prefers-reduced-motion:reduce){.site-ticker-window span{animation:none;padding-left:0}}
