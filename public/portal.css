@@ -865,7 +865,6 @@ body.signup-page .brand-mark .ffv-brand-title{fill:#f0f4ff}
   .topbar .actions .notification-trigger,.topbar .actions .language-toggle,.topbar .actions .topbar-role{display:none!important}
   .topbar .actions .install-app-button,.topbar .actions .theme-toggle,.topbar .actions .export-menu summary{min-height:34px;padding:6px 8px;font-size:10px}
   .primary-nav{display:none!important}
-  .site-ticker{display:none!important}
   .mobile-bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:80;display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:0;padding:6px 3px calc(6px + env(safe-area-inset-bottom));background:rgba(250,253,249,.97);border-top:1px solid #c9dace;box-shadow:0 -5px 22px rgba(16,58,43,.10);backdrop-filter:blur(14px)}
   .mobile-bottom-nav a,.mobile-bottom-nav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:48px;padding:4px 1px;border:0;border-radius:9px;background:transparent!important;color:#46675b;box-shadow:none!important;text-decoration:none;font:600 9px/1.2 Inter,"Noto Sans Bengali",sans-serif}
   .mobile-bottom-nav .ui-icon{width:20px;height:20px;flex:0 0 20px}
@@ -1060,3 +1059,5 @@ body.dark-theme .member-directory-edit{background:#1c3d34!important;color:#e8f5e
  .sidebar-footer{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
 @media(prefers-reduced-motion:reduce){.site-ticker-window span{animation:none;padding-left:0}}
+
+@media(max-width:640px){.topbar .actions .language-toggle{display:inline-flex!important;min-height:34px!important;padding:5px 8px!important;font-size:10px!important;flex:0 0 auto!important}.topbar .actions .notification-trigger{display:flex!important}}
