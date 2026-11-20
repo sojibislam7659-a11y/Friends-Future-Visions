@@ -62,6 +62,22 @@ export async function requireRole(allowedRoles) {
    location.replace("login.html");
    return null;
   }
+
+  // A member must have exactly one linked, active member record to enter the portal.
+  // Super Admin access remains independent of the members table.
+  if (profile.role === "member") {
+   const { data: member, error: memberError } = await withTimeout(
+    supabase.from("members").select("status").eq("auth_user_id", session.user.id).maybeSingle(),
+    "Member status check"
+   );
+   if (memberError) throw memberError;
+   if (!member || member.status !== "active") {
+    await supabase.auth.signOut();
+    location.replace("login.html?reason=inactive");
+    return null;
+   }
+  }
+
   if (!allowedRoles.includes(profile.role)) {
    location.replace(profile.role === "super_admin" ? "admin.html" : "dashboard.html");
    return null;
