@@ -677,7 +677,7 @@ body.login-theme .dropzone:hover{background:rgba(104,137,255,.28);border-color:#
 .site-ticker[hidden]{display:none}
 .site-ticker-label{flex:0 0 auto;font-size:10px;font-weight:900;letter-spacing:.08em;color:#b42318;border-right:1px solid #efc1c1;padding-right:9px}
 .site-ticker-window{min-width:0;overflow:hidden;white-space:nowrap;flex:1}
-#siteTickerText{display:inline-block;min-width:max-content;color:#bd2028;font-weight:700;font-size:13px;animation:ffv-ticker-scroll 52s linear infinite}
+#siteTickerText{display:inline-block;min-width:max-content;color:#bd2028;font-weight:700;font-size:13px;animation:ffv-ticker-scroll 38s linear infinite}
 .site-ticker-window:hover #siteTickerText{animation-play-state:paused}
 @keyframes ffv-ticker-scroll{from{transform:translateX(100%)}to{transform:translateX(-100%)}}
 .export-menu{position:relative;z-index:25}
