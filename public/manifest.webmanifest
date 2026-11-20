@@ -7,23 +7,14 @@
   "start_url": "/login.html",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["standalone", "minimal-ui"],
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
   "orientation": "portrait-primary",
   "background_color": "#eaf2e9",
   "theme_color": "#176653",
   "icons": [
-    {
-      "src": "/friends-future-community-emblem-optimized.webp",
-      "sizes": "192x192",
-      "type": "image/webp",
-      "purpose": "any"
-    },
-    {
-      "src": "/friends-future-community-emblem-optimized.webp",
-      "sizes": "512x512",
-      "type": "image/webp",
-      "purpose": "any maskable"
-    },
     {
       "src": "/friends-future-standard-logo.svg",
       "sizes": "any",
@@ -36,13 +27,25 @@
       "name": "Dashboard",
       "short_name": "Dashboard",
       "url": "/dashboard.html",
-      "icons": [{ "src": "/friends-future-community-emblem-optimized.webp", "sizes": "192x192", "type": "image/webp" }]
+      "icons": [
+        {
+          "src": "/friends-future-standard-logo.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     },
     {
       "name": "My Statement",
       "short_name": "Statement",
       "url": "/statement.html",
-      "icons": [{ "src": "/friends-future-community-emblem-optimized.webp", "sizes": "192x192", "type": "image/webp" }]
+      "icons": [
+        {
+          "src": "/friends-future-standard-logo.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
     }
   ]
 }
