@@ -93,8 +93,7 @@ async function loadMatrix() {
         const savedDate = record?.paidDate || "";
         const now = new Date();
         const todayKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
-        const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
-        const maxPaidDateKey = tomorrow.getFullYear()+"-"+String(tomorrow.getMonth()+1).padStart(2,"0")+"-"+String(tomorrow.getDate()).padStart(2,"0");
+        const maxPaidDateKey = todayKey;
         const defaultPaidDate = savedDate || todayKey;
         const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDate ? '<small class="cell-date paid-date">' + esc(paidDateLabel(savedDate)) + '</small>' : ""));
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
