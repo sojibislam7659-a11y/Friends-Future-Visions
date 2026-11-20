@@ -96,9 +96,16 @@ async function renderDashboard(){
  const {data:dueRows,error:dueError}=dueResult;
  if(dueError)throw dueError;
  const dueByMember=new Map();
- (dueRows||[]).forEach(row=>{if(!dueByMember.has(row.member_id))dueByMember.set(row.member_id,{due:Number(row.total_due||0),configured:Boolean(row.due_configured)});});
- const totalDue=Array.from(dueByMember.values()).reduce((sum,item)=>sum+(item.configured?item.due:0),0);
- setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p><div class="grid">'+
+ (dueRows||[]).forEach(row=>{if(!dueByMember.has(row.member_id))dueByMember.set(row.member_id,{due:Number(row.total_due||0),paid:Number(row.total_paid||0),configured:Boolean(row.due_configured)});});
+ const memberTotals=Array.from(dueByMember.values());
+ const totalDue=memberTotals.reduce((sum,item)=>sum+(item.configured?item.due:0),0);
+ const totalMemberPaid=memberTotals.reduce((sum,item)=>sum+item.paid,0);
+ const contributionDifference=Number(s.total_contributions||0)-totalMemberPaid;
+ const reconciliationNotice=access.role==="super_admin"&&Math.abs(contributionDifference)>0.01
+  ?'<div class="error" role="alert"><strong>হিসাব মিলছে না — যাচাই প্রয়োজন</strong><p>Dashboard contribution ledger ও DATA matrix-এর মধ্যে '+money(Math.abs(contributionDifference))+' পার্থক্য আছে। '+(contributionDifference>0?'Ledger-এ বেশি':'DATA matrix-এ বেশি')+'. DATA এবং Financial Ledger মিলিয়ে সংশোধন করুন।</p></div>'
+  :"";
+
+ setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p>'+reconciliationNotice+'<div class=\"grid\">'+
  card(t("মোট সম্পদ","Total assets"),money(s.total_assets),t("নগদ + ব্যাংক + বিনিয়োগ","Cash + bank + investments"))+
  card(t("ব্যাংক ব্যালেন্স","Bank balance"),money(s.bank_balance))+
  card(t("হাতে নগদ","Cash in hand"),money(s.cash_balance))+
