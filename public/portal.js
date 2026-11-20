@@ -282,7 +282,7 @@ async function loadProofMonth(month,allProofs){
     preparedFiles=originals.map(file=>scanned.get(file)||file);
     scanStatus.textContent="Preview ready · "+scanned.size+" image(s) processed. Upload করলে এই enhanced files সংরক্ষিত হবে।";
    }catch(error){
-    console.error("Document scanner failed",error);preparedFiles=null;scanStatus.textContent="Scan করা যায়নি: "+(error.message||"Unknown error");toast("Scanner কাজ করেনি। Original files এখনো অপরিবর্তিত আছে।",true);
+    console.error("Document scanner failed",error);preparedFiles=null;clearScanPreview();scanStatus.textContent="Scan করা যায়নি: "+(error.message||"Unknown error");toast("Scanner কাজ করেনি। Original files এখনো অপরিবর্তিত আছে।",true);
    }finally{scanButton.disabled=false}
   });
   drop.addEventListener("dragover",event=>{event.preventDefault();drop.classList.add("dragover")});
@@ -306,7 +306,7 @@ async function loadProofMonth(month,allProofs){
     success++;
    }
    status.textContent=success+" / "+uploadFiles.length+" uploaded";
-   preparedFiles=null;
+   preparedFiles=null;clearScanPreview();
    toast(success+"টি ফাইল আপলোড হয়েছে।");await renderProofs();[...document.querySelectorAll("[data-proof-month]")].find(button=>button.dataset.proofMonth===month)?.click();
   });
  }
