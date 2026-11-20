@@ -69,6 +69,17 @@ async function loadMatrix() {
     const rateMap = new Map((rateMembers || []).map(member => [member.id, Number(member.monthly_contribution || 2000)]));
     members.forEach(member => { member.monthly_contribution = rateMap.get(member.id) || 0; });
   }
+  let reconciliationNotice = "";
+  if (isSuper) {
+    const { data: financialSummary, error: summaryError } = await supabase.rpc("get_financial_summary");
+    if (summaryError) throw summaryError;
+    const matrixTotal = (sharedRows || []).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+    const ledgerTotal = Number(financialSummary?.total_contributions || 0);
+    const difference = ledgerTotal - matrixTotal;
+    if (Math.abs(difference) > 0.01) {
+      reconciliationNotice = '<div class="error" role="alert"><strong>হিসাব মিলছে না — Super Admin যাচাই করুন</strong><p>Financial Ledger ও DATA Matrix-এর মধ্যে ' + money(Math.abs(difference)) + ' পার্থক্য আছে। ' + (difference > 0 ? 'Ledger-এ বেশি' : 'DATA Matrix-এ বেশি') + '। Save করার আগে সংশ্লিষ্ট লেনদেন ও মাসের হিসাব মিলিয়ে নিন।</p></div>';
+    }
+  }
   if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
   const months = monthList();
   const years = [2027, 2028, 2029, 2030, 2031];
@@ -132,6 +143,7 @@ async function loadMatrix() {
   }).join("");
 
   root.innerHTML = '<h1>Member Contribution Matrix</h1>' +
+    reconciliationNotice +
     '<p class="lead">' + (isSuper
       ? 'প্রতি মাসে সদস্যের জমা Checkbox দিয়ে নির্বাচন করুন। Amount পরিবর্তন করা যাবে; সব পরিবর্তন Confirm & Save করলে সংরক্ষিত হবে।'
       : 'এখানে সব সক্রিয় সদস্যের মাসভিত্তিক জমা দেখা যাবে। আপনি শুধু দেখতে পারবেন; পরিবর্তন করতে পারবেন না।') + '</p>' +
