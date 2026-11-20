@@ -130,7 +130,7 @@ async function loadMatrix() {
     '<p class="lead">' + (isSuper
       ? 'প্রতি মাসে সদস্যের জমা Checkbox দিয়ে নির্বাচন করুন। Amount পরিবর্তন করা যাবে; সব পরিবর্তন Confirm & Save করলে সংরক্ষিত হবে।'
       : 'এখানে সব সক্রিয় সদস্যের মাসভিত্তিক জমা দেখা যাবে। আপনি শুধু দেখতে পারবেন; পরিবর্তন করতে পারবেন না।') + '</p>' +
-    (isSuper ? '<div class="notice">মাসিক হার নির্ধারিত থাকলে সেটি আসবে; হার না থাকলে Checkbox টিক দিলে ডিফল্ট ৳2,000 হবে। Amount পরিবর্তনযোগ্য। তারিখ আজকের দিন থেকে স্বয়ংক্রিয়ভাবে আসবে, প্রয়োজনে বদলাতে পারবেন।</div>' : "") +
+    (isSuper ? '<div class="notice">মাসিক হার নির্ধারিত থাকলে সেটি আসবে; হার না থাকলে Checkbox টিক দিলে ডিফল্ট ৳2,000 হবে। Amount ও Actual Payment Date দুটোই Super Admin পরিবর্তন করতে পারবেন। কলামের Month হলো হিসাবের মাস; Date হলো টাকা বাস্তবে পাওয়ার দিন—দুটি আলাদা মাসও হতে পারে। Weekday স্বয়ংক্রিয়ভাবে দেখাবে।</div>' : "") +
     tables +
     (isSuper ? '<div class="form-actions matrix-save-actions"><button type="button" id="saveMatrix">Confirm &amp; Save</button><span id="matrixSaveStatus" class="muted small"></span></div>' : "");
 
@@ -190,7 +190,7 @@ async function loadMatrix() {
       if (!check.checked) amount.value = "0";
       const dayInput = root.querySelector(".matrix-day[data-member=\"" + check.dataset.member + "\"][data-month=\"" + check.dataset.month + "\"]");
       const today = new Date(); const todayKey = today.getFullYear()+"-"+String(today.getMonth()+1).padStart(2,"0")+"-"+String(today.getDate()).padStart(2,"0");
-      if (check.checked && dayInput && !dayInput.value) dayInput.value = check.dataset.month === todayKey.slice(0,7) ? todayKey : check.dataset.month + "-01";
+      if (check.checked && dayInput && !dayInput.value) dayInput.value = todayKey;
       const label = root.querySelector(".matrix-paid-day[data-member=\"" + check.dataset.member + "\"][data-month=\"" + check.dataset.month + "\"]");
       if (label && dayInput?.value) label.textContent = paidDateLabel(dayInput.value);
       recalculate();
@@ -230,7 +230,7 @@ async function loadMatrix() {
       const paidDate = dayInput?.value || todayKey;
       return !/^\d{4}-\d{2}-\d{2}$/.test(paidDate) || Number.isNaN(Date.parse(paidDate + "T00:00:00")) || paidDate > todayKey;
     });
-    if (invalidDay) { toast("প্রতিটি নির্বাচিত জমার সঠিক তারিখের দিন লিখুন।", true); return; }
+    if (invalidDay) { toast("প্রতিটি নির্বাচিত জমার Actual Payment Date সঠিকভাবে নির্বাচন করুন। ভবিষ্যতের তারিখ দেওয়া যাবে না।", true); return; }
     if (!window.confirm("Contribution Matrix-এর সব পরিবর্তন Confirm করে Save করবেন?")) return;
 
     saveButton.disabled = true;
