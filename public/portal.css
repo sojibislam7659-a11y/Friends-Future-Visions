@@ -1091,3 +1091,5 @@ body.dark-theme .public-drawer-nav a.active{background:#294b3d;border-color:#507
 /* Ensure every global notice ticker uses the same scrolling animation. */
 .site-ticker-window span{display:inline-block;min-width:max-content;color:#bd2028;font-weight:700;font-size:13px;animation:ffv-ticker-scroll 38s linear infinite}
 .site-ticker-window:hover span{animation-play-state:paused}
+
+@media(max-width:640px){.contribution-matrix{min-width:760px!important}.site-ticker-window span{animation-duration:48s!important}}
