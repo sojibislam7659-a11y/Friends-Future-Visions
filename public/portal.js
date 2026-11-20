@@ -256,6 +256,16 @@ async function loadProofMonth(month,allProofs){
   const scanPreview=document.getElementById("proofScanPreview");
   const scanPreviewUrls=[];
   const clearScanPreview=()=>{scanPreviewUrls.forEach(url=>URL.revokeObjectURL(url));scanPreviewUrls.length=0;scanPreview.replaceChildren()};
+  const ensureCropper=async()=>{
+   if(window.Cropper)return window.Cropper;
+   if(!window.__ffvCropperPromise){
+    window.__ffvCropperPromise=new Promise((resolve,reject)=>{
+     if(!document.querySelector('link[data-ffv-cropper]')){const css=document.createElement("link");css.rel="stylesheet";css.href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css";css.dataset.ffvCropper="1";document.head.append(css)}
+     const script=document.createElement("script");script.src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js";script.async=true;script.onload=()=>window.Cropper?resolve(window.Cropper):reject(new Error("Crop tool did not initialize"));script.onerror=()=>reject(new Error("Crop tool could not load"));document.head.append(script);
+    }).catch(error=>{window.__ffvCropperPromise=null;throw error});
+   }
+   return window.__ffvCropperPromise;
+  };
   input.addEventListener("change",()=>{preparedFiles=null;clearScanPreview();scanStatus.textContent="";drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
   scanButton.addEventListener("click",async()=>{
    const originals=Array.from(input.files||[]);
@@ -278,8 +288,51 @@ async function loadProofMonth(month,allProofs){
      const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);scanPreviewUrls.push(image.src);
      const details=document.createElement("div");
      const ratio=file.size?Math.round((1-result.outputSize/file.size)*100):0;
-     details.textContent=(result.cornersDetected?"Edges detected · perspective corrected":"Page edges not detected · image enhanced without perspective correction")+" · "+(result.outputSize/1024).toFixed(0)+" KB"+(ratio>0?" · "+ratio+"% smaller":"");
-     card.append(image,details);scanPreview.append(card);
+     const edgeText=result.cornersDetected?"Edges detected · perspective corrected":"Page edges not detected · image enhanced without perspective correction";
+     details.textContent=edgeText+" · "+(result.outputSize/1024).toFixed(0)+" KB"+(ratio>0?" · "+ratio+"% smaller":"");
+     const cropButton=document.createElement("button");cropButton.type="button";cropButton.className="button secondary scanner-crop-button";cropButton.textContent="Manual Crop / Rotate";
+     cropButton.addEventListener("click",async()=>{
+      if(cropButton.disabled)return;
+      cropButton.disabled=true;
+      let cropper=null,workspace=null;
+      try{
+       const CropperClass=await ensureCropper();
+       workspace=document.createElement("div");workspace.className="scanner-crop-workspace";
+       card.insertBefore(workspace,image);workspace.append(image);
+       const controls=document.createElement("div");controls.className="scanner-crop-controls";
+       const left=document.createElement("button"),right=document.createElement("button"),apply=document.createElement("button"),cancel=document.createElement("button");
+       left.type=right.type=apply.type=cancel.type="button";left.textContent="↶ Rotate";right.textContent="Rotate ↷";apply.textContent="Apply Crop";cancel.textContent="Cancel";
+       left.addEventListener("click",()=>cropper?.rotate(-90));right.addEventListener("click",()=>cropper?.rotate(90));
+       controls.append(left,right,apply,cancel);workspace.append(controls);
+       cropper=new CropperClass(image,{viewMode:1,dragMode:"crop",autoCropArea:.96,responsive:true,background:false,movable:true,zoomable:true,rotatable:true,scalable:false,guides:true,center:true,highlight:true,restore:false});
+       cancel.addEventListener("click",()=>{cropper?.destroy();cropper=null;card.insertBefore(image,details);workspace.remove();cropButton.disabled=false});
+       apply.addEventListener("click",async()=>{
+        apply.disabled=true;apply.textContent="Processing…";
+        try{
+         const canvas=cropper.getCroppedCanvas({maxWidth:2800,maxHeight:2800,imageSmoothingEnabled:true,imageSmoothingQuality:"high"});
+         if(!canvas)throw new Error("Crop output is empty");
+         const toBlob=(type,quality)=>new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not encode cropped image")),type,quality));
+         const isBw=document.getElementById("proofScanMode").value==="bw";
+         let blob=await toBlob(isBw?"image/png":"image/webp",isBw?undefined:.93);
+         if(blob.size>2*1024*1024)blob=await toBlob("image/webp",.93);
+         if(blob.size>5*1024*1024)blob=await toBlob("image/webp",.86);
+         if(blob.size>5*1024*1024)throw new Error("Cropped image is still over 5MB");
+         const ext=blob.type==="image/png"?"png":"webp";
+         const updated=new File([blob],file.name.replace(/\.[^.]+$/,"")+"_scan."+ext,{type:blob.type,lastModified:Date.now()});
+         cropper.destroy();cropper=null;
+         const oldUrl=image.src;const nextUrl=URL.createObjectURL(updated);scanPreviewUrls.push(nextUrl);image.src=nextUrl;
+         if(oldUrl.startsWith("blob:"))URL.revokeObjectURL(oldUrl);
+         scanned.set(file,updated);preparedFiles=originals.map(original=>scanned.get(original)||original);
+         const savedRatio=file.size?Math.round((1-updated.size/file.size)*100):0;
+         details.textContent=edgeText+" · Manual crop applied · "+(updated.size/1024).toFixed(0)+" KB"+(savedRatio>0?" · "+savedRatio+"% smaller":"");
+         card.insertBefore(image,details);workspace.remove();cropButton.disabled=false;cropButton.textContent="Adjust Crop / Rotate";
+        }catch(error){apply.disabled=false;apply.textContent="Apply Crop";throw error}
+       });
+      }catch(error){
+       console.error("Manual crop failed",error);if(cropper)cropper.destroy();if(workspace){card.insertBefore(image,details);workspace.remove()}cropButton.disabled=false;toast("Manual crop চালু হয়নি: "+(error.message||"Unknown error"),true);
+      }
+     });
+     card.append(image,details,cropButton);scanPreview.append(card);
     }
     preparedFiles=originals.map(file=>scanned.get(file)||file);
     scanStatus.textContent="Preview ready · "+scanned.size+" image(s) processed. Upload করলে এই enhanced files সংরক্ষিত হবে।";
