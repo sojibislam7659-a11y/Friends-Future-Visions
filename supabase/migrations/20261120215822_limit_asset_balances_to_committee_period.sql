@@ -76,4 +76,3 @@ BEGIN
   FROM totals t);
 END;
 $function$
-
