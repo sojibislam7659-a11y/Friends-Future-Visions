@@ -5,6 +5,17 @@ const DEFAULT_TICKER="আপনাকে ফ্রেন্ডস ফিউচ�
 function setupPublicTheme(){
  const actions=document.querySelector(".actions");
  if(!actions||document.getElementById("publicThemeToggle"))return;
+ const installButton=document.createElement("button");
+ installButton.type="button";installButton.id="publicInstallAppBtn";installButton.className="secondary install-app-button";installButton.textContent="Install App";
+ installButton.addEventListener("click",async()=>{
+  try{
+   const pwa=await import("./pwa.js");
+   const result=await pwa.installPwa();
+   if(!result.available)alert("Chrome menu ⋮ থেকে Install app / Add to Home screen নির্বাচন করুন। iPhone হলে Share → Add to Home Screen চাপুন।");
+   else if(result.outcome==="accepted")alert("App install শুরু হয়েছে।");
+  }catch(error){alert("Install prompt চালু করা যায়নি: "+(error.message||"Unknown error"))}
+ });
+ actions.insertBefore(installButton,menu);
  const button=document.createElement("button");
  button.type="button";button.id="publicThemeToggle";button.className="secondary theme-toggle";
  const apply=()=>{const dark=document.body.classList.contains("dark-theme");button.textContent=dark?"☀ Light":"☾ Dark";button.setAttribute("aria-pressed",String(dark))};
