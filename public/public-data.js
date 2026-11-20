@@ -93,13 +93,15 @@ async function loadMatrix() {
         const savedDate = record?.paidDate || "";
         const now = new Date();
         const todayKey = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0") + "-" + String(now.getDate()).padStart(2,"0");
+        const tomorrow = new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+        const maxPaidDateKey = tomorrow.getFullYear()+"-"+String(tomorrow.getMonth()+1).padStart(2,"0")+"-"+String(tomorrow.getDate()).padStart(2,"0");
         const defaultPaidDate = savedDate || todayKey;
         const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDate ? '<small class="cell-date paid-date">' + esc(paidDateLabel(savedDate)) + '</small>' : ""));
         const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
           (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
         const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
           ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
-        const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" value="' + esc(defaultPaidDate) + '" aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">': "";
+        const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(maxPaidDateKey) + '" value="' + esc(defaultPaidDate) + '" aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">': "";
         if (isSuper && !locked) editorRows.push({ memberId: member.id, month, existing: matrixRows[0] || null });
         return '<td><div class="matrix-cell">' +
           (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
