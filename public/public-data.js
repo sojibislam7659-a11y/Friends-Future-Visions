@@ -7,10 +7,8 @@ const money = value => "৳" + Number(value || 0).toLocaleString("en-BD", { maxi
 const empty = message => '<div class="empty">' + esc(message) + '</div>';
 const monthList = () => {
   const result = [];
-  for (let year = 2026; year <= 2031; year++) {
-    const first = year === 2026 ? 12 : 1;
-    const last = year === 2031 ? 11 : 12;
-    for (let month = first; month <= last; month++) {
+  for (let year = 2027; year <= 2031; year++) {
+    for (let month = 1; month <= 12; month++) {
       result.push(year + "-" + String(month).padStart(2, "0"));
     }
   }
@@ -68,60 +66,64 @@ async function loadMatrix() {
     const { data: rateMembers, error: rateError } = await supabase.from("members")
       .select("id,monthly_contribution").eq("status", "active");
     if (rateError) throw rateError;
-    const rateMap = new Map((rateMembers || []).map(member => [member.id, Number(member.monthly_contribution || 0)]));
+    const rateMap = new Map((rateMembers || []).map(member => [member.id, Number(member.monthly_contribution || 2000)]));
     members.forEach(member => { member.monthly_contribution = rateMap.get(member.id) || 0; });
   }
   if (!members.length) { root.innerHTML = "<h1>Member Contribution Matrix</h1>" + empty("এখনো কোনো Active Member পাওয়া যায়নি।"); return; }
   const months = monthList();
-  const years = [2026, 2027, 2028, 2029, 2030, 2031];
+  const years = [2027, 2028, 2029, 2030, 2031];
   const localToday = new Date();
   const todayKey = localToday.getFullYear() + "-" + String(localToday.getMonth()+1).padStart(2,"0") + "-" + String(localToday.getDate()).padStart(2,"0");
   const tables = years.map(year => {
     const yearMonths = months.filter(month => Number(month.slice(0, 4)) === year);
-    const headers = yearMonths.map(month => '<th class="matrix-month-head">' + esc(monthName(month)) + '</th>').join("");
-    const body = members.map(member => {
-      let yearTotal = 0;
-      const cells = yearMonths.map(month => {
-        const key = member.id + "|" + month;
-        const record = transactionMap.get(key);
-        const rows = record?.rows || [];
-        const matrixRows = rows.filter(row => String(row.reference_no || "").startsWith(matrixPrefix + month + "|"));
-        const manualRows = rows.filter(row => !String(row.reference_no || "").startsWith(matrixPrefix + month + "|"));
-        const amount = record?.amount || 0;
-        yearTotal += amount;
-        const locked = manualRows.length > 0 || matrixRows.length > 1;
-        const selected = amount > 0;
-        const savedDate = record?.paidDate || "";
-        const maxPaidDateKey = todayKey;
-        const defaultPaidDate = savedDate || todayKey;
-        const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDate ? '<small class="cell-date paid-date">' + esc(paidDateLabel(savedDate)) + '</small>' : ""));
-        const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
-          (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
-        const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 0) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" data-saved-date="' + esc(savedDate) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
-          ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
-        const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(maxPaidDateKey) + '" value="' + esc(selected ? defaultPaidDate : "") + '"' + (selected ? "" : " disabled") + ' aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">': "";
-        return '<td><div class="matrix-cell">' +
-          (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
-          amountInput +
-          (dayInput ? dayInput + '<small class="matrix-paid-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '">' + esc(selected ? paidDateLabel(defaultPaidDate) : "") + '</small>' : cellStatus) +
-          '</div></td>';
+    const periods = [yearMonths.slice(0, 6), yearMonths.slice(6, 12)];
+    return periods.map((periodMonths, periodIndex) => {
+      const periodKey = year + "-H" + (periodIndex + 1);
+      const periodLabel = periodIndex === 0 ? "Jan–Jun" : "Jul–Dec";
+      const headers = periodMonths.map(month => '<th class="matrix-month-head" data-month="' + esc(month) + '">' + esc(monthName(month)) + '</th>').join("");
+      const body = members.map(member => {
+        let periodTotal = 0;
+        const cells = periodMonths.map(month => {
+          const key = member.id + "|" + month;
+          const record = transactionMap.get(key);
+          const rows = record?.rows || [];
+          const matrixRows = rows.filter(row => String(row.reference_no || "").startsWith(matrixPrefix + month + "|"));
+          const manualRows = rows.filter(row => !String(row.reference_no || "").startsWith(matrixPrefix + month + "|"));
+          const amount = record?.amount || 0;
+          periodTotal += amount;
+          const locked = manualRows.length > 0 || matrixRows.length > 1;
+          const selected = amount > 0;
+          const savedDate = record?.paidDate || "";
+          const defaultPaidDate = savedDate || todayKey;
+          const cellStatus = matrixRows.length > 1 ? '<small class="cell-date">Duplicate entry · review</small>' : (manualRows.length ? '<small class="cell-date">Manual entry</small>' : (savedDate ? '<small class="cell-date paid-date">' + esc(paidDateLabel(savedDate)) + '</small>' : ""));
+          const checkbox = '<input type="checkbox" class="matrix-check" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '"' +
+            (selected ? " checked" : "") + ((!isSuper || locked) ? " disabled" : "") + ' aria-label="' + esc(month + " " + member.full_name) + '">';
+          const amountInput = '<input type="number" class="matrix-amount" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" data-default-amount="' + Number(member.monthly_contribution || 2000) + '" data-last-paid-at="' + esc(record?.latest || "") + '" data-saved-amount="' + Number(record?.amount || 0) + '" data-saved-date="' + esc(savedDate) + '" min="0" step="1" inputmode="numeric" value="' + (selected ? amount : 0) + '"' +
+            ((!isSuper || locked) ? " readonly disabled" : "") + ' aria-label="' + esc(month + " amount for " + member.full_name) + '">';
+          const dayInput = isSuper && !locked ? '<input type="date" class="matrix-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '" max="' + esc(todayKey) + '" value="' + esc(selected ? defaultPaidDate : "") + '"' + (selected ? "" : " disabled") + ' aria-label="Actual payment date for ' + esc(member.full_name) + ' contribution month ' + esc(month) + '">' : "";
+          return '<td><div class="matrix-cell">' +
+            (isSuper ? '<label class="matrix-toggle">' + checkbox + '<span>জমা</span></label>' : "") +
+            amountInput +
+            (dayInput ? dayInput + '<small class="matrix-paid-day" data-member="' + esc(member.id) + '" data-month="' + esc(month) + '">' + esc(selected ? paidDateLabel(defaultPaidDate) : "") + '</small>' : cellStatus) +
+            '</div></td>';
+        }).join("");
+        const name = member.full_name_bn || member.full_name || "—";
+        return '<tr data-member-row="' + esc(member.id) + '" data-period="' + periodKey + '">' +
+          '<td class="sticky-col">' + esc(member.member_no || "—") + '</td>' +
+          '<td class="sticky-col name-col"><span class="matrix-member-name">' + esc(name) + '</span></td>' +
+          cells +
+          '<td class="matrix-period-total" data-period-total="' + periodKey + '" data-member="' + esc(member.id) + '"><strong>' + money(periodTotal) + '</strong></td>' +
+          '</tr>';
       }).join("");
-      const name = member.full_name_bn || member.full_name || "—";
-      return '<tr data-member-row="' + esc(member.id) + '" data-year="' + year + '">' +
-        '<td class="sticky-col">' + esc(member.member_no || "—") + '</td>' +
-        '<td class="sticky-col name-col"><span class="matrix-member-name">' + esc(name) + '</span></td>' +
-        cells +
-        '<td class="matrix-year-total" data-year-total="' + year + '" data-member="' + esc(member.id) + '"><strong>' + money(yearTotal) + '</strong></td>' +
-        '</tr>';
+      const monthTotals = periodMonths.map(month => {
+        const total = members.reduce((sum, member) => sum + (transactionMap.get(member.id + "|" + month)?.amount || 0), 0);
+        return '<td class="matrix-month-total" data-month-total="' + esc(month) + '"><strong>' + money(total) + '</strong></td>';
+      }).join("");
+      const periodTotal = members.reduce((sum, member) => sum + periodMonths.reduce((inner, month) => inner + (transactionMap.get(member.id + "|" + month)?.amount || 0), 0), 0);
+      return '<section class="section matrix-period-section" data-period="' + periodKey + '"><div class="section-head"><h2>' + year + " · " + periodLabel + ' · Monthly contribution</h2><strong class="muted">' + money(periodTotal) + '</strong></div>' +
+        '<div class="table-wrap matrix-wrap"><table class="contribution-matrix matrix-editable"><thead><tr><th class="sticky-col">Member No.</th><th class="sticky-col name-col">Member Name</th>' + headers + '<th>Period Total</th></tr></thead>' +
+        '<tbody>' + body + '<tr class="total-row"><td colspan="2">TOTAL</td>' + monthTotals + '<td data-period-grand-total="' + periodKey + '"><strong>' + money(periodTotal) + '</strong></td></tr></tbody></table></div></section>';
     }).join("");
-    const monthTotals = yearMonths.map(month => {
-      const total = members.reduce((sum, member) => sum + (transactionMap.get(member.id + "|" + month)?.amount || 0), 0);
-      return '<td class="matrix-month-total" data-month-total="' + esc(month) + '"><strong>' + money(total) + '</strong></td>';
-    }).join("");
-    const yearTotal = members.reduce((sum, member) => sum + yearMonths.reduce((inner, month) => inner + (transactionMap.get(member.id + "|" + month)?.amount || 0), 0), 0);
-    return '<section class="section matrix-year-section"><div class="section-head"><h2>' + year + ' · Monthly contribution</h2><strong class="muted">' + money(yearTotal) + '</strong></div>' +
-      '<div class="table-wrap matrix-wrap"><table class="contribution-matrix matrix-editable"><thead><tr><th class="sticky-col">Member No.</th><th class="sticky-col name-col">Member Name</th>' + headers + '<th>Year Total</th></tr></thead>' +
-      '<tbody>' + body + '<tr class="total-row"><td colspan="2">TOTAL</td>' + monthTotals + '<td data-year-grand-total="' + year + '"><strong>' + money(yearTotal) + '</strong></td></tr></tbody></table></div></section>';
   }).join("");
 
   root.innerHTML = '<h1>Member Contribution Matrix</h1>' +
@@ -149,28 +151,25 @@ async function loadMatrix() {
   if (!isSuper) return;
 
   function recalculate() {
-    document.querySelectorAll(".matrix-year-section").forEach(section => {
+    root.querySelectorAll(".matrix-period-section").forEach(section => {
       const table = section.querySelector("table");
       const rows = Array.from(table.querySelectorAll("tbody tr[data-member-row]"));
-      const headers = Array.from(table.querySelectorAll("thead th[data-month]"));
-      const year = Number(section.querySelector("h2").textContent.slice(0, 4));
       let grand = 0;
       rows.forEach(row => {
-        let total = 0;
-        row.querySelectorAll(".matrix-amount").forEach(input => { total += Number(input.value || 0); });
+        const total = Array.from(row.querySelectorAll(".matrix-amount")).reduce((sum, input) => sum + Number(input.value || 0), 0);
         grand += total;
-        const totalCell = row.querySelector("[data-year-total]");
+        const totalCell = row.querySelector("[data-period-total]");
         if (totalCell) totalCell.innerHTML = "<strong>" + money(total) + "</strong>";
       });
-      const grandCell = table.querySelector("[data-year-grand-total]");
+      const grandCell = table.querySelector("[data-period-grand-total]");
       if (grandCell) grandCell.innerHTML = "<strong>" + money(grand) + "</strong>";
       const monthHeaders = Array.from(table.querySelectorAll("thead th.matrix-month-head"));
       monthHeaders.forEach((header, index) => {
+        const monthKey = header.dataset.month;
         const monthTotal = rows.reduce((sum, row) => {
           const input = row.querySelectorAll(".matrix-amount")[index];
           return sum + Number(input?.value || 0);
         }, 0);
-        const monthKey = year + "-" + String(year === 2026 ? 12 : index + 1).padStart(2, "0");
         const cell = table.querySelector('[data-month-total="' + monthKey + '"]');
         if (cell) cell.innerHTML = "<strong>" + money(monthTotal) + "</strong>";
       });
