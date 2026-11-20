@@ -90,7 +90,7 @@ async function renderDashboard(){
   summary(),
   new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
  ]);
- const {data:dueRows,error:dueError}=await supabase.rpc("get_member_shared_financial_data");
+ const {data:dueRows,error:dueError}=await supabase.rpc("get_member_shared_financial_data_v2");
  if(dueError)throw dueError;
  const dueByMember=new Map();
  (dueRows||[]).forEach(row=>{if(!dueByMember.has(row.member_id))dueByMember.set(row.member_id,{due:Number(row.total_due||0),configured:Boolean(row.due_configured)});});
@@ -120,7 +120,7 @@ function monthCount(start){
  return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()+1);
 }
 async function renderDue(){
- const {data:sharedRows,error}=await supabase.rpc("get_member_shared_financial_data");
+ const {data:sharedRows,error}=await supabase.rpc("get_member_shared_financial_data_v2");
  if(error)throw error;
  const byMember=new Map();
  (sharedRows||[]).forEach(row=>{
