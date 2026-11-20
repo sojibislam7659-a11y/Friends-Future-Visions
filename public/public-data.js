@@ -23,7 +23,7 @@ const contributionRateForMonth = (member, monthKey) => {
   const rate = (member.contribution_rates || [])
     .filter(item => item.effective_from <= monthEnd && (!item.effective_to || item.effective_to >= monthStart))
     .sort((a, b) => String(b.effective_from).localeCompare(String(a.effective_from)))[0];
-  return Number(rate?.monthly_amount ?? member.monthly_contribution ?? 2000);
+  return Number(rate?.monthly_amount ?? 2000);
 };
 function contributionLedgerTotal(rows, activeMemberIds){
   const reversedIds = new Set(rows.map(row => row.reversal_of_id).filter(Boolean));
