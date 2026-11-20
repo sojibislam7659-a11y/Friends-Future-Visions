@@ -21,7 +21,7 @@ function contributionLedgerTotal(rows, activeMemberIds){
   return rows.reduce((sum, row) => {
     if (!activeMemberIds.has(row.member_id) || row.transaction_type !== "contribution" || row.direction !== "in" || reversedIds.has(row.id)) return sum;
     const parts = String(row.reference_no || "").split("|");
-    const month = parts[0] === "FFV_MATRIX" && /^\\d{4}-\\d{2}$/.test(parts[1] || "") ? parts[1] : String(row.transaction_date || "").slice(0, 7);
+    const month = parts[0] === "FFV_MATRIX" && /^\d{4}-\d{2}$/.test(parts[1] || "") ? parts[1] : String(row.transaction_date || "").slice(0, 7);
     return month >= "2027-01" && month < "2032-01" ? sum + Number(row.amount || 0) : sum;
   }, 0);
 }
