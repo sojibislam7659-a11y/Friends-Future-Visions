@@ -1,5 +1,6 @@
 import { supabase } from "./supabase-client.js";
 import { requireRole } from "./auth-guard.js";
+import { BRAND_LOGO_SVG } from "./brand-logo.js";
 
 const root = document.getElementById("statementApp");
 const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
@@ -115,7 +116,7 @@ async function main() {
 
   const schedule = scheduleRows.map(row => '<tr><td>' + esc(monthLabel(row.month.slice(0, 7))) + '</td><td class="amount">' + money(row.expected) + '</td><td class="amount">' + money(row.paid) + '</td><td class="amount">' + money(row.due) + '</td><td>' + esc(dateText(row.paidDate)) + '</td><td><span class="statement-status">' + esc(row.status) + '</span></td></tr>').join("");
 
-  root.innerHTML = '<div class="statement-shell"><header class="statement-header"><img src="friends-future-standard-logo.svg" alt="Friends Future Vision Forever"><div><strong>FRIENDS FUTURE VISION FOREVER</strong><span>সদস্য আর্থিক বিবরণী · Member Financial Statement</span></div><button class="secondary" id="statementThemeToggle" type="button">☾ Dark</button></header>' +
+  root.innerHTML = '<div class="statement-shell"><header class="statement-header">'+BRAND_LOGO_SVG+'<div><strong>FRIENDS FUTURE VISION FOREVER</strong><span>সদস্য আর্থিক বিবরণী · Member Financial Statement</span></div><button class="secondary" id="statementThemeToggle" type="button">☾ Dark</button></header>' +
     '<div class="statement-actions"><a class="secondary" href="'+(access.role==="super_admin"?"member-info.html":"dashboard.html")+'">← '+(access.role==="super_admin"?"Member Info":"Dashboard")+'</a>'+(access.role==="super_admin"?'<button type="button" id="exportStatementXlsx" class="secondary">Excel</button><button type="button" id="exportStatementDocx" class="secondary">Word</button>':"")+'<button id="downloadStatement">PDF ডাউনলোড / Print</button></div>' +
     '<h1>Member Statement</h1><p class="statement-subtitle">Official contribution and due statement · হিসাবের সময়সীমা ১ জানুয়ারি ২০২৭ থেকে</p>' +
     '<section class="statement-member"><div><small>সদস্যের নাম</small><strong>' + esc((member.full_name || "Member").toLocaleUpperCase("en-US")) + '</strong></div><div><small>Member ID</small><strong>' + esc(member.member_no || "—") + '</strong></div><div><small>জমা শুরু</small><strong>' + esc(dateText(startDate)) + '</strong></div><div><small>Statement Date</small><strong>' + esc(new Date().toLocaleDateString("en-GB", { timeZone: "Asia/Dhaka" })) + '</strong></div></section>' +
