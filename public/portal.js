@@ -15,6 +15,12 @@ const today=()=>localDate(new Date());
 let access=null,lang="bn";
 const t=(bn,en)=>lang==="bn"?bn:en;
 function toast(message){let n=document.createElement("div");n.className="toast";n.textContent=message;document.body.append(n);setTimeout(()=>n.remove(),4200)}
+document.addEventListener("click",async event=>{
+ const button=event.target.closest("[data-copy-payment-number]");
+ if(!button)return;
+ try{await navigator.clipboard.writeText(button.dataset.copyPaymentNumber||"");toast("Payment number কপি হয়েছে।")}
+ catch{toast("Copy করা যায়নি। নম্বরটি হাতে কপি করুন।",true)}
+});
 async function optimizeImageFile(file,purpose="photo"){
  if(!file?.type?.startsWith("image/"))return file;
  if(file.size>20*1024*1024)throw new Error("Original image exceeds the 20MB upload-processing limit.");
@@ -537,7 +543,7 @@ async function loadProofMonth(month,allProofs){
  const activeMethods=methods.filter(m=>m.active);
  const cards=await Promise.all(activeMethods.map(async m=>{
   const {data:u}=m.qr_path?await supabase.storage.from("payment-qr").createSignedUrl(m.qr_path,1800):{data:null};
-  return '<article class="payment-method-card"><div class="row"><strong>'+esc(m.method.toUpperCase())+'</strong><span class="pill">Active</span></div><p>'+esc(m.account_name||"")+'</p><p class="payment-number">'+esc(m.account_number||"নম্বর সেট করা হয়নি")+'</p>'+(u?.signedUrl?'<img class="payment-qr" loading="lazy" src="'+esc(u.signedUrl)+'" alt="Payment QR">':"")+'</article>';
+  return '<article class="payment-method-card"><div class="row"><strong>'+esc(m.method.toUpperCase())+'</strong><span class="pill">Active</span></div><p>'+esc(m.account_name||"")+'</p><p class="payment-number">'+esc(m.account_number||"নম্বর সেট করা হয়নি")+'</p>'+(m.account_number?'<button class="secondary" type="button" data-copy-payment-number="'+esc(m.account_number)+'">নম্বর কপি করুন</button>':"")+(u?.signedUrl?'<img class="payment-qr" loading="lazy" src="'+esc(u.signedUrl)+'" alt="Payment QR">':"")+'</article>';
  }));
  const base='<h1>Payment</h1><p class="lead">bKash অথবা Nagad-এ টাকা পাঠানোর পর Transaction ID জমা দিন। Super Admin যাচাই করে অনুমোদন করবেন।</p><div class="payment-method-grid">'+(cards.join("")||empty("Super Admin এখনো bKash/Nagad নম্বর সেট করেননি।"))+'</div>';
  if(isSuper){
