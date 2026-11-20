@@ -1,0 +1,33 @@
+name: Development JavaScript syntax
+
+on:
+  push:
+    branches:
+      - development
+  pull_request:
+    branches:
+      - development
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Parse all browser JavaScript modules
+        shell: bash
+        run: |
+          set -euo pipefail
+          files="$(find public -maxdepth 1 -type f -name '*.js' -print)"
+          if [ -z "$files" ]; then
+            echo "No browser JavaScript files found."
+            exit 1
+          fi
+          while IFS= read -r file; do
+            echo "Checking $file"
+            node --check --input-type=module < "$file"
+          done <<< "$files"
