@@ -278,14 +278,16 @@ async function loadProofMonth(month,allProofs){
    try{
     const {scanDocumentImage}=await import("./document-scanner.js");
     const scanned=new Map();
+    const scanMode=document.getElementById("proofScanMode").value;
+    const scanRotation=Number(document.getElementById("proofScanRotation").value);
     for(let index=0;index<originals.length;index++){
      const file=originals[index];
      if(!file.type.startsWith("image/"))continue;
      scanStatus.textContent="Scanning "+(scanned.size+1)+" / "+images.length+" · "+file.name;
-     const result=await scanDocumentImage(file,document.getElementById("proofScanMode").value,Number(document.getElementById("proofScanRotation").value));
+     const result=await scanDocumentImage(file,scanMode,scanRotation);
      scanned.set(file,result.file);
      const card=document.createElement("article");card.className="scanner-preview-card";
-     const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);image.dataset.scanMode=mode;scanPreviewUrls.push(image.src);
+     const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);image.dataset.scanMode=scanMode;scanPreviewUrls.push(image.src);
      const details=document.createElement("div");
      const ratio=file.size?Math.round((1-result.outputSize/file.size)*100):0;
      const edgeText=result.cornersDetected?"Edges detected · perspective corrected":"Page edges not detected · image enhanced without perspective correction";
