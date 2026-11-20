@@ -47,7 +47,7 @@ async function loadPublicTicker(){
 const svg=n=>'<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+icon[n]+'</svg>';
 const item=(href,label,n)=>'<a href="'+href+'"'+(location.pathname.split("/").pop()===href?' class="active" aria-current="page"':'')+'>'+svg(n)+'<span>'+label+'</span></a>';
 function showPublicNavigation(){
- setupPublicTheme();ensurePublicTicker();
+ setupPublicTheme();ensurePublicTicker();loadPublicTicker();
  home.href="index.html";
  nav.innerHTML=item("rules.html","RULES","rules");
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
