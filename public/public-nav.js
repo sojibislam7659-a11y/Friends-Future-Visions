@@ -35,7 +35,7 @@ function buildPublicDrawer(isAuthenticated,role,displayName){
  const backdrop=document.createElement("div");backdrop.className="public-drawer-backdrop";backdrop.hidden=true;
  const drawer=document.createElement("aside");drawer.className="public-drawer";drawer.hidden=true;drawer.setAttribute("aria-label","Main menu");
  const links=isAuthenticated?[...(role==="super_admin"?[["admin.html","SUPER ADMIN","admin"]]:[]),["personal-due.html","PERSONAL DUE","due"],["proof.html","PROOF","proof"],["payment.html","PAYMENT","payment"],...(role==="member"?[["statement.html","MY STATEMENT","data"],["member.html","MY PROFILE","members"]]:[])]:[["login.html","LOGIN","profile"]];
- drawer.innerHTML='<div class="public-drawer-head"><a class="public-drawer-brand" href="dashboard.html">'+BRAND_LOGO_SVG+'<strong>'+String(displayName||"Friends Future Vision Forever")+'</strong></a><button type="button" class="icon-button public-drawer-close" aria-label="Close menu">×</button></div><nav class="public-drawer-nav">'+links.map(([href,label,name])=>item(href,label,name)).join("")+'</nav><div class="public-drawer-footer"></div>';
+ drawer.innerHTML='<div class="public-drawer-head"><a class="public-drawer-brand" href="dashboard.html">'+BRAND_LOGO_SVG+'<strong>'+String(displayName||"Friends Future Vision Forever").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</strong></a><button type="button" class="icon-button public-drawer-close" aria-label="Close menu">×</button></div><nav class="public-drawer-nav">'+links.map(([href,label,name])=>item(href,label,name)).join("")+'</nav><div class="public-drawer-footer"></div>';
  if(publicThemeButton)drawer.querySelector(".public-drawer-footer").append(publicThemeButton);
  shell.append(backdrop,drawer);
  const close=()=>{drawer.hidden=true;backdrop.hidden=true;menu?.setAttribute("aria-expanded","false")};
@@ -75,7 +75,6 @@ async function init(){
  const role=profile.role;
  const links=[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("statement.html","MY STATEMENT","data"),item("member.html","MY PROFILE","members")]:[])];
  nav.innerHTML=links.join("");
- const publicTheme=document.getElementById("publicThemeToggle");if(publicTheme)nav.append(publicTheme);
  addPublicMobileNav(true);
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
  buildPublicDrawer(true,role,displayName);
