@@ -967,8 +967,8 @@ body.login-theme .shell{width:100%;max-width:1180px}
  .contribution-matrix{width:max-content!important;min-width:1050px!important;max-width:none!important}
  .page{overflow-x:hidden!important}
 }
-.contribution-matrix th{background:#29483c;color:#eaf5ee}
-.contribution-matrix td{background:#1b3028;color:#dcebe3}
+.contribution-matrix th{background:#e4eee7;color:#234b3b}
+.contribution-matrix td{background:#f7faf8;color:#29483c}
 body.dark-theme .contribution-matrix th{background:#29483c!important;color:#eff8f2!important}
 body.dark-theme .contribution-matrix td{background:#1b3028!important;color:#dcebe3!important}
 body.dark-theme .contribution-matrix tr:nth-child(even) td{background:#20372e!important;color:#e4f0e8!important}

@@ -18,16 +18,16 @@ const item=(href,label,n)=>'<a href="'+href+'"'+(location.pathname.split("/").po
 function addPublicMobileNav(isAuthenticated){
  if(document.querySelector(".public-mobile-nav"))return;
  const current=location.pathname.split("/").pop()||"index.html";
- const nav=document.createElement("nav");
- nav.className="mobile-bottom-nav public-mobile-nav";
- nav.setAttribute("aria-label","Quick navigation");
+ const mobileNav=document.createElement("nav");
+ mobileNav.className="mobile-bottom-nav public-mobile-nav";
+ mobileNav.setAttribute("aria-label","Quick navigation");
  const link=(href,label,name)=>'<a href="'+href+'"'+(current===href?' class="active" aria-current="page"':'')+'>'+svg(name)+'<span>'+label+'</span></a>';
- nav.innerHTML=link(isAuthenticated?"dashboard.html":"index.html","Home","home")+
+ mobileNav.innerHTML=link(isAuthenticated?"dashboard.html":"index.html","Home","home")+
   link("member-info.html","Members","members")+link("data.html","Data","data")+link("rules.html","Rules","rules")+
   '<button type="button" class="public-more-button" aria-label="More">'+svg("menu")+'<span>More</span></button>';
- const more=nav.querySelector(".public-more-button");
- more.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden));});
- document.querySelector(".shell")?.append(nav);
+ const more=mobileNav.querySelector(".public-more-button");
+ more.addEventListener("click",()=>menu.click());
+ document.querySelector(".shell")?.append(mobileNav);
 }
 function showPublicNavigation(){
  setupPublicTheme();
