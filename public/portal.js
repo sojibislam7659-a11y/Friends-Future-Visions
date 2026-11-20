@@ -86,11 +86,14 @@ function dashboardChartMarkup(summaryData){
  return "<section class=\"section matrix-charts\"><h2>"+t("আর্থিক চার্ট","Financial charts")+"</h2><div class=\"matrix-chart-grid\"><article class=\"card\"><strong>"+t("মাসিক জমা · Column","Monthly contributions · Column")+"</strong><div class=\"mini-bars\">"+bars+"</div></article><article class=\"card\"><strong>"+t("জমার প্রবণতা · Line","Contribution trend · Line")+"</strong>"+line+"</article><article class=\"card\"><strong>"+t("আর্থিক অনুপাত · Pie","Financial mix · Pie")+"</strong>"+pie+"</article></div></section>";
 }
 async function renderDashboard(){
- const s=await Promise.race([
-  summary(),
-  new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
+ const [s,dueResult]=await Promise.all([
+  Promise.race([
+   summary(),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
+  ]),
+  supabase.rpc("get_member_shared_financial_data_v2")
  ]);
- const {data:dueRows,error:dueError}=await supabase.rpc("get_member_shared_financial_data_v2");
+ const {data:dueRows,error:dueError}=dueResult;
  if(dueError)throw dueError;
  const dueByMember=new Map();
  (dueRows||[]).forEach(row=>{if(!dueByMember.has(row.member_id))dueByMember.set(row.member_id,{due:Number(row.total_due||0),configured:Boolean(row.due_configured)});});
@@ -120,8 +123,15 @@ function monthCount(start){
  return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()+1);
 }
 async function renderDue(){
- const {data:sharedRows,error}=await supabase.rpc("get_member_shared_financial_data_v2");
+ const [sharedResult,rateResult]=await Promise.all([
+  supabase.rpc("get_member_shared_financial_data_v2"),
+  access.role==="super_admin"
+   ? supabase.from("members").select("id,member_no,full_name,monthly_contribution").eq("status","active").order("member_no")
+   : Promise.resolve({data:null,error:null})
+ ]);
+ const {data:sharedRows,error}=sharedResult;
  if(error)throw error;
+ if(rateResult.error)throw rateResult.error;
  const byMember=new Map();
  (sharedRows||[]).forEach(row=>{
   if(!byMember.has(row.member_id)){
@@ -141,10 +151,7 @@ async function renderDue(){
  const dues=rows.map(r=>"<tr><td>"+esc(r.member_no||"—")+"</td><td>"+esc(r.full_name)+"</td><td>"+(r.configured?'<span class=\"due-chip '+dueClass(r.due)+'\">'+money(r.due)+'</span>':'<span class=\"due-chip due-unconfigured\">Rate not set</span>')+"</td></tr>").join("");
  let rateEditor="";
  if(access.role==="super_admin"){
-  const {data:rateMembers,error:rateError}=await supabase.from("members")
-   .select("id,member_no,full_name,monthly_contribution")
-   .eq("status","active").order("member_no");
-  if(rateError)throw rateError;
+  const rateMembers=rateResult.data||[];
   const nextMonth=new Date();nextMonth.setDate(1);nextMonth.setMonth(nextMonth.getMonth()+1);
   const effectiveDefault=nextMonth.getFullYear()+"-"+String(nextMonth.getMonth()+1).padStart(2,"0")+"-01";
   const rateRows=(rateMembers||[]).map(m=>'<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+esc(m.monthly_contribution?money(m.monthly_contribution):"Not set")+'</td><td><input class="due-rate-input" data-rate-member="'+esc(m.id)+'" data-current="'+Number(m.monthly_contribution||0)+'" type="number" min="1" step="1" inputmode="numeric" value="'+(m.monthly_contribution?esc(m.monthly_contribution):"")+'" aria-label="New monthly rate for '+esc(m.full_name)+'"></td></tr>').join("");
@@ -175,9 +182,15 @@ async function renderDue(){
  }
 }
 async function renderMembers(){
- const {data,error}=await supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no");if(error)throw error;
+ const [directoryResult,ownResult]=await Promise.all([
+  supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no"),
+  access.role==="member"
+   ? supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle()
+   : Promise.resolve({data:null,error:null})
+ ]);
+ const {data,error}=directoryResult;if(error)throw error;
  if(!data.length){setPage('<h1>Member Info</h1>'+empty(t("এখনো কোনো Active member নেই।","No active members yet.")));return}
- const own=access.role==="member"?await supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle():{data:null};if(own.error)throw own.error;const ownId=own.data?.id||null;
+ if(ownResult.error)throw ownResult.error;const ownId=ownResult.data?.id||null;
  const cards=await Promise.all(data.map(async m=>{
   let photo="";
   if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);if(u?.signedUrl)photo='<img class="member-directory-avatar" loading="lazy" src="'+esc(u.signedUrl)+'" alt="'+esc(m.full_name||"Member")+'">'}
