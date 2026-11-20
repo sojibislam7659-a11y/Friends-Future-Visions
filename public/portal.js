@@ -293,14 +293,43 @@ async function renderMembers(){
  const {data,error}=directoryResult;if(error)throw error;
  if(!data.length){setPage('<h1>Member Info</h1>'+empty(t("এখনো কোনো Active member নেই।","No active members yet.")));return}
  if(ownResult.error)throw ownResult.error;const ownId=ownResult.data?.id||null;
- const cards=await Promise.all(data.map(async m=>{
-  let photo="";
-  if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);if(u?.signedUrl)photo='<img class="member-directory-avatar" loading="lazy" src="'+esc(u.signedUrl)+'" alt="'+esc(m.full_name||"Member")+'">'}
+ const photoPaths=[...new Set(data.map(member=>member.profile_photo_path).filter(Boolean))];
+ const photoUrlByPath=new Map();
+ let photoCache={};
+ try{photoCache=JSON.parse(sessionStorage.getItem("ffv:member-photo-cache")||"{}")}catch{}
+ const missingPaths=[];
+ for(const path of photoPaths){
+  const cached=photoCache[path];
+  if(cached?.url&&Number(cached.expiresAt)>Date.now()+5*60*1000)photoUrlByPath.set(path,cached.url);
+  else missingPaths.push(path);
+ }
+ if(missingPaths.length){
+  try{
+   const {data:signed,error:signedError}=await supabase.storage.from("member-profile-photos").createSignedUrls(missingPaths,86400);
+   if(signedError)throw signedError;
+   (signed||[]).forEach((item,index)=>{
+    const path=item.path||missingPaths[index];
+    if(item.signedUrl){photoUrlByPath.set(path,item.signedUrl);photoCache[path]={url:item.signedUrl,expiresAt:Date.now()+23*60*60*1000}}
+   });
+   try{sessionStorage.setItem("ffv:member-photo-cache",JSON.stringify(photoCache))}catch{}
+  }catch(batchError){
+   console.warn("Batch profile photo URLs unavailable; using individual fallback",batchError);
+   const fallback=await Promise.all(missingPaths.map(async path=>{
+    const {data:signed}=await supabase.storage.from("member-profile-photos").createSignedUrl(path,86400);
+    return {path,url:signed?.signedUrl||null};
+   }));
+   fallback.forEach(item=>{if(item.url){photoUrlByPath.set(item.path,item.url);photoCache[item.path]={url:item.url,expiresAt:Date.now()+23*60*60*1000}}});
+   try{sessionStorage.setItem("ffv:member-photo-cache",JSON.stringify(photoCache))}catch{}
+  }
+ }
+ const cards=data.map(m=>{
+  const photoUrl=photoUrlByPath.get(m.profile_photo_path);
   const label=lang==="bn"?(m.full_name_bn||m.full_name):m.full_name;
   const canOpen=access.role==="super_admin"||m.member_id===ownId;
+  const photo=photoUrl?'<img class="member-directory-avatar" loading="lazy" decoding="async" src="'+esc(photoUrl)+'" alt="'+esc(m.full_name||"Member")+'">':"";
   const inside=(photo||'<span class="member-directory-avatar member-directory-fallback">'+esc(String(label||"M").trim().slice(0,1).toUpperCase())+'</span>')+'<strong class="member-directory-name">'+esc(label)+'</strong>';
   return canOpen?'<div class="member-directory-person-wrap"><a class="member-directory-person" href="member-profile.html?id='+encodeURIComponent(m.member_id)+'" aria-label="'+esc("Open profile: "+label)+'">'+inside+'</a>'+(access.role==="super_admin"?'<a class="member-directory-edit" href="member-profile.html?id='+encodeURIComponent(m.member_id)+'&edit=1">✎ Edit Profile</a>':"")+'</div>':'<div class="member-directory-person">'+inside+'</div>';
- }));
+ });
  setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("সদস্যদের ছবি ও নাম। নিজের ছবি বা নাম চাপলে ব্যক্তিগত প্রোফাইল খুলবে। Super Admin যেকোনো সদস্যের প্রোফাইল খুলতে পারবেন।","Members are shown by photo and name. Members can open their own profile; Super Admin can open any profile.")+'</p><div class="member-directory-grid">'+cards.join("")+'</div>');
 }
 async function renderProofs(){
