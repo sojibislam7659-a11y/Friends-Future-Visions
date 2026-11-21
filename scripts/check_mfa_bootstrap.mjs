@@ -6,7 +6,7 @@ const login = readFileSync("public/login.js", "utf8");
 const brand = readFileSync("public/brand-logo.js", "utf8");
 const client = readFileSync("public/supabase-client.js", "utf8");
 
-assert.match(html, /id="mfaPanel"/, "MFA panel must exist in login HTML");
+assert.match(html, /id="superAdminMfaPanel"/, "MFA panel must exist in login HTML");
 assert.match(html, /id="mfaCode"/, "MFA code input must exist");
 assert.match(html, /id="mfaQrCode"/, "MFA QR image must exist");
 assert.match(html, /src="login\.js"/, "MFA login module must be loaded");
