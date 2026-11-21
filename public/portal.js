@@ -306,14 +306,25 @@ async function renderDue(){
   (rateHistoryResult.data||[]).forEach(rate=>{if(!rateHistory.has(rate.member_id))rateHistory.set(rate.member_id,[]);rateHistory.get(rate.member_id).push(rate)});
   const effectiveDefault="2027-01-01";
   const rateRows=(rateMembers||[]).map(m=>{
-   const current= (rateHistory.get(m.id)||[]).filter(rate=>rate.effective_from<="2027-01-31"&&(!rate.effective_to||rate.effective_to>="2027-01-01")).sort((a,b)=>String(b.effective_from).localeCompare(String(a.effective_from)))[0];
+   const current= (rateHistory.get(m.id)||[]).filter(rate=>rate.effective_from<=effectiveDefault&&(!rate.effective_to||rate.effective_to>=effectiveDefault)).sort((a,b)=>String(b.effective_from).localeCompare(String(a.effective_from)))[0];
    const currentRate=Number(current?.monthly_amount??2000);
    return '<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+money(currentRate)+'</td><td><input class="due-rate-input" data-rate-member="'+esc(m.id)+'" data-current="'+currentRate+'" type="number" min="1" step="1" inputmode="numeric" value="'+currentRate+'" aria-label="New monthly rate for '+esc(m.full_name)+'"></td></tr>'
   }).join("");
-  rateEditor='<section class="section"><div class="section-head"><h2>মাসিক জমার হার সম্পাদনা</h2><span class="pill">Super Admin only</span></div><p class="muted small">প্রত্যেক সদস্যের মাসিক হার আলাদাভাবে দিন। একবার Save করলে সব পরিবর্তন একসঙ্গে সংরক্ষিত হবে।</p><div class="field due-effective-field"><label for="dueEffectiveFrom">কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="dueEffectiveFrom" type="date" value="'+effectiveDefault+'"></div><div class="table-wrap"><table class="due-rate-table"><thead><tr><th>Member ID</th><th>Name</th><th>Current rate (Jan 2027)</th><th>New monthly rate</th></tr></thead><tbody>'+rateRows+'</tbody></table></div><div class="form-actions"><button type="button" id="saveDueRates">Save Changes</button><span id="dueRateStatus" class="muted small"></span></div></section>';
+  rateEditor='<section class="section"><div class="section-head"><h2>মাসিক জমার হার সম্পাদনা</h2><span class="pill">Super Admin only</span></div><p class="muted small">প্রত্যেক সদস্যের মাসিক হার আলাদাভাবে দিন। একবার Save করলে সব পরিবর্তন একসঙ্গে সংরক্ষিত হবে।</p><div class="field due-effective-field"><label for="dueEffectiveFrom">কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="dueEffectiveFrom" type="date" min="2027-01-01" max="2031-12-01" value="'+effectiveDefault+'"></div><div class="table-wrap"><table class="due-rate-table"><thead><tr><th>Member ID</th><th>Name</th><th>Current rate (selected date)</th><th>New monthly rate</th></tr></thead><tbody>'+rateRows+'</tbody></table></div><div class="form-actions"><button type="button" id="saveDueRates">Save Changes</button><span id="dueRateStatus" class="muted small"></span></div></section>';
  }
  setPage("<h1>"+t("সদস্যদের জমা ও বকেয়া","Member deposits and dues")+"</h1>"+rateEditor+"<p class=\"lead\">"+t("সব সক্রিয় সদস্যের জমা ও বকেয়া দেখা যাচ্ছে। সদস্যরা শুধু দেখতে পারবেন; সম্পাদনা শুধু Super Admin করতে পারবেন।","All active members’ deposits and dues. Members have view-only access; only the Super Admin can edit.")+"</p><p class=\"small muted\">"+t("আগাম জমা Total Deposit-এ সঙ্গে সঙ্গে যোগ হবে; তবে Due কমবে সেই Accounting Month এ পৌঁছালে।","Advance payments are included in Total Deposit immediately; they reduce Due only when their accounting month arrives.")+"</p><section class=\"section\"><h2>"+t("মোট জমা","Total deposits")+"</h2><div class=\"table-wrap\"><table><thead><tr><th>Member ID</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>"+deposits+"<tr class=\"total-row\"><td colspan=\"2\">TOTAL</td><td>"+money(sumPaid)+"</td></tr></tbody></table></div></section><section class=\"section\"><h2>"+t("মোট বকেয়া","Total due")+"</h2><div class=\"table-wrap\"><table><thead><tr><th>Member ID</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>"+dues+"<tr class=\"total-row\"><td colspan=\"2\">TOTAL</td><td>"+money(sumDue)+"</td></tr></tbody></table></div><p class=\"small muted\">"+t("সবুজ: ৳২,০০০ পর্যন্ত · হলুদ: ৳২,০০০-এর বেশি থেকে ৳৫,০০০ পর্যন্ত · লাল: ৳৫,০০০-এর বেশি","Green: up to ৳2,000 · Yellow: above ৳2,000 to ৳5,000 · Red: above ৳5,000")+"</p></section>"+'<div class="notice">'+t("সবার জন্য ডিফল্ট মাসিক জমা ৳২,০০০। Super Admin প্রয়োজন হলে সদস্যভেদে হার পরিবর্তন করতে পারবেন; Due স্বয়ংক্রিয়ভাবে আপডেট হবে।","The default monthly contribution is ৳2,000 for every active member. The Super Admin can change each member’s rate; Due updates automatically.")+"</div>");
  if(access.role==="super_admin"){
+  const dueDateInput=document.getElementById("dueEffectiveFrom");
+  const refreshRateBaseline=()=>{
+   const selectedDate=dueDateInput.value;
+   for(const input of document.querySelectorAll(".due-rate-input")){
+    const history=rateHistory.get(input.dataset.rateMember)||[];
+    const current=history.filter(rate=>rate.effective_from<=selectedDate&&(!rate.effective_to||rate.effective_to>=selectedDate)).sort((a,b)=>String(b.effective_from).localeCompare(String(a.effective_from)))[0];
+    const amount=Number(current?.monthly_amount??2000);
+    input.dataset.current=String(amount);input.value=String(amount);
+   }
+  };
+  dueDateInput?.addEventListener("change",refreshRateBaseline);
   document.getElementById("saveDueRates")?.addEventListener("click",async()=>{
    const dateInput=document.getElementById("dueEffectiveFrom");
    const effectiveFrom=dateInput.value;
