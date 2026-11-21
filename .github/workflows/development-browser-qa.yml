@@ -1,6 +1,9 @@
 name: Development browser QA
 
 on:
+  push:
+    branches:
+      - development
   workflow_dispatch:
 
 permissions:
