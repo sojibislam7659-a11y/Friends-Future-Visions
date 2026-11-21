@@ -23,6 +23,6 @@ test("Unauthenticated visitor cannot enter the Development dashboard", async ({ 
   page.on("pageerror", error => pageErrors.push(error.message));
 
   await page.goto(`${baseURL}/dashboard.html`, { waitUntil: "domcontentloaded" });
-  await expect(page).toHaveURL(/login\\.html(?:$|[?#])/, { timeout: 25000 });
+  await expect(page).toHaveURL(/login\.html(?:$|[?#])/, { timeout: 25000 });
   expect(pageErrors, "Dashboard JavaScript errors detected").toEqual([]);
 });
