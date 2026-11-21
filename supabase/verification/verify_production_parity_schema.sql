@@ -101,7 +101,7 @@ begin
   ) then raise exception 'A Super Admin has no verified MFA factor'; end if;
 
   select pg_get_functiondef('private.get_financial_summary_unchecked()'::regprocedure) into v_def;
-  if v_def not like '%reversal_of_id%' or v_def not like '%2031-12-31%' then
+  if v_def not like '%reversal_of_id%' or v_def not like '%2032-01-01%' then
     raise exception 'Financial summary is not the reversal-aware Development implementation';
   end if;
   if has_function_privilege('authenticated','private.get_financial_summary_unchecked()','EXECUTE')
