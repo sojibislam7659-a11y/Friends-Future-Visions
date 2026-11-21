@@ -121,7 +121,8 @@ Deno.serve(async (req: Request) => {
     email,
     role: "member",
     email_verified_at: new Date().toISOString(),
-    must_change_password: true
+    must_change_password: true,
+    password_change_required_at: new Date().toISOString()
   }, { onConflict: "id" });
 
   if (upsertProfileError) {
