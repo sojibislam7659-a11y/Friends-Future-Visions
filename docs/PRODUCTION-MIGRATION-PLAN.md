@@ -29,11 +29,27 @@ Read-only checks on 2026-11-22:
 
 These counts and checks are snapshots, not guarantees about future state.
 
+## Latest advisor snapshot
+
+- Production Security Advisor: 1 public-schema extension warning (`pg_net`), 4 authenticated-executable SECURITY DEFINER warnings, and 1 leaked-password-protection warning.
+- Production Performance Advisor: 4 multiple-permissive-policy warnings and 19 unused-index informational findings.
+- Production Health Advisor: no findings.
+- Development Security Advisor: 1 public-schema extension warning and 1 leaked-password-protection warning; Development has no authenticated-executable SECURITY DEFINER warnings in this snapshot.
+- Development Performance Advisor: 21 unused-index informational findings; Development Health Advisor: no findings.
+
+Do not delete unused indexes solely from a short usage snapshot; evaluate workload and query plans first. Review the 4 duplicate permissive policy groups for simplification only after checking exact RLS semantics. Leaked-password protection is a project Auth setting and may be plan-gated; do not claim it can be enabled on the current Free plan without checking account entitlement.
+
 ## Why Development migrations cannot be copied verbatim
 
 Development and Production have independent migration histories (61 vs 53 applied versions; zero shared version IDs). The Development financial migration adds a NOT NULL posting_id without a legacy-row backfill, so it is not safe for a populated Production table.
 
 The Production release must use a newly authored, Production-specific migration sequence. Never replay the Development migration directory wholesale.
+
+## Production security finding detail
+
+The current Production Security Advisor reports four exposed SECURITY DEFINER RPCs: `get_financial_summary()`, `review_payment_submission(...)`, `review_private_document(...)`, and `set_current_committee_document(...)`. Source review confirmed all four use an empty search_path. The private helper functions for payment and committee-document changes explicitly check Super Admin authorization and are not executable by authenticated clients directly. Nevertheless, public wrappers should become SECURITY INVOKER after confirming their RLS and helper grants. The financial summary wrapper currently accepts the legacy `admin` role; replace this with the intended two-role allow-list during the coordinated migration.
+
+Production also has `pg_net` installed in `public`. Moving it requires checking existing cron/HTTP call dependencies and extension support before any change.
 
 ## Phase 0 — Mandatory backup and restore gate
 
