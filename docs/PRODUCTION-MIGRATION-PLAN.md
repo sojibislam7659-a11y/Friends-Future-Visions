@@ -6,7 +6,7 @@ Source of intended application behaviour: Development (`tvdxbyzvkjiebwslmnvj`)
 
 ## Release status
 
-**PLANNING ONLY — NOT APPROVED FOR PRODUCTION EXECUTION.**
+**RELEASE WORK STAGED — NOT APPROVED FOR PRODUCTION EXECUTION.**
 
 This document is not an executable migration. No Production SQL, Edge Function deployment, Worker deployment, or user-data change was performed while preparing it.
 
@@ -21,7 +21,7 @@ Read-only checks on 2026-11-22:
 - 0 financial transaction rows and 0 financial transaction audit rows.
 - 0 push subscription rows.
 - 8 Production Auth users / profiles; 7 profiles are linked to active members.
-- No Production Auth user currently has a verified MFA factor (including the Super Admin).
+- Production has 1 Super Admin profile and 0 verified MFA factors. The schema parity migration intentionally blocks until that account enrolls and verifies MFA.
 - The Development-only tables `site_settings`, `admin_change_audit`, `financial_postings`, and `notification_push_deliveries` are absent from Production.
 - `private.password_rotation_guards` is absent from Production.
 - No current push subscription row violates the Development endpoint/key/user-agent format checks. This check is only a snapshot; repeat it immediately before any migration.
@@ -31,7 +31,7 @@ Read-only checks on 2026-11-22:
 - Production currently grants broad table-level privileges on some tables to anon/authenticated, including push_subscriptions and notifications. RLS policies currently constrain row access, but privileges should be reduced as defense in depth. Do not revoke until frontend and function dependencies are verified.
 - Existing Production profile update and financial transaction policies are not identical to Development.
 
-These counts and checks are snapshots, not guarantees about future state.
+These counts and checks are snapshots, not guarantees about future state. The latest read-only recheck still shows 53 Production migrations, 8 Auth users, 7 members, 8 profiles, 0 financial transactions and 0 financial audit rows.
 
 ## Latest advisor snapshot
 
@@ -59,16 +59,18 @@ Production also has `pg_net` installed in `public`. Moving it requires checking 
 
 Before any Production write:
 
-1. Export a fresh database backup with Supabase CLI `supabase db dump` (schema, data, and roles as separate outputs where appropriate) from the current Production connection.
+1. Run the staged encrypted backup workflow only after the owner updates the Apps Script receiver to version 2 and configures its GitHub Actions secrets. The workflow uses PostgreSQL 17 `pg_dump` custom format for `public`/`private`, plus supported Auth and Storage API exports.
 2. Verify file integrity and inspect archive/SQL contents.
 3. Export Auth users and related Auth rows/configuration. Do not assume a database-only dump reproduces all hosted Auth provider settings or signing secrets.
 4. Download the bytes of every Storage object, not just `storage.objects` metadata; record bucket/object metadata and verify object checksums.
-5. Export all Production Edge Function source files, function names, JWT verification flags, and required secret *names*. Secret values must be preserved through owner-controlled secure means; they cannot be retrieved from ordinary function listing APIs.
-6. Record project URL, publishable key identifiers, Auth redirect settings, SMTP settings, OAuth provider settings, cron jobs, webhooks, Google Apps Script/Sheets integration settings, and other external configuration. Do not put secrets in Git.
-7. Create an isolated restore target and perform a restore rehearsal. Verify table/schema counts, Auth user count, Storage object count and sample checksums, function deployment readiness, and sign-in behaviour.
+5. All five current Production Edge Function `index.ts` files have already been snapshotted under `backup/production-edge-functions/2026-11-22/` and re-fetched for byte-for-byte verification. Function names, versions, JWT flags and environment names are recorded. Secret values must be re-provisioned from owner-controlled secure storage; they cannot be retrieved through ordinary function listing APIs.
+6. The staged backup workflow records cron job names/schedules, Vault secret names, migration versions and extension versions. Hosted Auth redirect/SMTP/OAuth settings, webhook configuration, Cloudflare secrets and Edge Function secret values are not automatically exported; record and re-provision them manually. Do not put secrets in Git.
+7. Create an isolated restore target and perform a restore rehearsal. Verify table/schema counts, Auth metadata, Storage object checksums, Edge Function source, RLS policies, re-provisioned secrets, and application smoke tests.
 8. Only after the restore rehearsal passes, request explicit owner approval for a scheduled Production maintenance window.
 
 A schema-only backup, old PC dump, or Git branch is not a complete Production backup.
+
+The backup receiver code and encrypted workflow are now staged, but no archive has been created or uploaded. The Apps Script deployment still reports version 1 until the owner updates it to repository version 2. The release-branch trigger watches only `backup/trigger-backup-workflow.txt`; that marker file does not exist yet, so no backup run is triggered. The first run must be `smoke_test` (no Supabase connection); only after it passes and the owner explicitly approves should the marker be changed to `production`. The monthly schedule becomes active only after the workflow is merged to the default branch, which must wait until the restore gate is passed.
 
 ## Phase 1 — Additive configuration and audit capabilities
 
