@@ -14,7 +14,7 @@
  */
 
 function doGet() {
-  return json_({ ok: true, service: 'FFV encrypted backup receiver', version: 1 });
+  return json_({ ok: true, service: 'FFV encrypted backup receiver', version: 2 });
 }
 
 function doPost(e) {
