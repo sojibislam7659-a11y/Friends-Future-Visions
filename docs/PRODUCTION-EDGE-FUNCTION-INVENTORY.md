@@ -21,8 +21,10 @@ No function was deployed or modified during this inventory.
 | `invite-member` | No environment secret read by the retired Development handler |
 | `google-sheets-sync` | `OIKKO_SYNC_SECRET`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
 
-The source of the Production-only `google-sheets-sync` function was fetched from the live
-Production project and committed to this release branch. It contains environment variable
+All five live Production function `index.ts` files have been snapshotted under
+`backup/production-edge-functions/2026-11-22/`, with metadata. Each saved file was fetched again
+and compared byte-for-byte against the live function source; all five matched exactly. The source
+of the Production-only `google-sheets-sync` function is included in that snapshot. It contains environment variable
 references only; no secret values were included. Its live version 3 must remain deployed until
 the owner explicitly approves a replacement. The function reads `OIKKO_SYNC_SECRET`; this
 session cannot inspect the stored Edge Function secret value or verify its presence. Production
