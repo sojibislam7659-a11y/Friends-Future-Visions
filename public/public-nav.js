@@ -73,7 +73,7 @@ async function init(){
  if(brand&&displayName){
   const safeName=displayName.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
   const initials=displayName.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join("").toLocaleUpperCase("en-US");
-  brand.innerHTML=BRAND_LOGO_SVG+'<div class="topbar-identity member-identity-chip"><span class="member-avatar" aria-hidden="true">'+initials+'</span><span class="member-name-wrap"><strong>'+safeName.toLocaleUpperCase("en-US")+'</strong><small>Friends Future Vision Forever</small></span></div>';
+  brand.innerHTML=BRAND_LOGO_SVG+'<div class="topbar-identity"><strong>'+safeName.toLocaleUpperCase("en-US")+'</strong><small>Friends Future Vision Forever</small></div>';
  }
  home.href="dashboard.html";
  setupPublicTheme();
