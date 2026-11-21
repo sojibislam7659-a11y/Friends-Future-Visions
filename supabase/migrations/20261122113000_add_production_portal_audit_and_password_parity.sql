@@ -454,8 +454,8 @@ begin
   if exists (
     select 1 from public.push_subscriptions
     where endpoint !~* '^https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]com|web[.]push[.]apple[.]com|[a-z0-9-]+[.]notify[.]windows[.]com)/'
-       or p256dh !~ '^[A-Za-z0-9_-]{80,100$'
-       or auth_key !~ '^[A-Za-z0-9_-]{16,32$'
+       or p256dh !~ '^[A-Za-z0-9_-]{80,100}$'
+       or auth_key !~ '^[A-Za-z0-9_-]{16,32}$'
        or (user_agent is not null and length(user_agent)>512)
   ) then
     raise exception 'Preflight failed: Production contains invalid push subscription rows';
@@ -468,11 +468,11 @@ alter table public.push_subscriptions
   alter column created_at set default now(),
   alter column updated_at set default now(),
   add constraint push_subscriptions_auth_key_format_check
-    check (auth_key ~ '^[A-Za-z0-9_-]{16,32$'),
+    check (auth_key ~ '^[A-Za-z0-9_-]{16,32}$'),
   add constraint push_subscriptions_endpoint_provider_check
     check (endpoint ~* '^https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]org|web[.]push[.]apple[.]com|[a-z0-9-]+[.]notify[.]windows[.]com)/'),
   add constraint push_subscriptions_p256dh_format_check
-    check (p256dh ~ '^[A-Za-z0-9_-]{80,100$'),
+    check (p256dh ~ '^[A-Za-z0-9_-]{80,100}$'),
   add constraint push_subscriptions_user_agent_length_check
     check (user_agent is null or length(user_agent)<=512);
 
