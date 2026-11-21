@@ -1134,3 +1134,6 @@ body.dark-theme #globalNoticeTicker #globalNoticeTickerText{color:#ff9c9c}
 }
 
 
+
+/* Keep the original logo + member-name lockup visible in every page header. */
+.brand>.topbar-identity{display:flex!important;flex-direction:column;min-width:0}
