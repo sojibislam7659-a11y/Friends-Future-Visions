@@ -8,7 +8,7 @@ declare
   v_is_definer boolean;
   v_has_auth boolean;
   v_has_anon boolean;
-  v_definition text;
+  v_config text[];
   v_name text;
 begin
   foreach v_name in array array[
@@ -48,8 +48,8 @@ begin
     select p.prosecdef,
            has_function_privilege('authenticated', p.oid, 'EXECUTE'),
            has_function_privilege('anon', p.oid, 'EXECUTE'),
-           pg_get_functiondef(p.oid)
-      into v_is_definer, v_has_auth, v_has_anon, v_definition
+           p.proconfig
+      into v_is_definer, v_has_auth, v_has_anon, v_config
     from pg_proc p where p.oid = v_signature;
 
     if not v_is_definer then
@@ -58,7 +58,7 @@ begin
     if not v_has_auth or v_has_anon then
       raise exception 'Unexpected private helper grants: %', v_name;
     end if;
-    if position('search_path TO ''''' in v_definition) = 0 then
+    if not ('search_path=""' = any(coalesce(v_config, array[]::text[]))) then
       raise exception 'Private helper must pin an empty search_path: %', v_name;
     end if;
   end loop;
