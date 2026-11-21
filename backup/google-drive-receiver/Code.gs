@@ -94,8 +94,42 @@ function doPost(e) {
       if (!manifest || manifest.runId !== payload.runId ||
           !Number.isInteger(manifest.totalParts) ||
           manifest.totalParts < 1 || manifest.totalParts > 100 ||
-          !/^[a-f0-9]{64}$/.test(String(manifest.archiveSha256 || ''))) {
+          !/^[a-f0-9]{64}$/.test(String(manifest.archiveSha256 || '')) ||
+          !Array.isArray(manifest.parts) ||
+          manifest.parts.length !== manifest.totalParts ||
+          !Number.isSafeInteger(manifest.totalBytes) || manifest.totalBytes < 1) {
         return json_({ ok: false, error: 'invalid_manifest' });
+      }
+
+      // Fail closed: publish a manifest only after every declared chunk exists
+      // and its byte length and SHA-256 match. The archive-level checksum is
+      // re-checked after download/reassembly by the restore verifier.
+      var verifiedBytes = 0;
+      for (var i = 0; i < manifest.totalParts; i++) {
+        var descriptor = manifest.parts[i];
+        var expectedPart = i + 1;
+        if (!descriptor || descriptor.part !== expectedPart ||
+            !/^[a-f0-9]{64}$/.test(String(descriptor.sha256 || '')) ||
+            !Number.isSafeInteger(descriptor.sizeBytes) ||
+            descriptor.sizeBytes < 1) {
+          return json_({ ok: false, error: 'invalid_manifest_part_' + expectedPart });
+        }
+
+        var partName = 'FFV_' + payload.runId + '_part_' +
+          ('0000' + expectedPart).slice(-4) + '.enc';
+        var partFiles = folder.getFilesByName(partName);
+        if (!partFiles.hasNext()) {
+          return json_({ ok: false, error: 'missing_part_' + expectedPart });
+        }
+        var partBytes = partFiles.next().getBlob().getBytes();
+        if (partBytes.length !== descriptor.sizeBytes ||
+            sha256_(partBytes) !== descriptor.sha256) {
+          return json_({ ok: false, error: 'part_verification_failed_' + expectedPart });
+        }
+        verifiedBytes += partBytes.length;
+      }
+      if (verifiedBytes !== manifest.totalBytes) {
+        return json_({ ok: false, error: 'manifest_total_size_mismatch' });
       }
 
       var manifestName = 'FFV_' + payload.runId + '_manifest.json';
