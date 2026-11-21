@@ -130,7 +130,7 @@ document.getElementById("resetForm").addEventListener("submit",async event=>{
  const email=document.getElementById("email").value.trim().toLowerCase();
  const token=document.getElementById("recoveryCode").value.trim();
  const password=document.getElementById("newPassword").value,confirmPassword=document.getElementById("confirmNewPassword").value;
- if(password.length<8){showResetMessage(lang==="bn"?"পাসওয়ার্ড কমপক্ষে ৮ অক্ষরের হতে হবে।":"Password must be at least 8 characters.");return}
+ if(password.length<12){showResetMessage(lang==="bn"?"পাসওয়ার্ড কমপক্ষে ১২ অক্ষরের হতে হবে।":"Password must be at least 12 characters.");return}
  if(password!==confirmPassword){showResetMessage(lang==="bn"?"দুটি পাসওয়ার্ড এক নয়।":"The passwords do not match.");return}
  const button=document.getElementById("resetButton");button.disabled=true;button.textContent=lang==="bn"?"যাচাই হচ্ছে…":"Verifying…";
  if(!recoverySessionReady){
