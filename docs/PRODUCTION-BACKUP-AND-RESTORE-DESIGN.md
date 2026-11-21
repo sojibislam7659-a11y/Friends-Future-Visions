@@ -37,13 +37,13 @@ Keep the existing Script Properties. Do not paste the folder ID or token into Ch
 
 Files on `release/ffv-prod-parity-20261122`:
 
-- `.github/workflows/backup-production-to-drive.yml` — manual workflow dispatch and a monthly schedule (first day of each month, 03:00 UTC / 09:00 Bangladesh time).
+- `.github/workflows/backup-production-to-drive.yml` — manual workflow dispatch with a harmless `smoke_test` default and a monthly Production schedule (first day of each month, 03:00 UTC / 09:00 Bangladesh time).
 - `scripts/export_supabase_backup.mjs` — exports Auth user metadata and downloads Storage object bytes.
 - `scripts/upload_encrypted_backup.py` — splits an encrypted archive into 8 MiB chunks, uploads each chunk, then submits a manifest with per-part and whole-archive SHA-256 values.
 - `backup/google-drive-receiver/Code.gs` — Apps Script receiver. It accepts authenticated POSTs only, validates chunk sizes and hashes, rejects conflicting duplicates, and stores files in the configured Drive folder. It has no read/list/download/delete endpoint.
 - `backup/production-edge-functions/2026-11-22/` — exact source snapshots of all five live Production Edge Functions. Each saved `index.ts` was independently fetched again and compared byte-for-byte with the live source.
 
-The workflow has not been run. GitHub Actions repository secrets have not been configured. No encrypted archive has been uploaded.
+The workflow has not been run. GitHub Actions repository secrets have not been configured. No encrypted archive has been uploaded. The first manual run is designed to be a harmless smoke test that does not connect to Supabase; only after it succeeds should the owner select Production mode and add the database/service-role secrets.
 
 **Scheduling limitation:** GitHub scheduled workflows run only from the repository's default branch. Manual dispatch can select the release branch now. The monthly schedule will not activate until this workflow is merged to `main` after the restore gate and explicit owner approval. Do not merge solely to activate the schedule.
 
@@ -78,7 +78,7 @@ The Storage object bytes are downloaded separately because database metadata alo
 
 ## 6. Required GitHub Actions repository secrets
 
-Add these under GitHub → repository Settings → Secrets and variables → Actions. **Never paste their values into ChatGPT.**
+Add these under GitHub → repository Settings → Secrets and variables → Actions. **Never paste their values into ChatGPT.** The first `smoke_test` mode needs only the Drive URL, receiver token and encryption passphrase; the database URL and service-role key are required only for `production` mode.
 
 | Secret name | Required value |
 |---|---|
