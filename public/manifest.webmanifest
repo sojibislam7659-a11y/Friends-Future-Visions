@@ -1,0 +1,51 @@
+{
+  "id": "/",
+  "name": "Friends Future Vision Forever",
+  "short_name": "Friends Future",
+  "description": "Friends Future Vision Forever member and savings committee portal",
+  "lang": "bn-BD",
+  "start_url": "/login.html",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "orientation": "portrait-primary",
+  "background_color": "#eaf2e9",
+  "theme_color": "#176653",
+  "icons": [
+    {
+      "src": "/friends-future-standard-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "url": "/dashboard.html",
+      "icons": [
+        {
+          "src": "/friends-future-standard-logo.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    },
+    {
+      "name": "My Statement",
+      "short_name": "Statement",
+      "url": "/statement.html",
+      "icons": [
+        {
+          "src": "/friends-future-standard-logo.svg",
+          "sizes": "any",
+          "type": "image/svg+xml"
+        }
+      ]
+    }
+  ]
+}

@@ -1,16 +1,35 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const cors = {
-  "Access-Control-Allow-Origin": "https://friends-future-visions.sojibislam7659.workers.dev",
+function tokenAal(token: string): string {
+  try {
+    const payload = token.split(".")[1];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
+    return JSON.parse(decoded).aal || "aal1";
+  } catch {
+    return "aal1";
+  }
+}
+
+const allowedOrigins = new Set([
+  "https://friends-future-visions.sojibislam7659.workers.dev",
+  "https://development-friends-future-visions-dev.sojibislam7659.workers.dev"
+]);
+const corsHeaders = (origin: string | null) => ({
+  "Access-Control-Allow-Origin": origin && allowedOrigins.has(origin)
+    ? origin
+    : "https://friends-future-visions.sojibislam7659.workers.dev",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Content-Type": "application/json"
-};
+  "Content-Type": "application/json",
+  "Vary": "Origin"
+});
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
+  const headers = corsHeaders(req.headers.get("origin"));
+  if (req.method === "OPTIONS") return new Response("ok", { headers });
   const json = (body: object, status = 200) =>
-    new Response(JSON.stringify(body), { status, headers: cors });
+    new Response(JSON.stringify(body), { status, headers });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   const url = Deno.env.get("SUPABASE_URL");
@@ -26,6 +45,7 @@ Deno.serve(async (req: Request) => {
   });
   const { data: authData, error: authError } = await admin.auth.getUser(token);
   if (authError || !authData.user) return json({ error: "Invalid session" }, 401);
+  if (tokenAal(token) !== "aal2") return json({ error: "Super Admin MFA verification required" }, 403);
 
   const { data: caller, error: callerError } = await admin
     .from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
@@ -77,14 +97,10 @@ Deno.serve(async (req: Request) => {
     if (matches.length > 1)
       return json({ error: "Multiple member records use this email; resolve duplicates first" }, 409);
 
-    // Super Admin approval is the committee's manual identity check.
-    // This bypasses email ownership verification only after a unique stored member match.
+    // Email ownership verification is required before Super Admin approval.
+    // Admin approval and email verification are independent security checks.
     if (!targetUser.email_confirmed_at) {
-      const { error: confirmError } = await admin.auth.admin.updateUserById(userId, {
-        email_confirm: true
-      });
-      if (confirmError)
-        return json({ error: "Could not enable sign-in for this member", details: confirmError.message }, 502);
+      return json({ error: "Member must verify their email before approval. Ask them to open the latest verification email first." }, 409);
     }
 
     if (action === "approve") {

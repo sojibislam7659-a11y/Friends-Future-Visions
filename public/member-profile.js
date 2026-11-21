@@ -1,6 +1,7 @@
 import "./password-visibility.js";
 import { supabase } from "./supabase-client.js";
 import { requireRole } from "./auth-guard.js";
+import { BRAND_LOGO_SVG } from "./brand-logo.js";
 
 const root=document.getElementById("app");
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -14,7 +15,9 @@ async function compressMemberImage(file,maxBytes){
  if(file.size>20*1024*1024)throw new Error("মূল ছবির সাইজ ২০ MB-এর বেশি।");
  if(typeof createImageBitmap!=="function")return file;
  const bitmap=await createImageBitmap(file);
- const scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));
+ const maxEdge=maxBytes<=5*1024*1024?720:1400;
+ const targetBytes=maxBytes<=5*1024*1024?400*1024:1500*1024;
+ const scale=Math.min(1,maxEdge/Math.max(bitmap.width,bitmap.height));
  const canvas=document.createElement("canvas");
  canvas.width=Math.max(1,Math.round(bitmap.width*scale));
  canvas.height=Math.max(1,Math.round(bitmap.height*scale));
@@ -23,9 +26,9 @@ async function compressMemberImage(file,maxBytes){
  ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
  bitmap.close?.();
  let blob=null;
- for(const quality of [0.82,0.72,0.62,0.52]){
+ for(const quality of [0.92,0.88,0.84,0.80,0.76,0.72]){
   blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/webp",quality));
-  if(blob&&blob.size<=maxBytes*0.9)break;
+  if(blob&&blob.size<=targetBytes)break;
  }
  if(!blob||blob.size>maxBytes)throw new Error("Compress করার পরও ছবির সাইজ Storage সীমার মধ্যে আনা যায়নি।");
  const outputType=blob.type||"image/webp";
@@ -84,10 +87,61 @@ async function main(){
   ["data_consent","তথ্য ব্যবহারের সম্মতি","textarea"],["account_consent","অ্যাকাউন্ট সংক্রান্ত সম্মতি","textarea"]
  ];
  const adminFieldEditor=access.role==="super_admin"
-  ? '<section class="section"><h2>Member তথ্য সম্পাদনা</h2><p class="muted small">এই অংশটি শুধু Super Admin-এর জন্য। Row ID, Auth account link, created_at ও contribution_start_date (rate history) system-managed/read-only; মাসিক জমার হার effective date দিয়ে পরিবর্তন করতে হবে।</p><div class="member-profile-grid">'+editableMemberFields.map(([key,label,type])=>'<div class="field"><label for="edit_'+key+'">'+esc(label)+'</label>'+(type==="textarea"?'<textarea id="edit_'+key+'" data-member-field="'+key+'" rows="2">'+esc(m[key]??"")+'</textarea>':type==="select"?'<select id="edit_'+key+'" data-member-field="'+key+'"><option value="pending" '+(m[key]==="pending"?"selected":"")+'>Pending</option><option value="active" '+(m[key]==="active"?"selected":"")+'>Active</option><option value="inactive" '+(m[key]==="inactive"?"selected":"")+'>Inactive</option></select>':'<input id="edit_'+key+'" data-member-field="'+key+'" type="'+type+'" value="'+esc(m[key]??"")+'">')+'</div>').join("")+'</div><div class="member-profile-grid"><div class="field"><label for="edit_monthly_contribution">মাসিক জমার পরিমাণ (৳)</label><input id="edit_monthly_contribution" type="number" min="1" step="1" value="'+esc(m.monthly_contribution??"")+'"></div><div class="field"><label for="edit_contribution_effective_date">নতুন জমার হার কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="edit_contribution_effective_date" type="date" value="" ></div><div class="field"><label for="edit_profile_photo">Profile Photo (JPG/PNG/WebP)</label><input id="edit_profile_photo" type="file" accept="image/jpeg,image/png,image/webp"></div><div class="field"><label for="edit_nominee_photo">Nominee Photo (JPG/PNG/WebP)</label><input id="edit_nominee_photo" type="file" accept="image/jpeg,image/png,image/webp"></div></div><div class="form-actions"><button class="button" id="saveMemberFields" type="button">Save Changes</button><button class="secondary" id="cancelMemberEditor" type="button">Cancel</button></div></section>'
+  ? '<section class="section"><h2>Member তথ্য সম্পাদনা</h2><p class="muted small">এই অংশটি শুধু Super Admin-এর জন্য। Row ID, Auth account link, created_at ও contribution_start_date (rate history) system-managed/read-only; মাসিক জমার হার effective date দিয়ে পরিবর্তন করতে হবে।</p><div class="member-profile-grid">'+editableMemberFields.map(([key,label,type])=>'<div class="field"><label for="edit_'+key+'">'+esc(label)+'</label>'+(type==="textarea"?'<textarea id="edit_'+key+'" data-member-field="'+key+'" rows="2">'+esc(m[key]??"")+'</textarea>':type==="select"?'<select id="edit_'+key+'" data-member-field="'+key+'"><option value="pending" '+(m[key]==="pending"?"selected":"")+'>Pending</option><option value="active" '+(m[key]==="active"?"selected":"")+'>Active</option><option value="inactive" '+(m[key]==="inactive"?"selected":"")+'>Inactive</option></select>':'<input id="edit_'+key+'" data-member-field="'+key+'" type="'+type+'" value="'+esc(m[key]??"")+'">')+'</div>').join("")+'</div><div class="member-profile-grid"><div class="field"><label for="edit_monthly_contribution">মাসিক জমার পরিমাণ (৳)</label><input id="edit_monthly_contribution" type="number" min="1" step="1" value="'+esc(m.monthly_contribution??2000)+'"></div><div class="field"><label for="edit_contribution_effective_date">নতুন জমার হার কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="edit_contribution_effective_date" type="date" min="2027-01-01" max="2031-12-01" value="" ></div><div class="field"><label for="edit_profile_photo">Profile Photo (JPG/PNG/WebP)</label><input id="edit_profile_photo" type="file" accept="image/jpeg,image/png,image/webp"></div><div class="field"><label for="edit_nominee_photo">Nominee Photo (JPG/PNG/WebP)</label><input id="edit_nominee_photo" type="file" accept="image/jpeg,image/png,image/webp"></div></div><div class="form-actions"><button class="button" id="saveMemberFields" type="button">Save Changes</button><button class="secondary" id="cancelMemberEditor" type="button">Cancel</button></div></section>'
   : "";
  const combinedEditor=access.role==="super_admin" ? '<div id="memberFieldEditor" hidden>'+adminFieldEditor+'</div>' : "";
- root.innerHTML='<div class="shell"><header class="topbar"><div class="brand"><img src="friends-future-vision-logo.svg" alt="Logo"><div><strong>ফ্রেন্ডস ফিউচার ভিশন ফরএভার</strong><small>Friends Future Vision Forever</small></div></div><div class="actions"><a class="button secondary" href="member-info.html">Member Info</a><a class="button secondary" href="dashboard.html">Dashboard</a></div></header><main class="page" style="margin-top:16px"><section class="member-profile-header">'+(photo||'<span class="member-profile-photo member-directory-fallback">FF</span>')+'<div><h1>'+esc(m.full_name_bn||m.full_name||"Member")+'</h1><p class="lead">'+esc(m.member_no||"Member No not assigned")+' · '+esc(m.status)+'</p>'+(m.joining_date?'<p class="muted small">যোগদানের তারিখ: '+esc(dateText(m.joining_date))+'</p>':"")+'</div></section>'+'<div class="grid member-profile-summary">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div>'+sections+nomineePhoto+(m.member_note?'<section class="section"><h2>নোট</h2><p>'+esc(m.member_note)+'</p></section>':"")+'</main>'+(access.role==="super_admin"?'<button class="button" id="toggleMemberEditor" type="button" aria-controls="memberFieldEditor" aria-expanded="false" style="position:fixed;right:18px;bottom:18px;z-index:30;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.22)">✎ Edit Profile</button>':'')+combinedEditor+'<footer class="footer">Friends Future Vision Forever · Secure member profile</footer></div>';
+ const isSuper=access.role==="super_admin";
+ const roleLabel=isSuper?"Super Admin":"Member";
+  let profileLang="bn";try{profileLang=localStorage.getItem("ffv-lang")==="en"?"en":"bn"}catch{}
+ const navIcon=(name)=>{
+  const paths={menu:' <path d="M4 6h16M4 12h16M4 18h16"/>',home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M23 11h-6"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5M10 14l2 2 4-4"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6zM9 12l2 2 4-4"/>'};
+  return '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.data)+'</svg>';
+ };
+ const item=(href,label,ico)=>'<a href="'+href+'">'+navIcon(ico)+'<span>'+label+'</span></a>';
+ const primaryNav=item("dashboard.html","হোম","home")+item("rules.html","RULES","rules")+item("member-info.html","MEMBER INFO","members")+item("data.html","DATA","data")+(isSuper?item("personal-due.html","PERSONAL DUE","due")+item("proof.html","PROOF","proof")+item("payment.html","PAYMENT","payment")+item("admin.html","SUPER ADMIN","admin"):item("personal-due.html","PERSONAL DUE","due")+item("proof.html","PROOF","proof")+item("payment.html","PAYMENT","payment"));
+ const bottomNav='<nav class="mobile-bottom-nav" aria-label="Quick navigation">'+item("dashboard.html","হোম","home")+item("member-info.html","সদস্য","members")+item("rules.html","নিয়ম","rules")+item("data.html","ডাটা","data")+'<button type="button" id="profileMobileMenuBtn" aria-label="Open menu">'+navIcon("menu")+'<span>আরও</span></button></nav>';
+ root.innerHTML='<div class="shell"><header class="topbar member-profile-topbar"><button class="icon-button menu-button" id="profileMenuBtn" type="button" aria-label="Open menu" aria-expanded="false">☰</button><div class="brand topbar-brand">'+BRAND_LOGO_SVG+'<div class="topbar-identity"><strong>'+esc(String(m.full_name_bn||m.full_name||"Member"))+'</strong><small>Friends Future Visions Forever</small></div></div><div class="actions"><span class="role topbar-role">'+roleLabel+'</span></div></header><div class="site-ticker global-site-ticker" id="globalNoticeTicker" role="region" aria-label="Latest notice" hidden><strong class="site-ticker-label">নোটিশ</strong><div class="site-ticker-window"><span id="globalNoticeTickerText"></span></div></div><nav class="nav primary-nav" aria-label="Main navigation">'+primaryNav+'</nav><div class="drawer-backdrop" id="profileDrawerBackdrop" hidden></div><aside class="sidebar-panel" id="profileSidebar" aria-label="Main navigation" hidden><div class="sidebar-head"><a class="sidebar-brand" href="dashboard.html">'+BRAND_LOGO_SVG.replaceAll("ffvTopArcGrad","ffvTopArcGradSidebar")+'<span><strong>'+esc(String(m.full_name_bn||m.full_name||"Member"))+'</strong><small>'+roleLabel+'</small></span></a><button class="icon-button drawer-close" id="profileCloseMenu" type="button" aria-label="Close menu">×</button></div><nav class="nav sidebar-nav">'+primaryNav+'</nav><div class="sidebar-footer"><div class="sidebar-account"><span class="account-role">'+roleLabel+'</span><span class="account-email">'+esc(access.session.user.email||"")+'</span></div><button class="secondary" id="profileThemeToggle" type="button">Dark / Light</button><button class="secondary" id="profileLanguageToggle" type="button">'+(profileLang==="bn"?"English":"বাংলা")+'</button>'+(isSuper?'<a class="secondary" href="member-info.html">Member Info</a>':'')+'<button class="secondary" id="profileLogoutBtn" type="button">লগআউট</button></div></aside><main class="page" id="memberProfileContent" style="margin-top:12px"><section class="member-profile-header">'+(photo||'<span class="member-profile-photo member-directory-fallback">FF</span>')+'<div><h1>'+esc(m.full_name_bn||m.full_name||"Member")+'</h1><p class="lead">'+esc(m.member_no||"Member No not assigned")+' · '+esc(m.status)+'</p>'+(m.joining_date?'<p class="muted small">যোগদানের তারিখ: '+esc(dateText(m.joining_date))+'</p>':"")+'</div></section>'+'<div class="grid member-profile-summary">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"৳2,000 (default)")+'</div>'+sections+nomineePhoto+(m.member_note?'<section class="section"><h2>নোট</h2><p>'+esc(m.member_note)+'</p></section>':'')+'</main>'+(access.role==="super_admin"?'<button class="button" id="toggleMemberEditor" type="button" aria-controls="memberFieldEditor" aria-expanded="false" style="position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:30;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,.22)">✎ Edit Profile</button>':'')+combinedEditor+'<footer class="footer">Friends Future Visions Forever · Secure member profile</footer>'+bottomNav+'</div>';
+
+ let profileTheme="light";try{profileTheme=localStorage.getItem("ffv-theme")==="dark"?"dark":"light"}catch{}
+ document.body.classList.toggle("dark-theme",profileTheme==="dark");
+ const themeButton=document.getElementById("profileThemeToggle");
+ themeButton?.addEventListener("click",()=>{const next=document.body.classList.contains("dark-theme")?"light":"dark";document.body.classList.toggle("dark-theme",next==="dark");try{localStorage.setItem("ffv-theme",next)}catch{}themeButton.textContent=next==="dark"?"☀ Light":"☾ Dark"});
+  document.getElementById("profileLanguageToggle")?.addEventListener("click",()=>{const next=profileLang==="bn"?"en":"bn";try{localStorage.setItem("ffv-lang",next)}catch{}location.reload()});
+ const sidebar=document.getElementById("profileSidebar"),backdrop=document.getElementById("profileDrawerBackdrop");
+ const closeMenu=()=>{sidebar.hidden=true;backdrop.hidden=true;document.getElementById("profileMenuBtn")?.setAttribute("aria-expanded","false");document.getElementById("profileMobileMenuBtn")?.setAttribute("aria-expanded","false")};
+ const toggleMenu=()=>{const open=sidebar.hidden;closeMenu();sidebar.hidden=!open;backdrop.hidden=!open;document.getElementById("profileMenuBtn")?.setAttribute("aria-expanded",String(open));document.getElementById("profileMobileMenuBtn")?.setAttribute("aria-expanded",String(open))};
+ document.getElementById("profileMenuBtn")?.addEventListener("click",toggleMenu);
+ document.getElementById("profileMobileMenuBtn")?.addEventListener("click",toggleMenu);
+ document.getElementById("profileCloseMenu")?.addEventListener("click",closeMenu);
+ backdrop?.addEventListener("click",closeMenu);
+ sidebar?.querySelectorAll("a").forEach(link=>link.addEventListener("click",closeMenu));
+ document.getElementById("profileLogoutBtn")?.addEventListener("click",async()=>{const {error}=await supabase.auth.signOut();if(error)alert(error.message);else location.replace("login.html")});
+ const ticker=document.getElementById("globalNoticeTicker"),tickerText=document.getElementById("globalNoticeTickerText");
+ try{
+  let notice="";
+  const noticeResult=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();
+  if(!noticeResult.error&&noticeResult.data)notice=String(noticeResult.data.body||noticeResult.data.title||"").trim();
+  if(!notice){
+   const settingsResult=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
+   if(!settingsResult.error){const settings=Object.fromEntries((settingsResult.data||[]).map(row=>[row.setting_key,row.setting_value]));if(settings.ticker_enabled!=="false")notice=String(settings.ticker_message||"").trim()}
+  }
+  if(notice&&ticker&&tickerText){tickerText.textContent=notice;ticker.hidden=false}
+ }catch(error){console.warn("Member profile notice ticker unavailable",error)}
+
+ document.querySelectorAll("[data-export-action]").forEach(button=>button.addEventListener("click",async()=>{
+  const action=button.dataset.exportAction,original=button.textContent;button.disabled=true;button.textContent="তৈরি হচ্ছে…";
+  try{
+   const tools=await import("./export-tools.js");
+   if(action==="page-xlsx")await tools.exportCurrentPage("xlsx");
+   else if(action==="page-docx")await tools.exportCurrentPage("docx");
+   else{
+    if(!confirm("সম্পূর্ণ Website Export-এ সদস্যদের ব্যক্তিগত তথ্য ও আর্থিক রেকর্ড থাকবে। ফাইলটি নিরাপদে রাখবেন। চালিয়ে যাবেন?"))return;
+    await tools.exportFullWebsite(supabase,action==="full-docx"?"docx":"xlsx");
+   }
+   alert("Export file তৈরি হয়েছে। Download folder পরীক্ষা করুন।");
+  }catch(error){console.error(error);alert("Export ব্যর্থ: "+(error.message||"Unknown error"))}
+  finally{button.disabled=false;button.textContent=original}
+ }));
  if(access.role==="super_admin"){
   const editor=document.getElementById("memberFieldEditor");
   const editorToggle=document.getElementById("toggleMemberEditor");
@@ -118,11 +172,11 @@ async function main(){
    }
    const monthlyInput=document.getElementById("edit_monthly_contribution");
    const effectiveInput=document.getElementById("edit_contribution_effective_date");
-   const monthlyChanged=Boolean(monthlyInput&&(monthlyInput.value!==String(m.monthly_contribution??"")||effectiveInput?.value));
+   const monthlyChanged=Boolean(monthlyInput&&(monthlyInput.value!==String(m.monthly_contribution??2000)||effectiveInput?.value));
    if(monthlyChanged){
     const amount=Number(monthlyInput.value),effective=effectiveInput.value;
     if(!Number.isFinite(amount)||amount<=0){alert("মাসিক জমার পরিমাণ শূন্যের বেশি হতে হবে।");monthlyInput.focus();return}
-    if(!effective||effective.length!==10||!effective.endsWith("-01")||effective<"2026-12-01"||effective>="2031-12-01"){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ এবং Dec 2026–Nov 2031-এর মধ্যে হতে হবে।");effectiveInput.focus();return}
+    if(!effective||effective.length!==10||!effective.endsWith("-01")||effective<"2027-01-01"||effective>="2032-01-01"){alert("কার্যকর হওয়ার তারিখ মাসের ১ তারিখ এবং Jan 2027–Dec 2031-এর মধ্যে হতে হবে।");effectiveInput.focus();return}
    }
    const profileFile=document.getElementById("edit_profile_photo")?.files?.[0]||null;
    const nomineeFile=document.getElementById("edit_nominee_photo")?.files?.[0]||null;
@@ -174,6 +228,7 @@ async function main(){
     button.disabled=false;
    }
   });
+  if(new URLSearchParams(location.search).get("edit")==="1")editorToggle?.click();
 
  }
 }
