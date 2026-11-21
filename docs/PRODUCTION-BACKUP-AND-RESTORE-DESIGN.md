@@ -110,7 +110,7 @@ A successful upload is not a restore test. Restore rehearsal must use an isolate
 5. Download the chunks, reassemble and verify the archive checksum.
 6. Decrypt and inspect the PostgreSQL dump; restore into an isolated Supabase project or local PostgreSQL rehearsal environment.
 7. Verify Auth metadata, Storage object hashes, Edge Function source and required secrets/configuration.
-8. Only after a successful restore rehearsal may the owner approve Production migrations, Edge Function deployment and merge to `main`.
+8. Only after a successful restore rehearsal, merge/deploy the login-only MFA bootstrap draft PR #10, then have the Production Super Admin enroll and verify TOTP. Apply the ordered Production migrations only after the verified factor exists. The full parity branch and Edge Function rollout remain separate approvals.
 
 ## 9. Website “Backup Now” button
 
