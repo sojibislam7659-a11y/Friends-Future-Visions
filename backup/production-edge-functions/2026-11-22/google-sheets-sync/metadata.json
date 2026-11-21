@@ -1,0 +1,12 @@
+{
+  "name": "google-sheets-sync",
+  "slug": "google-sheets-sync",
+  "status": "ACTIVE",
+  "version": 3,
+  "verify_jwt": false,
+  "entrypoint_path": "/tmp/user_fn_ugtzmtmsfaajclftfeuz_e34bc2b2-91f0-4e53-9a35-f9d8612e7ca5_2/source/index.ts",
+  "sha256": "e4ecf483b3c88a43f601a8b3875fce37c091e963efeb953441414a9a374b5036",
+  "exported_at": "2026-11-22",
+  "source_project": "ugtzmtmsfaajclftfeuz",
+  "secrets_not_included": true
+}
