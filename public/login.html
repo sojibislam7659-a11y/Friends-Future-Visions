@@ -48,6 +48,8 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
 .login a{color:#087fbd;font-weight:700;text-decoration:none}
 .login a:hover{text-decoration:underline}
 .login [hidden]{display:none!important}
+.mfa-qr{display:block;width:min(220px,100%);height:auto;margin:12px auto;padding:10px;background:#fff;border:1px solid #dce6ee;border-radius:12px}
+#mfaSecret{display:block;overflow-wrap:anywhere;padding:10px;background:#f3f7fa;border-radius:8px;color:#092d50}
 @media(max-width:480px){body{padding:14px}.login{border-radius:20px}.login .brand{margin-bottom:26px}}
 </style>
 </head>
@@ -92,6 +94,20 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
    <button class="submit" id="requiredPasswordButton" type="submit">Password পরিবর্তন করুন</button>
    <div class="message" id="requiredPasswordMessage" role="alert"></div>
   </form>
+ </section>
+ <section id="superAdminMfaPanel" hidden>
+  <h1>Super Admin নিরাপত্তা যাচাই</h1>
+  <p class="muted intro" id="mfaInstruction">Authenticator App দিয়ে যাচাই করুন।</p>
+  <img id="mfaQrCode" class="mfa-qr" alt="Authenticator setup QR code" hidden>
+  <p id="mfaSecretWrap" class="small" hidden>Manual setup key: <code id="mfaSecret"></code></p>
+  <form id="mfaForm">
+   <label for="mfaCode">Authenticator-এর ৬ সংখ্যার Code</label>
+   <input id="mfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" required>
+   <button class="submit" id="mfaVerifyButton" type="submit">Verify করে প্রবেশ করুন</button>
+   <div class="message" id="mfaMessage" role="alert"></div>
+  </form>
+  <p class="small">এই QR/Secret কাউকে দেবেন না। দ্বিতীয় একটি authenticator device-এ backup factor যোগ করার ব্যবস্থা পরে Security Settings-এ থাকবে।</p>
+  <button id="mfaSignOut" type="button" class="language-toggle">Sign out</button>
  </section>
  <div class="security-note"><span class="security-dot"></span><span data-i18n="security">শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন</span></div>
  <p class="small" data-i18n="privacy">আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।</p>
