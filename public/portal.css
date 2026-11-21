@@ -1137,3 +1137,45 @@ body.dark-theme #globalNoticeTicker #globalNoticeTickerText{color:#ff9c9c}
 
 /* Keep the original logo + member-name lockup visible in every page header. */
 .brand>.topbar-identity{display:flex!important;flex-direction:column;min-width:0}
+
+/* Data and Rules only: match the standard sidebar and its compact 2x2 footer. */
+body[data-page="data"] .public-drawer,
+body[data-page="rules"] .public-drawer{
+ background:linear-gradient(120deg,#FFF0EB 0%,#FBD8CE 100%);
+ color:#0C2C4C;
+ border-color:rgba(12,44,76,.16);
+}
+body[data-page="data"] .public-drawer-head,
+body[data-page="rules"] .public-drawer-head,
+body[data-page="data"] .public-drawer-footer,
+body[data-page="rules"] .public-drawer-footer{border-color:rgba(12,44,76,.16)}
+body[data-page="data"] .public-drawer-nav a,
+body[data-page="rules"] .public-drawer-nav a{
+ min-height:42px;padding:9px 11px;gap:11px;border:1px solid rgba(12,44,76,.13);
+ border-radius:10px;background:rgba(255,255,255,.52);color:#173d31;font-size:12px;font-weight:700
+}
+body[data-page="data"] .public-drawer-nav a.active,
+body[data-page="rules"] .public-drawer-nav a.active{background:rgba(8,124,193,.13);border-color:rgba(8,124,193,.28);color:#082D50}
+body[data-page="data"] .public-drawer-footer,
+body[data-page="rules"] .public-drawer-footer{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding-top:14px}
+body[data-page="data"] .public-drawer-footer button,
+body[data-page="data"] .public-drawer-footer a,
+body[data-page="rules"] .public-drawer-footer button,
+body[data-page="rules"] .public-drawer-footer a{
+ width:100%;min-width:0;min-height:38px;display:flex;align-items:center;justify-content:center;
+ padding:7px 8px;border-radius:9px;font-size:11px;font-weight:750;white-space:nowrap
+}
+body[data-page="data"] .public-drawer-footer .public-theme-toggle,
+body[data-page="rules"] .public-drawer-footer .public-theme-toggle{grid-column:1}
+body[data-page="data"] .public-drawer-footer .public-drawer-export,
+body[data-page="data"] .public-drawer-footer .public-drawer-statement,
+body[data-page="rules"] .public-drawer-footer .public-drawer-export,
+body[data-page="rules"] .public-drawer-footer .public-drawer-statement{grid-column:2}
+body[data-page="data"] .public-drawer-footer .public-drawer-install,
+body[data-page="data"] .public-drawer-footer .public-drawer-logout,
+body[data-page="rules"] .public-drawer-footer .public-drawer-install,
+body[data-page="rules"] .public-drawer-footer .public-drawer-logout{grid-row:2}
+body[data-page="data"] .public-drawer-footer .public-drawer-install,
+body[data-page="rules"] .public-drawer-footer .public-drawer-install{grid-column:1}
+body[data-page="data"] .public-drawer-footer .public-drawer-logout,
+body[data-page="rules"] .public-drawer-footer .public-drawer-logout{grid-column:2}
