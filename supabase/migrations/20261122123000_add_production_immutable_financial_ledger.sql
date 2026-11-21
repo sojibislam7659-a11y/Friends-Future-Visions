@@ -690,6 +690,142 @@ revoke all on function private.get_financial_summary_unchecked() from public,ano
 revoke all on function private.get_financial_summary() from public,anon,service_role;
 grant execute on function private.get_financial_summary() to authenticated;
 
+-- Member shared contribution matrix v2: reversal-aware, monthly due and
+-- role-gated. This is the RPC used by the Development DATA page.
+CREATE OR REPLACE FUNCTION private.get_member_shared_financial_data_v2()
+ RETURNS TABLE(member_id uuid, member_no text, full_name text, full_name_bn text, contribution_month date, amount numeric, paid_day integer, last_paid_at timestamp with time zone, total_paid numeric, total_due numeric, due_configured boolean, has_manual boolean, matrix_count integer, paid_date date)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+BEGIN
+  IF (SELECT auth.uid()) IS NULL THEN
+    RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
+  END IF;
+  IF NOT (SELECT private.has_portal_access()) THEN
+    RAISE EXCEPTION 'Member access required' USING ERRCODE = '42501';
+  END IF;
+  RETURN QUERY
+  WITH active_members AS (
+    SELECT m.id,m.member_no::text,m.full_name::text,m.full_name_bn::text,
+      greatest(date '2027-01-01',date_trunc('month',coalesce(m.contribution_start_date,m.joined_at))::date) AS contribution_start
+    FROM public.members m WHERE m.status='active'
+  ),
+  month_grid AS (
+    SELECT am.*,gs.month_start::date AS month_start
+    FROM active_members am
+    CROSS JOIN generate_series(date '2027-01-01',date '2031-12-01',interval '1 month') gs(month_start)
+  ),
+  attributed AS (
+    SELECT t.*,
+      CASE
+        WHEN split_part(t.reference_no,'|',1)='FFV_MATRIX' AND split_part(t.reference_no,'|',2) ~ '^[0-9]{4}-[0-9]{2}
+before update or delete on public.financial_transactions
+for each row execute function private.prevent_ledger_mutation();
+create trigger prevent_financial_posting_mutation
+before update or delete on public.financial_postings
+for each row execute function private.prevent_ledger_mutation();
+create constraint trigger validate_financial_transfer_group
+after insert on public.financial_transactions
+deferrable initially deferred
+for each row execute function private.validate_transfer_group();
+
+
+revoke all on function private.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) from public,anon;
+revoke all on function private.reverse_financial_posting(uuid,uuid,text) from public,anon;
+revoke all on function private.correct_financial_transactions(uuid,jsonb) from public,anon;
+revoke all on function private.review_payment_submission(uuid,boolean,text,text) from public,anon;
+grant execute on function private.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) to authenticated,service_role;
+grant execute on function private.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
+grant execute on function private.correct_financial_transactions(uuid,jsonb) to authenticated;
+grant execute on function private.review_payment_submission(uuid,boolean,text,text) to authenticated,service_role;
+
+revoke all on function public.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) from public,anon;
+revoke all on function public.reverse_financial_posting(uuid,uuid,text) from public,anon;
+revoke all on function public.correct_financial_transactions(uuid,jsonb) from public,anon;
+grant execute on function public.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) to authenticated,service_role;
+grant execute on function public.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
+grant execute on function public.correct_financial_transactions(uuid,jsonb) to authenticated;
+
+revoke all on function private.prevent_ledger_mutation() from public,anon,authenticated;
+revoke all on function private.validate_transfer_group() from public,anon,authenticated;
+commit;
+
+        THEN to_date(split_part(t.reference_no,'|',2)||'-01','YYYY-MM-DD')
+        ELSE date_trunc('month',t.transaction_date)::date
+      END AS contribution_month_key
+    FROM public.financial_transactions t
+    WHERE t.transaction_type='contribution' AND t.direction='in'
+      AND NOT EXISTS(SELECT 1 FROM public.financial_transactions r WHERE r.reversal_of_id=t.id)
+  ),
+  contributions AS (
+    SELECT a.member_id,a.contribution_month_key AS month_start,
+      sum(a.amount)::numeric AS amount,
+      max(a.transaction_date)::date AS paid_date,
+      max(coalesce(a.updated_at,a.created_at)) AS last_paid_at,
+      bool_or(coalesce(a.reference_no,'') NOT LIKE 'FFV_MATRIX|%') AS has_manual,
+      count(*) FILTER(WHERE coalesce(a.reference_no,'') LIKE 'FFV_MATRIX|%')::integer AS matrix_count
+    FROM attributed a
+    WHERE a.contribution_month_key >= date '2027-01-01'
+      AND a.contribution_month_key < date '2032-01-01'
+    GROUP BY a.member_id,a.contribution_month_key
+  ),
+  today AS (SELECT (now() AT TIME ZONE 'Asia/Dhaka')::date AS local_today),
+  expected AS (
+    SELECT mg.id AS member_id,sum(coalesce(rate.monthly_amount,2000))::numeric AS expected
+    FROM month_grid mg CROSS JOIN today t
+    LEFT JOIN LATERAL (
+      SELECT cr.monthly_amount FROM public.member_contribution_rates cr
+      WHERE cr.member_id=mg.id
+        AND cr.effective_from <= (mg.month_start + interval '1 month - 1 day')::date
+        AND (cr.effective_to IS NULL OR cr.effective_to >= mg.month_start)
+      ORDER BY cr.effective_from DESC LIMIT 1
+    ) rate ON true
+    WHERE mg.month_start <= date_trunc('month',t.local_today)::date
+      AND mg.month_start >= mg.contribution_start
+    GROUP BY mg.id
+  ),
+  paid AS (
+    SELECT a.member_id,sum(a.amount)::numeric AS total_paid FROM attributed a
+    WHERE a.contribution_month_key >= date '2027-01-01'
+      AND a.contribution_month_key < date '2032-01-01'
+    GROUP BY a.member_id
+  ),
+  paid_to_date AS (
+    SELECT a.member_id,sum(a.amount)::numeric AS paid_to_date
+    FROM attributed a CROSS JOIN today t
+    WHERE a.contribution_month_key >= date '2027-01-01'
+      AND a.contribution_month_key <= date_trunc('month',t.local_today)::date
+    GROUP BY a.member_id
+  ),
+  configured AS (SELECT id AS member_id FROM public.members WHERE status='active')
+  SELECT mg.id,mg.member_no,mg.full_name,mg.full_name_bn,mg.month_start,
+    coalesce(c.amount,0)::numeric,extract(day from c.paid_date)::integer,
+    CASE WHEN (SELECT private.is_super_admin()) THEN c.last_paid_at ELSE NULL::timestamptz END,
+    coalesce(p.total_paid,0)::numeric,
+    greatest(0,coalesce(e.expected,0)-coalesce(ptd.paid_to_date,0))::numeric,
+    (cfg.member_id IS NOT NULL),coalesce(c.has_manual,false),coalesce(c.matrix_count,0),c.paid_date
+  FROM month_grid mg
+  LEFT JOIN contributions c ON c.member_id=mg.id AND c.month_start=mg.month_start
+  LEFT JOIN expected e ON e.member_id=mg.id
+  LEFT JOIN paid p ON p.member_id=mg.id
+  LEFT JOIN paid_to_date ptd ON ptd.member_id=mg.id
+  LEFT JOIN configured cfg ON cfg.member_id=mg.id
+  ORDER BY mg.member_no,mg.month_start;
+END;
+$function$;
+CREATE OR REPLACE FUNCTION public.get_member_shared_financial_data_v2()
+ RETURNS TABLE(member_id uuid, member_no text, full_name text, full_name_bn text, contribution_month date, amount numeric, paid_day integer, last_paid_at timestamp with time zone, total_paid numeric, total_due numeric, due_configured boolean, has_manual boolean, matrix_count integer, paid_date date)
+ LANGUAGE sql
+ SET search_path TO ''
+AS $function$
+  SELECT * FROM private.get_member_shared_financial_data_v2();
+$function$;
+revoke all on function private.get_member_shared_financial_data_v2() from public,anon,service_role;
+grant execute on function private.get_member_shared_financial_data_v2() to authenticated;
+revoke all on function public.get_member_shared_financial_data_v2() from public,anon;
+grant execute on function public.get_member_shared_financial_data_v2() to authenticated,service_role;
+
 create trigger prevent_financial_transaction_mutation
 before update or delete on public.financial_transactions
 for each row execute function private.prevent_ledger_mutation();
