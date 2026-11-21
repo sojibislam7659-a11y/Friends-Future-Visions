@@ -153,12 +153,26 @@ async function loadGlobalNoticeTicker(){
  const ticker=document.getElementById("globalNoticeTicker"),textNode=document.getElementById("globalNoticeTickerText");
  if(!ticker||!textNode)return;
  try{
-  const {data,error}=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();
-  if(error)throw error;
-  if(!data)return;
-  textNode.textContent=data.body||data.title||"";
+  let message="";
+  // The Super Admin notice editor publishes to public.notices.
+  const noticeResult=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();
+  if(!noticeResult.error&&noticeResult.data)message=String(noticeResult.data.body||noticeResult.data.title||"").trim();
+  // Compatibility fallback for installations where the original ticker settings are still populated.
+  if(!message){
+   const settingsResult=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
+   if(!settingsResult.error){
+    const settings=Object.fromEntries((settingsResult.data||[]).map(row=>[row.setting_key,row.setting_value]));
+    if(settings.ticker_enabled!=="false")message=String(settings.ticker_message||"").trim();
+   }
+  }
+  if(!message){ticker.hidden=true;return}
+  textNode.textContent=message;
+  textNode.classList.add("notice-marquee-text");
   ticker.hidden=false;
- }catch(error){console.warn("Global notice ticker unavailable",error)}
+ }catch(error){
+  console.warn("Global notice ticker unavailable",error);
+  ticker.hidden=true;
+ }
 }
 async function loadHeaderIdentity(){
  let name=access.profile?.full_name||"";
