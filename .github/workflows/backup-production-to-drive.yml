@@ -2,6 +2,15 @@ name: Encrypted Production Backup to Google Drive
 
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "Run a harmless receiver test first; choose Production only after it passes."
+        type: choice
+        options:
+          - smoke_test
+          - production
+        default: smoke_test
+        required: true
   schedule:
     - cron: "0 3 1 * *"
 
@@ -14,10 +23,11 @@ concurrency:
 
 jobs:
   backup:
-    name: Export, encrypt and upload Production backup
+    name: Export, encrypt and upload
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
+      FFV_BACKUP_MODE: ${{ github.event_name == 'schedule' && 'production' || inputs.mode || 'smoke_test' }}
       FFV_PROD_DATABASE_URL: ${{ secrets.FFV_PROD_DATABASE_URL }}
       FFV_PROD_SUPABASE_URL: https://ugtzmtmsfaajclftfeuz.supabase.co
       FFV_PROD_SERVICE_ROLE_KEY: ${{ secrets.FFV_PROD_SERVICE_ROLE_KEY }}
@@ -34,19 +44,20 @@ jobs:
         run: |
           set -euo pipefail
           missing=()
-          [[ -n "$FFV_PROD_DATABASE_URL" ]] || missing+=("FFV_PROD_DATABASE_URL")
-          [[ -n "$FFV_PROD_SERVICE_ROLE_KEY" ]] || missing+=("FFV_PROD_SERVICE_ROLE_KEY")
           [[ -n "$FFV_DRIVE_RECEIVER_URL" ]] || missing+=("FFV_DRIVE_RECEIVER_URL")
           [[ -n "$FFV_BACKUP_TOKEN" ]] || missing+=("FFV_BACKUP_TOKEN")
           [[ -n "$BACKUP_ENCRYPTION_PASSPHRASE" ]] || missing+=("BACKUP_ENCRYPTION_PASSPHRASE")
+          if [[ "$FFV_BACKUP_MODE" == "production" ]]; then
+            [[ -n "$FFV_PROD_DATABASE_URL" ]] || missing+=("FFV_PROD_DATABASE_URL")
+            [[ -n "$FFV_PROD_SERVICE_ROLE_KEY" ]] || missing+=("FFV_PROD_SERVICE_ROLE_KEY")
+          elif [[ "$FFV_BACKUP_MODE" != "smoke_test" ]]; then
+            echo "::error::Unsupported backup mode."
+            exit 1
+          fi
           if (( ${#missing[@]} )); then
             printf '::error::Missing repository secrets: %s\n' "${missing[*]}"
             exit 1
           fi
-          case "$FFV_PROD_DATABASE_URL" in
-            *ugtzmtmsfaajclftfeuz*) ;;
-            *) echo "::error::Database URL does not identify the Production project."; exit 1 ;;
-          esac
           [[ "$FFV_DRIVE_RECEIVER_URL" == https://script.google.com/macros/s/*/exec ]] || {
             echo "::error::Drive receiver URL is not an Apps Script /exec URL."
             exit 1
@@ -55,6 +66,13 @@ jobs:
             echo "::error::Drive receiver token is too short."
             exit 1
           }
+          if [[ "$FFV_BACKUP_MODE" == "production" ]]; then
+            case "$FFV_PROD_DATABASE_URL" in
+              *ugtzmtmsfaajclftfeuz*) ;;
+              *) echo "::error::Database URL does not identify the Production project."; exit 1 ;;
+            esac
+          fi
+          echo "Backup mode: $FFV_BACKUP_MODE"
 
       - name: Create private working directories
         run: |
@@ -62,7 +80,18 @@ jobs:
           mkdir -p backup-output/project
           chmod 700 backup-output backup-output/project
 
+      - name: Create harmless receiver smoke-test payload
+        if: env.FFV_BACKUP_MODE == 'smoke_test'
+        run: |
+          cat > backup-output/project/SMOKE_TEST_ONLY.txt <<EOF
+          FFV encrypted Drive receiver smoke test.
+          This archive contains no database, Auth, Storage or member data.
+          Workflow run: $GITHUB_RUN_ID
+          Created: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+          EOF
+
       - name: Dump Production public and private database schemas
+        if: env.FFV_BACKUP_MODE == 'production'
         shell: bash
         run: |
           set -euo pipefail
@@ -79,9 +108,11 @@ jobs:
           test -s backup-output/project/database-toc.txt
 
       - name: Export Auth metadata and every Storage object
+        if: env.FFV_BACKUP_MODE == 'production'
         run: node scripts/export_supabase_backup.mjs backup-output/project
 
       - name: Export non-secret database configuration inventory
+        if: env.FFV_BACKUP_MODE == 'production'
         shell: bash
         run: |
           set -euo pipefail
@@ -104,6 +135,7 @@ jobs:
           test -s backup-output/project/config-inventory.json
 
       - name: Include verified Production Edge Function source snapshot
+        if: env.FFV_BACKUP_MODE == 'production'
         run: |
           set -euo pipefail
           mkdir -p backup-output/project/edge-functions-source
@@ -116,7 +148,7 @@ jobs:
         run: |
           set -euo pipefail
           umask 077
-          archive="backup-output/ffv-production-${GITHUB_RUN_ID}.tar.gz"
+          archive="backup-output/ffv-${FFV_BACKUP_MODE}-${GITHUB_RUN_ID}.tar.gz"
           encrypted="${archive}.gpg"
           tar -czf "$archive" -C backup-output/project .
           printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" > "$RUNNER_TEMP/ffv-backup-passphrase"
