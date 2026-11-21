@@ -18,7 +18,7 @@ test("Development member can sign in and load the member dashboard", async ({ pa
 
   await expect(page).toHaveURL(/dashboard(?:\.html)?(?:$|[?#])/, { timeout: 30000 });
   await expect(page.locator("body")).toHaveAttribute("data-page", "dashboard");
-  await expect(page.locator("#app")).not.toContainText("লোড হচ্ছে…", { timeout: 30000 });
+  await expect(page.locator("#app")).toContainText("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ", { timeout: 30000 });
   await expect(page.locator("#app")).not.toContainText("প্রবেশ যাচাই করা যায়নি");
 
   expect(pageErrors, "Browser JavaScript errors detected").toEqual([]);
