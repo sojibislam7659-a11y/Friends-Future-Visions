@@ -1,6 +1,6 @@
 # Supabase migration source of truth
 
-The 60 SQL files in this directory are synchronized with the Development project's
+The 61 SQL files in this directory are synchronized with the Development project's
 `supabase_migrations.schema_migrations` history as of 2026-11-21.
 
 Before applying a new schema change:
