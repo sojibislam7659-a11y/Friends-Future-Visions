@@ -172,8 +172,8 @@ These files are staged only on the release branch. None has been applied to Deve
 
 ## Current validation status
 
-- GitHub Actions Release static checks pass on the latest tested commit.
-- PostgreSQL grammar parser passed 61 standalone migration files. One historical file, `20261119190618_use_invoker_for_financial_summary_20261120.sql`, is explicitly excluded because it is a non-standalone PL/pgSQL body fragment rather than executable migration SQL; it was left unchanged.
+- GitHub Actions Release static checks pass on commit `f28129536bd2a88b7f61ffb1b34aad184b83f86d` (run `44949825494`).
+- PostgreSQL grammar parser passed 63 standalone migration files and 2 verification files. One historical file, `20261119190618_use_invoker_for_financial_summary_20261120.sql`, is explicitly excluded because it is a non-standalone PL/pgSQL body fragment rather than executable migration SQL; it was left unchanged.
 - SQL grammar validation does not execute function bodies or replace runtime/JWT tests.
 
 ## Required acceptance tests
