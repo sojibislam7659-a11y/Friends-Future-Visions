@@ -81,6 +81,18 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
    <div class="message" id="resetMessage" role="status" aria-live="polite"></div>
   </form>
  </section>
+ <section id="mandatoryPasswordPanel" hidden>
+  <h1>প্রথম লগইনে নতুন Password সেট করুন</h1>
+  <p class="muted intro">Super Admin দেওয়া temporary password নিরাপত্তার জন্য বদলে নিজের নতুন Password সেট করুন।</p>
+  <form id="mandatoryPasswordForm">
+   <label for="requiredNewPassword">নতুন Password (কমপক্ষে ১২ অক্ষর)</label>
+   <input id="requiredNewPassword" type="password" autocomplete="new-password" minlength="12" required>
+   <label for="requiredConfirmPassword">নতুন Password আবার লিখুন</label>
+   <input id="requiredConfirmPassword" type="password" autocomplete="new-password" minlength="12" required>
+   <button class="submit" id="requiredPasswordButton" type="submit">Password পরিবর্তন করুন</button>
+   <div class="message" id="requiredPasswordMessage" role="alert"></div>
+  </form>
+ </section>
  <div class="security-note"><span class="security-dot"></span><span data-i18n="security">শুধু অনুমোদিত সদস্য ও অ্যাডমিন প্রবেশ করতে পারবেন</span></div>
  <p class="small" data-i18n="privacy">আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।</p>
  <p class="small" style="text-align:center;margin-top:14px"><span data-i18n="newMember">নতুন সদস্য?</span> <a href="signup.html" data-i18n="createAccount">নিজে অ্যাকাউন্ট তৈরি করুন</a></p>
