@@ -16,7 +16,7 @@ test("Development member can sign in and load the member dashboard", async ({ pa
   await page.locator("#password").fill(password);
   await page.locator("#loginButton").click();
 
-  await expect(page).toHaveURL(/dashboard\\.html(?:$|[?#])/, { timeout: 30000 });
+  await expect(page).toHaveURL(/dashboard\.html(?:$|[?#])/, { timeout: 30000 });
   await expect(page.locator("body")).toHaveAttribute("data-page", "dashboard");
   await expect(page.locator("#app")).not.toContainText("লোড হচ্ছে…", { timeout: 30000 });
   await expect(page.locator("#app")).not.toContainText("প্রবেশ যাচাই করা যায়নি");
