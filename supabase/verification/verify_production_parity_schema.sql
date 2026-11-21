@@ -160,6 +160,19 @@ begin
     raise exception 'Internal admin helper RPCs are exposed to authenticated clients';
   end if;
 
+  select pg_get_functiondef('private.notify_notice_recipients()'::regprocedure) into v_def;
+  if v_def not like '%m.status=''active''%' or v_def not like '%p.role=''super_admin''%' then
+    raise exception 'Notice recipient filtering does not match active-member/Super Admin rules';
+  end if;
+  select pg_get_functiondef('private.set_member_contribution_rate(uuid,numeric,date)'::regprocedure) into v_def;
+  if v_def not like '%2027-01-01%' or v_def not like '%2031-12-01%' then
+    raise exception 'Member contribution rate accounting window is not aligned with Development';
+  end if;
+  if has_function_privilege('authenticated','public.get_member_shared_financial_data()','EXECUTE')
+     or has_function_privilege('authenticated','private.get_member_shared_financial_data()','EXECUTE') then
+    raise exception 'Legacy shared financial data RPC remains exposed to authenticated clients';
+  end if;
+
   if not exists (
     select 1 from pg_policies
     where schemaname='public' and tablename='financial_postings'
