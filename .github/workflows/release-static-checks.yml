@@ -30,6 +30,12 @@ jobs:
           find public -type f -name '*.js' -print0 | xargs -0 -n1 node --check
           cp backup/google-drive-receiver/Code.gs /tmp/ffv-drive-receiver.js
           node --check /tmp/ffv-drive-receiver.js
+      - name: Validate backup tooling syntax and uploader tests
+        run: |
+          node --check scripts/export_supabase_backup.mjs
+          python -m py_compile scripts/upload_encrypted_backup.py scripts/test_upload_encrypted_backup.py
+          python scripts/test_upload_encrypted_backup.py
+          ruby -e 'require "yaml"; YAML.load_file(".github/workflows/backup-production-to-drive.yml")'
       - name: Validate lightweight SVG brand asset
         run: |
           python -c "import xml.etree.ElementTree as ET; ET.parse('public/friends-future-vision-logo.svg')"
