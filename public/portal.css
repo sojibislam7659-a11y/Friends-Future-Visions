@@ -1192,11 +1192,12 @@ body.dark-theme[data-page="data"] .public-drawer-nav a.active,
 body.dark-theme[data-page="rules"] .public-drawer-nav a.active{background:rgba(119,151,213,.24);color:#fff}
 
 /* Consistent member identity: organization line is exactly half the member-name size. */
-.topbar-identity{display:flex;flex-direction:column;min-width:0;line-height:1.2}
-.topbar-identity strong{font-size:14px;line-height:1.2;font-weight:750}
+.topbar-identity{display:flex;flex-direction:column;min-width:0;line-height:1.2;font-size:14px}
+.topbar-identity strong{font-size:1em;line-height:1.2;font-weight:750}
 .topbar-identity small{font-size:.5em;line-height:1.25;display:block}
 @media(max-width:640px){
- .topbar-identity strong{font-size:11px;line-height:1.2}
+ .topbar-identity{font-size:11px}
+ .topbar-identity strong{font-size:1em;line-height:1.2}
  .topbar-identity small{font-size:.5em;line-height:1.25}
 }
 
