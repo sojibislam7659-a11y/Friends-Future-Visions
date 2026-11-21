@@ -115,7 +115,7 @@ function shell(){
  applyTheme(savedTheme);
  document.getElementById("themeToggle")?.addEventListener("click",()=>{const next=document.body.classList.contains("dark-theme")?"light":"dark";try{localStorage.setItem("ffv-theme",next)}catch{}applyTheme(next)});
  document.getElementById("sidebarThemeToggle")?.addEventListener("click",()=>{const next=document.body.classList.contains("dark-theme")?"light":"dark";try{localStorage.setItem("ffv-theme",next)}catch{}applyTheme(next)});
-  document.getElementById("sidebarLanguageToggle")?.addEventListener("click",()=>{const next=lang==="bn"?"en":"bn";try{localStorage.setItem("ffv-lang",next)}catch{}location.reload()});
+  document.getElementById("sidebarLanguageToggle")?.addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";document.documentElement.lang=lang;try{localStorage.setItem("ffv-lang",lang)}catch{}shell();renderPage()});
  document.getElementById("sidebarInstallAppBtn")?.addEventListener("click",async()=>{try{const result=await installPwa();if(!result.available)toast("এই browser-এ সরাসরি Install prompt পাওয়া যায়নি। Chrome menu ⋮ থেকে Add to Home screen চেষ্টা করুন।");else if(result.outcome==="accepted")toast("App install শুরু হয়েছে।")}catch(error){toast(error.message||"Install prompt চালু করা যায়নি।")}});
  document.querySelectorAll("[data-export-action]").forEach(button=>button.addEventListener("click",async()=>{
   const action=button.dataset.exportAction,original=button.textContent;button.disabled=true;button.textContent="তৈরি হচ্ছে…";
