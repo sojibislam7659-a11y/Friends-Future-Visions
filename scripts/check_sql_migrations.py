@@ -21,8 +21,10 @@ KNOWN_NON_STANDALONE = {
 
 def main() -> int:
     files = sorted(MIGRATIONS.glob("*.sql"))
+    verification = ROOT / "supabase" / "verification"
+    files += sorted(verification.glob("*.sql")) if verification.exists() else []
     if not files:
-        print("ERROR: no SQL migration files found", file=sys.stderr)
+        print("ERROR: no SQL migration or verification files found", file=sys.stderr)
         return 1
 
     failed = []
@@ -42,7 +44,9 @@ def main() -> int:
         return 1
 
     checked = len(files) - len(skipped)
-    print(f"PostgreSQL grammar check passed for {checked} standalone migration files.")
+    migration_count = sum(1 for path in files if path.parent == MIGRATIONS) - len(skipped)
+    verification_count = sum(1 for path in files if path.parent == verification)
+    print(f"PostgreSQL grammar check passed for {migration_count} standalone migration files and {verification_count} verification files.")
     if skipped:
         print("Explicitly skipped historical non-standalone fragments: " + ", ".join(skipped))
     return 0
