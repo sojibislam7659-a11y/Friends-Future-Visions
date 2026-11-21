@@ -1,5 +1,6 @@
 import {supabase,supabaseReady} from "./supabase-client.js";
 import { BRAND_LOGO_SVG } from "./brand-logo.js";
+import { installPwa } from "./pwa.js";
 const home=document.getElementById("siteHome"),menu=document.getElementById("siteMenu"),nav=document.getElementById("siteNav"),bell=document.getElementById("siteBell"),login=document.getElementById("siteLogin");
 let publicThemeButton=null;
 const icon={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6z"/>'};
@@ -43,9 +44,29 @@ function buildPublicDrawer(isAuthenticated,role,displayName){
  const toggle=()=>{const open=drawer.hidden;close();drawer.hidden=!open;backdrop.hidden=!open;menu?.setAttribute("aria-expanded",String(!open))};
  menu?.addEventListener("click",toggle);backdrop.addEventListener("click",close);drawer.querySelector(".public-drawer-close").addEventListener("click",close);drawer.querySelectorAll("a").forEach(a=>a.addEventListener("click",close));nav.hidden=true;
 }
-async function loadPublicTicker(){if(!supabaseReady)return;try{const {data,error}=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();if(error||!data)return;const ticker=document.createElement("div");ticker.className="site-ticker public-global-ticker";ticker.setAttribute("role","region");ticker.setAttribute("aria-label","Latest notice");const label=document.createElement("strong");label.className="site-ticker-label";label.textContent="নোটিশ";const w=document.createElement("div");w.className="site-ticker-window";const t=document.createElement("span");t.textContent=data.body||data.title||"";w.append(t);ticker.append(label,w);document.querySelector(".shell > .topbar")?.insertAdjacentElement("afterend",ticker)}catch(error){console.warn("Public notice unavailable",error)}}
+async function loadPublicTicker(){
+ if(!supabaseReady||document.querySelector(".public-global-ticker"))return;
+ try{
+  let message="";
+  const {data,error}=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();
+  if(!error&&data)message=String(data.body||data.title||"").trim();
+  if(!message){
+   const fallback=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
+   if(!fallback.error){
+    const settings=Object.fromEntries((fallback.data||[]).map(row=>[row.setting_key,row.setting_value]));
+    if(settings.ticker_enabled!=="false")message=String(settings.ticker_message||"").trim();
+   }
+  }
+  if(!message)return;
+  const ticker=document.createElement("div");ticker.className="site-ticker public-global-ticker";ticker.setAttribute("role","region");ticker.setAttribute("aria-label","Latest notice");
+  const label=document.createElement("strong");label.className="site-ticker-label";label.textContent="নোটিশ";
+  const w=document.createElement("div");w.className="site-ticker-window";const t=document.createElement("span");t.textContent=message;t.className="notice-marquee-text";
+  w.append(t);ticker.append(label,w);document.querySelector(".shell > .topbar")?.insertAdjacentElement("afterend",ticker);
+ }catch(error){console.warn("Public notice unavailable",error)}
+}
 function showPublicNavigation(){
  setupPublicTheme();
+ loadPublicTicker();
  home.href="index.html";
  nav.innerHTML=item("rules.html","RULES","rules");
  addPublicMobileNav(false);
