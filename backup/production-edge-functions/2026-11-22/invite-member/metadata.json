@@ -1,0 +1,12 @@
+{
+  "name": "invite-member",
+  "slug": "invite-member",
+  "status": "ACTIVE",
+  "version": 5,
+  "verify_jwt": true,
+  "entrypoint_path": "/tmp/user_fn_ugtzmtmsfaajclftfeuz_3f00827b-18b4-4b20-b9f2-206fde0ef9be_5/source/index.ts",
+  "sha256": "3ebea75fac32809584218bc8fe2b37ed858a3b8971f2247824280a1c04c25c89",
+  "exported_at": "2026-11-22",
+  "source_project": "ugtzmtmsfaajclftfeuz",
+  "secrets_not_included": true
+}
