@@ -34,8 +34,9 @@ Set-Clipboard $token
 
 This generates a 256-bit random token and copies it to your clipboard. Paste it directly into the Apps Script property value field. Keep a separate secure copy for the GitHub Actions secret setup later. **Do not send it in this chat.**
 
-## 3. Deploy as a Web App
+## 3. Deploy or update the Web App
 
+For a first deployment:
 1. Click **Deploy → New deployment**.
 2. Select type **Web app**.
 3. Description: `FFV encrypted backup receiver`.
@@ -43,6 +44,8 @@ This generates a 256-bit random token and copies it to your clipboard. Paste it 
 5. Who has access: **Anyone** (the endpoint must be reachable by GitHub Actions without an interactive Google login).
 6. Click **Deploy** and approve the Google Drive authorization prompt while signed in to the intended personal Gmail.
 7. Copy the Web App URL ending in `/exec`. Keep it private.
+
+For the existing owner deployment already created for this project, use **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy** after replacing `Code.gs`. Keep the existing Script Properties; do not generate a new token or folder ID unless intentionally rotating them. Open the same `/exec` URL with GET after redeployment. The expected response must include `"version":2`; the currently deployed older receiver is expected to report version 1 until this update is completed.
 
 The endpoint is publicly reachable, so the 256-bit token is mandatory. The script only accepts checksum-verified encrypted chunks and a non-sensitive manifest. It does not expose Drive contents. If Google does not offer the **Anyone** access option, stop and report the available options; do not choose a weaker workaround.
 
