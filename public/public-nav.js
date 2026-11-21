@@ -34,10 +34,10 @@ function addPublicMobileNav(isAuthenticated){
 function buildPublicDrawer(isAuthenticated,role,displayName){
  const shell=document.querySelector(".shell");if(!shell)return;
  const backdrop=document.createElement("div");backdrop.className="public-drawer-backdrop";backdrop.hidden=true;
- const drawer=document.createElement("aside");drawer.className="public-drawer";drawer.hidden=true;drawer.setAttribute("aria-label","Main menu");
+ const drawer=document.createElement("aside");drawer.className="public-drawer sidebar-panel";drawer.hidden=true;drawer.setAttribute("aria-label","Main menu");
  const links=isAuthenticated?[...(role==="super_admin"?[["admin.html","SUPER ADMIN","admin"]]:[]),["personal-due.html","PERSONAL DUE","due"],["proof.html","PROOF","proof"],["payment.html","PAYMENT","payment"],...(role==="member"?[["statement.html","MY STATEMENT","data"],["member.html","MY PROFILE","members"]]:[])]:[["login.html","LOGIN","profile"]];
  const targetPage=["data","rules"].includes(document.body.dataset.page||"");
- drawer.innerHTML='<div class="public-drawer-head"><a class="public-drawer-brand" href="dashboard.html">'+BRAND_LOGO_SVG+'<strong>'+String(displayName||"Friends Future Vision Forever").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</strong></a><button type="button" class="icon-button public-drawer-close" aria-label="Close menu">×</button></div><nav class="public-drawer-nav">'+links.map(([href,label,name])=>item(href,label,name)).join("")+'</nav><div class="public-drawer-footer"></div>';
+ drawer.innerHTML='<div class="public-drawer-head sidebar-head"><a class="public-drawer-brand sidebar-brand" href="dashboard.html">'+BRAND_LOGO_SVG+'<strong>'+String(displayName||"Friends Future Vision Forever").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</strong></a><button type="button" class="icon-button public-drawer-close" aria-label="Close menu">×</button></div><nav class="public-drawer-nav sidebar-nav">'+links.map(([href,label,name])=>item(href,label,name)).join("")+'</nav><div class="public-drawer-footer sidebar-footer"></div>';
  const footer=drawer.querySelector(".public-drawer-footer");
  if(publicThemeButton)footer.append(publicThemeButton);
  if(isAuthenticated&&targetPage){
