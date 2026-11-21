@@ -145,7 +145,8 @@ document.getElementById("resetForm").addEventListener("submit",async event=>{
  if(resetUser.user){
   const {data:resetProfile}=await supabase.from("profiles").select("must_change_password").eq("id",resetUser.user.id).maybeSingle();
   if(resetProfile?.must_change_password){
-   const {error:flagError}=await supabase.rpc("complete_required_password_change");
+   const {data:currentUser}=await supabase.auth.getUser();
+ const {error:flagError}=await supabase.from("profiles").update({must_change_password:false}).eq("id",currentUser.user.id);
    if(flagError){showResetMessage("Password changed, but first-login access could not be unlocked. Sign in again and complete the required password change.");button.disabled=false;button.textContent=tr("savePassword");return}
   }
  }
