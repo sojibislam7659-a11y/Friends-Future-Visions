@@ -1,5 +1,16 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
+function tokenAal(token: string): string {
+  try {
+    const payload = token.split(".")[1];
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "="));
+    return JSON.parse(decoded).aal || "aal1";
+  } catch {
+    return "aal1";
+  }
+}
+
 const allowedOrigins = new Set([
   "https://friends-future-visions.sojibislam7659.workers.dev",
   "https://development-friends-future-visions-dev.sojibislam7659.workers.dev"
@@ -34,6 +45,7 @@ Deno.serve(async (req: Request) => {
   });
   const { data: authData, error: authError } = await admin.auth.getUser(token);
   if (authError || !authData.user) return json({ error: "Invalid session" }, 401);
+  if (tokenAal(token) !== "aal2") return json({ error: "Super Admin MFA verification required" }, 403);
 
   const { data: caller, error: callerError } = await admin
     .from("profiles").select("role").eq("id", authData.user.id).maybeSingle();
