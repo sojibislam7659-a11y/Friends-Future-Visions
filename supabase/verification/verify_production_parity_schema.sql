@@ -174,6 +174,19 @@ begin
   end if;
 
   if not exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='members'
+      and column_name='monthly_contribution'
+      and column_default like '%2000%'
+  ) then raise exception 'New member monthly contribution default is not 2000'; end if;
+
+  select p.proconfig::text into v_def from pg_proc p
+  where p.oid='public.assign_member_no_when_active()'::regprocedure;
+  if v_def not like '%search_path=""%' then
+    raise exception 'Member number trigger does not use an empty search_path';
+  end if;
+
+  if not exists (
     select 1 from pg_policies
     where schemaname='public' and tablename='financial_postings'
       and policyname='Financial postings: Super Admin read' and cmd='SELECT'
