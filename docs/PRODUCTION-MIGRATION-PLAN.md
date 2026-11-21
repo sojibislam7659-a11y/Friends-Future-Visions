@@ -70,6 +70,8 @@ Before any Production write:
 
 A schema-only backup, old PC dump, or Git branch is not a complete Production backup.
 
+A separate MFA bootstrap branch was created from the untouched Production `main` base: `release/ffv-mfa-bootstrap-20261122` (draft PR #10). It adds only the login MFA enrollment/challenge UI and a fallback for the not-yet-added `profiles.must_change_password` column. Its CI passed (`44951016852`). It is not merged or deployed. After backup/restore passes, this login-only branch must be deployed first so the existing Production Super Admin can enroll TOTP; only then can the AAL2-gated schema migration pass.
+
 The backup receiver code and encrypted workflow are now staged, but no archive has been created or uploaded. The Apps Script deployment still reports version 1 until the owner updates it to repository version 2. The release-branch trigger watches only `backup/trigger-backup-workflow.txt`; that marker file does not exist yet, so no backup run is triggered. The first run must be `smoke_test` (no Supabase connection); only after it passes and the owner explicitly approves should the marker be changed to `production`. The monthly schedule becomes active only after the workflow is merged to the default branch, which must wait until the restore gate is passed.
 
 ## Phase 1 — Additive configuration and audit capabilities
