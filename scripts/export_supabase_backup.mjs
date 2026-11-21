@@ -37,7 +37,7 @@ function sha256(buffer) {
 
 function safePath(bucket, objectPath) {
   const segments = objectPath.split("/");
-  if (!segments.length || segments.some(s => !s || s === "." || s === ".." || s.includes("\\\\"))) {
+  if (!segments.length || segments.some(s => !s || s === "." || s === ".." || s.includes(String.fromCharCode(92)))) {
     throw new Error("Unsafe Storage object path encountered.");
   }
   return path.join(outputDir, "storage", bucket, ...segments);
