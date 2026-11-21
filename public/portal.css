@@ -1112,3 +1112,23 @@ body.dark-theme .public-drawer-nav a.active{background:#294b3d;border-color:#507
 @media(max-width:640px){
  .site-ticker-window>span,#siteTickerText{animation-duration:42s!important}
 }
+
+
+/* Notice marquee: start at the viewport's right edge, not one full text-width offscreen. */
+#globalNoticeTicker .site-ticker-window{display:block;min-width:0;overflow:hidden;white-space:nowrap;position:relative}
+#globalNoticeTicker #globalNoticeTickerText{
+ display:inline-block!important;width:max-content!important;min-width:max-content!important;max-width:none!important;
+ white-space:nowrap!important;padding:0!important;color:#b4232f;font-weight:700;
+ animation:ffv-global-notice-marquee 32s linear infinite!important;
+ will-change:transform;
+}
+@keyframes ffv-global-notice-marquee{
+ from{transform:translate3d(100vw,0,0)}
+ to{transform:translate3d(-100%,0,0)}
+}
+body.dark-theme #globalNoticeTicker #globalNoticeTickerText{color:#ff9c9c}
+#globalNoticeTicker:hover #globalNoticeTickerText{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){
+ #globalNoticeTicker #globalNoticeTickerText{animation:none!important;white-space:normal!important}
+ #globalNoticeTicker .site-ticker-window{white-space:normal}
+}
