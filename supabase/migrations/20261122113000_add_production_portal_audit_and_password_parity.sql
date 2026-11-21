@@ -347,6 +347,8 @@ $function$;
 revoke all on function private.set_member_contribution_rate(uuid,numeric,date) from public,anon;
 grant execute on function private.set_member_contribution_rate(uuid,numeric,date) to authenticated,service_role;
 
+revoke all on function private.get_member_shared_financial_data() from public,anon,authenticated,service_role;
+
 -- Legacy service-side matrix read is not an authenticated client RPC.
 CREATE OR REPLACE FUNCTION public.get_member_shared_financial_data()
  RETURNS TABLE(member_id uuid, member_no text, full_name text, full_name_bn text, contribution_month date, amount numeric, paid_day integer, last_paid_at timestamp with time zone, total_paid numeric, total_due numeric, due_configured boolean, has_manual boolean, matrix_count integer)
