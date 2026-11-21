@@ -928,7 +928,6 @@ body.dark-theme #siteTickerText{color:#ff9c9c}
  .site-ticker{display:flex!important;width:100%;max-width:100%;overflow:hidden;min-height:38px}
  #siteTickerText{animation-duration:28s}
 }
-@media(prefers-reduced-motion:reduce){#siteTickerText{animation:none;white-space:normal;min-width:0}}
 
 /* Public Data and Rules pages must inherit the selected theme across the full viewport */
 body.login-theme.dark-theme{background:#0d1714!important;color:#e5efe9!important}
@@ -978,7 +977,6 @@ body.dark-theme .contribution-matrix .total-row td{background:#29483a!important;
 .site-ticker-window{min-width:0;overflow:hidden;white-space:nowrap;flex:1}
 #siteTickerText{display:inline-block;min-width:max-content;color:#ffaaaa;font-weight:700;animation:ffv-notice-marquee 24s linear infinite}
 @keyframes ffv-notice-marquee{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
-@media(prefers-reduced-motion:reduce){#siteTickerText{animation:none;white-space:normal;min-width:0}}
 body.login-theme .public-mobile-nav{display:none}
 @media(max-width:640px){
  body.login-theme .public-mobile-nav{display:grid!important;position:fixed;left:0;right:0;bottom:0;z-index:80;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;padding:5px 3px calc(5px + env(safe-area-inset-bottom));background:rgba(20,35,29,.97);border-top:1px solid #344a40;box-shadow:0 -5px 22px rgba(0,0,0,.22);backdrop-filter:blur(14px)}
@@ -1058,7 +1056,6 @@ body.dark-theme .member-directory-edit{background:#1c3d34!important;color:#e8f5e
  .sidebar-panel{width:min(300px,86vw);background:#101e35!important}
  .sidebar-footer{grid-template-columns:repeat(2,minmax(0,1fr))!important}
 }
-@media(prefers-reduced-motion:reduce){.site-ticker-window span{animation:none;padding-left:0}}
 
 @media(max-width:640px){.topbar .actions .language-toggle{display:inline-flex!important;min-height:34px!important;padding:5px 8px!important;font-size:10px!important;flex:0 0 auto!important}.topbar .actions .notification-trigger{display:flex!important}}
 
@@ -1093,3 +1090,25 @@ body.dark-theme .public-drawer-nav a.active{background:#294b3d;border-color:#507
 .site-ticker-window:hover span{animation-play-state:paused}
 
 @media(max-width:640px){.contribution-matrix{min-width:760px!important}.site-ticker-window span{animation-duration:48s!important}}
+
+/* Reliable right-to-left notice marquee for both authenticated and public pages. */
+.site-ticker-window{display:block;min-width:0;overflow:hidden;white-space:nowrap;position:relative}
+.site-ticker-window>span,#siteTickerText{
+ display:inline-block!important;
+ width:max-content!important;
+ min-width:max-content!important;
+ max-width:none!important;
+ white-space:nowrap!important;
+ padding:0!important;
+ animation:ffv-reliable-marquee 32s linear infinite!important;
+ will-change:transform;
+}
+@keyframes ffv-reliable-marquee{
+ from{transform:translate3d(100%,0,0)}
+ to{transform:translate3d(-100%,0,0)}
+}
+.site-ticker:hover .site-ticker-window>span,
+.site-ticker:hover #siteTickerText{animation-play-state:paused!important}
+@media(max-width:640px){
+ .site-ticker-window>span,#siteTickerText{animation-duration:42s!important}
+}
