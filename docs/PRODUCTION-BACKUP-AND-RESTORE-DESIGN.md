@@ -43,7 +43,7 @@ Files on `release/ffv-prod-parity-20261122`:
 - `backup/google-drive-receiver/Code.gs` — Apps Script receiver. It accepts authenticated POSTs only, validates chunk sizes and hashes, rejects conflicting duplicates, and stores files in the configured Drive folder. It has no read/list/download/delete endpoint.
 - `backup/production-edge-functions/2026-11-22/` — exact source snapshots of all five live Production Edge Functions. Each saved `index.ts` was independently fetched again and compared byte-for-byte with the live source.
 
-The workflow has not been run. GitHub Actions repository secrets have not been configured. No encrypted archive has been uploaded. The first manual run is designed to be a harmless smoke test that does not connect to Supabase; only after it succeeds should the owner select Production mode and add the database/service-role secrets.
+The workflow has not been run. GitHub Actions repository secrets have not been configured. No encrypted archive has been uploaded. The first run is designed to be a harmless smoke test that does not connect to Supabase; only after it succeeds should the owner approve Production mode and add the database/service-role secrets.
 
 **Scheduling limitation:** GitHub scheduled workflows run only from the repository's default branch. Manual dispatch can select the release branch now. The monthly schedule will not activate until this workflow is merged to `main` after the restore gate and explicit owner approval. Do not merge solely to activate the schedule.
 
