@@ -18,12 +18,16 @@ Read-only checks on 2026-11-22:
 
 - 7 member rows and 8 profile rows.
 - 4 notifications.
-- 0 financial transaction rows.
+- 0 financial transaction rows and 0 financial transaction audit rows.
 - 0 push subscription rows.
+- 8 Production Auth users / profiles; 7 profiles are linked to active members.
+- No Production Auth user currently has a verified MFA factor (including the Super Admin).
 - The Development-only tables `site_settings`, `admin_change_audit`, `financial_postings`, and `notification_push_deliveries` are absent from Production.
 - `private.password_rotation_guards` is absent from Production.
 - No current push subscription row violates the Development endpoint/key/user-agent format checks. This check is only a snapshot; repeat it immediately before any migration.
-- Existing Production financial_transactions has `transfer_group_id`, but not `posting_id` or `reversal_of_id`. Its amount is numeric; its current check constraints permit transfers but not reversal transaction types.
+- Existing Production `financial_transactions` has `transfer_group_id`, but not `posting_id` or `reversal_of_id`. Its amount is `numeric(12,2)` (Development uses `numeric(14,2)`); current constraints permit transfers but not reversal transaction types.
+- Production `financial_transaction_audit` has an INSERT audit trigger, but its action CHECK currently allows only UPDATE/DELETE. The staged ledger migration corrects this mismatch before new ledger writes.
+- Production currently has no `financial_postings`, `site_settings`, `admin_change_audit`, `notification_push_deliveries`, or private password-rotation guard table.
 - Production currently grants broad table-level privileges on some tables to anon/authenticated, including push_subscriptions and notifications. RLS policies currently constrain row access, but privileges should be reduced as defense in depth. Do not revoke until frontend and function dependencies are verified.
 - Existing Production profile update and financial transaction policies are not identical to Development.
 
@@ -41,7 +45,7 @@ Do not delete unused indexes solely from a short usage snapshot; evaluate worklo
 
 ## Why Development migrations cannot be copied verbatim
 
-Development and Production have independent migration histories (61 vs 53 applied versions; zero shared version IDs). The Development financial migration adds a NOT NULL posting_id without a legacy-row backfill, so it is not safe for a populated Production table.
+Development and Production have independent migration histories (61 vs 53 applied versions; zero shared version IDs). The Development financial migration adds a NOT NULL `posting_id` without a legacy-row backfill, so it is not safe for a populated Production table. A new Production-specific ledger migration has a hard preflight that refuses to run if any Production financial transaction or audit row exists; it deliberately does not copy Development's three test transactions or three test postings.
 
 The Production release must use a newly authored, Production-specific migration sequence. Never replay the Development migration directory wholesale.
 
@@ -74,6 +78,8 @@ Prepare and test the following before merging:
 - Add `public.admin_change_audit`, read-only for Super Admin through RLS, with the Development audit trigger function and triggers. Confirm every target table exists in Production and avoid capturing sensitive columns or Auth credentials in JSON audit payloads.
 - Add the `profiles.must_change_password` and `profiles.password_change_required_at` columns with safe defaults. Do not set existing users to require a password change without a deliberate account-by-account rollout.
 - Add `private.password_rotation_guards` and its triggers/functions only after validating hosted Auth table access and confirming the current Auth password update flow. This mechanism fingerprints the stored password hash; it must never expose the hash/fingerprint to clients or logs.
+
+A Production-specific schema migration is staged at `supabase/migrations/20261122113000_add_production_portal_audit_and_password_parity.sql`. It adds the Development site-settings/ticker, admin audit, push-delivery, profile password flags, private password guard, RLS/policies, and narrow profile grants. It also changes `private.is_super_admin()` and `private.has_portal_access()` to require AAL2 for Super Admins, matching Development. Its preflight intentionally aborts unless every Production Super Admin has a verified MFA factor. The current Production snapshot has zero verified factors, so this migration is NOT currently executable.
 - Tighten profile update grants and policies so only the Super Admin can edit member profile fields, while the member can only complete the controlled password-rotation transition.
 - Reconcile private schema USAGE and all table/function grants against Development. In particular, revoke anon private-schema USAGE and broad table privileges only after verifying every application call path.
 
@@ -111,9 +117,11 @@ Backfill design:
 10. Reconcile financial summary functions and member shared financial data RPCs with the exact Development logic, including reversal awareness and date rules.
 11. Compare before/after balances and transaction counts. No posting or transaction may be duplicated, omitted, or silently changed.
 
-The latest Production snapshot has zero financial transactions, but this does not remove the need for a transactionally safe backfill; repeat the preflight at release time.
+A Production-specific immutable ledger migration is staged at `supabase/migrations/20261122123000_add_production_immutable_financial_ledger.sql`. It uses Development's current idempotent posting, reversal, correction, transfer validation, immutable-ledger, and payment-approval helper definitions. It adds posting/reversal columns and constraints, widens amount to numeric(14,2), corrects the audit action constraint, removes direct authenticated ledger write policies/grants, and adds Super Admin read-only posting access. Its preflight refuses to run if Production transactions or financial audit rows are non-zero. The current read-only snapshot is 0 and 0 respectively; repeat immediately before execution. Development's three test transactions and three test postings are explicitly excluded. No Production backfill or data write has been performed.
 
 ## Phase 4 — SECURITY DEFINER hardening
+
+A Production-specific migration is staged at `supabase/migrations/20261122103000_harden_production_security_definer_wrappers.sql`. It must run before the two later schema migrations. It has not been applied.
 
 A Production-specific migration is now staged on `release/ffv-prod-parity-20261122`:
 
@@ -150,6 +158,14 @@ The four Release-branch `index.ts` files were compared byte-for-byte with the li
 - Preserve Production `google-sheets-sync`; it has no Development counterpart and is not part of this four-function replacement set.
 - Confirm `wrangler.jsonc` and `public/supabase-client.js` point to Production only.
 - Merge release branch to main and deploy the Worker only after explicit owner approval.
+
+## Migration execution order (after Phase 0 and explicit owner approval)
+
+1. `20261122103000_harden_production_security_definer_wrappers.sql`
+2. `20261122113000_add_production_portal_audit_and_password_parity.sql` (blocked until all Production Super Admin accounts have verified MFA)
+3. `20261122123000_add_production_immutable_financial_ledger.sql` (blocked if any Production financial transaction or audit row appears before release)
+
+These files are staged only on the release branch. None has been applied to Development or Production.
 
 ## Current validation status
 
