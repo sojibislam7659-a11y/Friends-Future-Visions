@@ -209,7 +209,7 @@ BEGIN
   END IF;
   RETURN v_posting_id;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.reverse_financial_posting(p_original_posting_id uuid, p_idempotency_key uuid, p_reason text)
@@ -323,7 +323,7 @@ BEGIN
 
   RETURN v_posting_id;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.correct_financial_transactions(p_idempotency_key uuid, p_changes jsonb)
@@ -411,7 +411,7 @@ BEGIN
   END LOOP;
   RETURN jsonb_build_object('saved',v_saved,'corrections',v_result);
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.review_payment_submission(p_submission_id uuid, p_approved boolean, p_admin_note text DEFAULT NULL::text, p_account_type text DEFAULT 'cash'::text)
@@ -473,7 +473,7 @@ BEGIN
       reviewed_at=now()
   WHERE id=p_submission_id;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.prevent_ledger_mutation()
@@ -486,7 +486,7 @@ BEGIN
   RAISE EXCEPTION 'Posted financial records are immutable. Use the reversal workflow.'
     USING ERRCODE = '55000';
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION private.validate_transfer_group()
@@ -525,7 +525,7 @@ BEGIN
 
   RETURN NULL;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.post_financial_transaction(p_idempotency_key uuid, p_transaction_type text, p_amount numeric, p_transaction_date date, p_account_type text, p_direction text, p_member_id uuid DEFAULT NULL::uuid, p_description text DEFAULT NULL::text, p_reference_no text DEFAULT NULL::text, p_category text DEFAULT NULL::text, p_project_name text DEFAULT NULL::text, p_destination_account_type text DEFAULT NULL::text)
@@ -538,7 +538,7 @@ AS $function$
     p_account_type,p_direction,p_member_id,p_description,p_reference_no,
     p_category,p_project_name,p_destination_account_type
   );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.reverse_financial_posting(p_original_posting_id uuid, p_idempotency_key uuid, p_reason text)
@@ -549,7 +549,7 @@ AS $function$
   SELECT private.reverse_financial_posting(
     p_original_posting_id,p_idempotency_key,p_reason
   );
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.correct_financial_transactions(p_idempotency_key uuid, p_changes jsonb)
@@ -558,7 +558,7 @@ CREATE OR REPLACE FUNCTION public.correct_financial_transactions(p_idempotency_k
  SET search_path TO ''
 AS $function$
   SELECT private.correct_financial_transactions(p_idempotency_key,p_changes);
-$function$
+$function$;
 
 
 create trigger prevent_financial_transaction_mutation
