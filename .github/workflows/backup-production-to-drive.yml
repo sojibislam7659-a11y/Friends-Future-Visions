@@ -85,13 +85,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cat > backup-output/project/config-inventory.sql <<'SQL'
+          select jsonb_build_object(
+            'cron_jobs', (select coalesce(jsonb_agg(jsonb_build_object(
+              'jobname',jobname,'schedule',schedule,'active',active,'username',username
+            ) order by jobname),'[]'::jsonb) from cron.job),
+            'vault_secret_names', (select coalesce(jsonb_agg(name order by name),'[]'::jsonb) from vault.secrets),
+            'migration_versions', (select coalesce(jsonb_agg(version order by version),'[]'::jsonb) from supabase_migrations.schema_migrations),
+            'extensions', (select coalesce(jsonb_agg(jsonb_build_object(
+              'name',extname,'version',extversion
+            ) order by extname),'[]'::jsonb) from pg_extension)
+          );
+          SQL
           docker run --rm -e DATABASE_URL="$FFV_PROD_DATABASE_URL" \
-            -v "$GITHUB_WORKSPACE/backup-output/project:/backup" postgres:17-alpine sh -ceu '
-              psql "$DATABASE_URL" -X -A -t -c "select coalesce(json_agg(json_build_object('"'jobname'"',jobname,'"'schedule'"',schedule,'"'active'"',active,'"'username'"',username) order by jobname), '[]'::json) from cron.job" > /backup/cron-jobs.json
-              psql "$DATABASE_URL" -X -A -t -c "select coalesce(json_agg(json_build_object('"'name'"',name) order by name), '[]'::json) from vault.secrets" > /backup/vault-secret-names.json
-              psql "$DATABASE_URL" -X -A -t -c "select coalesce(json_agg(json_build_object('"'version'"',version) order by version), '[]'::json) from supabase_migrations.schema_migrations" > /backup/migration-history.json
-              psql "$DATABASE_URL" -X -A -t -c "select coalesce(json_agg(json_build_object('"'name'"',extname,'"'version'"',extversion) order by extname), '[]'::json) from pg_extension" > /backup/extensions.json
-            '
+            -v "$GITHUB_WORKSPACE/backup-output/project:/backup" postgres:17-alpine \
+            sh -ceu 'psql "$DATABASE_URL" -X -A -t -f /backup/config-inventory.sql > /backup/config-inventory.json'
+          rm -f backup-output/project/config-inventory.sql
+          test -s backup-output/project/config-inventory.json
 
       - name: Include verified Production Edge Function source snapshot
         run: |
