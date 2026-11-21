@@ -86,6 +86,7 @@ Deno.serve(async (req: Request) => {
     }
 
     let hadFailure = false;
+    let claimedAny = false;
     for (const sub of subscriptions) {
       if (!allowedPushEndpoint(sub.endpoint)) {
         await supabase.from("push_subscriptions").delete().eq("id", sub.id);
@@ -107,6 +108,7 @@ Deno.serve(async (req: Request) => {
         // Already sent, or another worker currently owns this delivery attempt.
         continue;
       }
+      claimedAny = true;
 
       try {
         const payload = JSON.stringify({
@@ -159,15 +161,18 @@ Deno.serve(async (req: Request) => {
       .gte("attempts", MAX_NOTIFICATION_ATTEMPTS);
 
     const nextAttempt = Number(notification.push_attempts || 0) + 1;
-    const update: Record<string, unknown> = { push_attempts: nextAttempt };
+    const update: Record<string, unknown> = {};
+    if (claimedAny || hadFailure) update.push_attempts = nextAttempt;
     if (!unresolvedError && !exhaustedError && !hadFailure && Number(unresolvedCount || 0) === 0) {
       update.push_sent_at = new Date().toISOString();
     } else if (!exhaustedError && Number(unresolvedCount || 0) > 0 && Number(exhaustedCount || 0) >= Number(unresolvedCount || 0)) {
       update.push_sent_at = new Date().toISOString();
-    } else if (nextAttempt >= MAX_NOTIFICATION_ATTEMPTS) {
+    } else if ((claimedAny || hadFailure) && nextAttempt >= MAX_NOTIFICATION_ATTEMPTS) {
       update.push_sent_at = new Date().toISOString();
     }
-    await supabase.from("notifications").update(update).eq("id", notification.id);
+    if (Object.keys(update).length) {
+      await supabase.from("notifications").update(update).eq("id", notification.id);
+    }
   }
 
   return new Response(JSON.stringify({
