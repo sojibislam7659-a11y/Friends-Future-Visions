@@ -69,8 +69,12 @@ async function init(){
   if(!memberError&&member?.full_name)displayName=member.full_name;
  }
  displayName=displayName||session.user.email?.split("@")[0]||"";
- const brandName=document.querySelector(".brand strong");
- if(brandName&&displayName)brandName.textContent=displayName.toLocaleUpperCase("en-US");
+ const brand=document.querySelector(".topbar .brand");
+ if(brand&&displayName){
+  const safeName=displayName.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const initials=displayName.trim().split(/\s+/).filter(Boolean).slice(0,2).map(part=>part[0]).join("").toLocaleUpperCase("en-US");
+  brand.innerHTML=BRAND_LOGO_SVG+'<div class="topbar-identity member-identity-chip"><span class="member-avatar" aria-hidden="true">'+initials+'</span><span class="member-name-wrap"><strong>'+safeName.toLocaleUpperCase("en-US")+'</strong><small>Friends Future Vision Forever</small></span></div>';
+ }
  home.href="dashboard.html";
  setupPublicTheme();
  const role=profile.role;
