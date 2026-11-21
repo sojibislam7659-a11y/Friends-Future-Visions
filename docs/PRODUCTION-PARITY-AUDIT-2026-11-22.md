@@ -55,6 +55,17 @@ The Development `create-member-login` and `review-member-signup` enforce AAL2 an
 
 Development `send-push` calls `claim_notification_push_delivery` and writes `notification_push_deliveries`; Production currently lacks both the table and RPC. Deploying the Development function alone would break push delivery.
 
+## Production SECURITY DEFINER review
+
+The four advisor findings were inspected against the live function catalog and definitions. All four have an empty `search_path`, which is a positive hardening measure, but it does not remove the need to minimize SECURITY DEFINER exposure.
+
+- `public.get_financial_summary()` is SECURITY DEFINER and executable by authenticated users. It currently accepts legacy role `admin` in addition to `member` and `super_admin`. Current Production profile counts show no `admin` profile, but the function's role allow-list is stale relative to the intended two-role model. It calls `private.get_financial_summary()`, which is also SECURITY DEFINER and restricted to postgres/service_role. Recommended controlled fix: move the caller authorization into a private SECURITY DEFINER helper that explicitly permits only `member` and `super_admin`, then make the public RPC SECURITY INVOKER and grant only the required execute permission.
+- `public.review_payment_submission()` is a SECURITY DEFINER wrapper around `private.review_payment_submission()`. The private function explicitly checks `private.is_super_admin()`; its execute ACL is restricted to postgres. Prefer an invoker wrapper with a narrow grant after verifying the exact function dependency chain.
+- `public.set_current_committee_document()` is a SECURITY DEFINER wrapper around a private function that explicitly checks `private.is_super_admin()`; its private helper is restricted to postgres.
+- `public.review_private_document()` is SECURITY DEFINER and performs the document update itself after checking `private.is_super_admin()`. It has an empty search path. A future hardening migration should move this privileged body into the private schema and expose only a SECURITY INVOKER wrapper.
+
+Do not change these functions in isolation. Their grants, RLS dependencies, helper ownership, and live application RPC calls must be tested together. This review did not modify any function.
+
 ## Identity and data preservation
 
 Production currently has 7 `member` profiles and 1 `super_admin` profile. Development has 1 `member` and 1 `super_admin` profile. Development test/sample rows must not be copied over Production identity or financial data.
