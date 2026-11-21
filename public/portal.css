@@ -1179,3 +1179,14 @@ body[data-page="data"] .public-drawer-footer .public-drawer-install,
 body[data-page="rules"] .public-drawer-footer .public-drawer-install{grid-column:1}
 body[data-page="data"] .public-drawer-footer .public-drawer-logout,
 body[data-page="rules"] .public-drawer-footer .public-drawer-logout{grid-column:2}
+
+body.dark-theme[data-page="data"] .public-drawer,
+body.dark-theme[data-page="rules"] .public-drawer{background:#101e35;color:#edf3ff;border-color:rgba(185,205,255,.15)}
+body.dark-theme[data-page="data"] .public-drawer-head,
+body.dark-theme[data-page="rules"] .public-drawer-head,
+body.dark-theme[data-page="data"] .public-drawer-footer,
+body.dark-theme[data-page="rules"] .public-drawer-footer{border-color:rgba(185,205,255,.14)}
+body.dark-theme[data-page="data"] .public-drawer-nav a,
+body.dark-theme[data-page="rules"] .public-drawer-nav a{background:rgba(119,151,213,.12);border-color:rgba(185,205,255,.14);color:#cbd8ef}
+body.dark-theme[data-page="data"] .public-drawer-nav a.active,
+body.dark-theme[data-page="rules"] .public-drawer-nav a.active{background:rgba(119,151,213,.24);color:#fff}
