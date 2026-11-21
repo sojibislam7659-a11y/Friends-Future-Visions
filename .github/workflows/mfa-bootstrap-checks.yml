@@ -1,0 +1,30 @@
+name: Production MFA Bootstrap Checks
+
+on:
+  push:
+    branches:
+      - release/ffv-mfa-bootstrap-20261122
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Syntax-check bootstrap JavaScript
+        run: |
+          node --check public/login.js
+          node --check public/brand-logo.js
+          node --check public/password-visibility.js
+      - name: Verify MFA bootstrap contract
+        run: node scripts/check_mfa_bootstrap.mjs
+      - name: Check patch whitespace
+        run: git diff --check
