@@ -34,6 +34,50 @@ const showMandatoryPasswordChange=()=>{
  document.querySelectorAll(".login > p.small").forEach(node=>node.hidden=true);
  document.getElementById("requiredNewPassword").focus();
 };
+const mfaPanel=document.getElementById("superAdminMfaPanel");
+const mfaMessage=document.getElementById("mfaMessage");
+let activeMfaFactorId=null;
+const showMfaMessage=text=>{mfaMessage.textContent=text;mfaMessage.style.display="block"};
+const startSuperAdminMfa=async()=>{
+ form.hidden=true;resetPanel.hidden=true;mandatoryPanel.hidden=true;mfaPanel.hidden=false;
+ document.getElementById("forgotPasswordLink").hidden=true;
+ document.getElementById("resendVerificationLink").hidden=true;
+ document.querySelector(".security-note").hidden=true;
+ document.querySelectorAll(".login > p.small").forEach(node=>node.hidden=true);
+ const {data:aal,error:aalError}=await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+ if(aalError){showMfaMessage(aalError.message);return}
+ if(aal?.currentLevel==="aal2"){location.replace("dashboard.html");return}
+ const {data:factors,error:factorError}=await supabase.auth.mfa.listFactors();
+ if(factorError){showMfaMessage(factorError.message);return}
+ const totp=factors?.totp||[];
+ const verified=totp.find(factor=>factor.status==="verified");
+ if(verified){
+  activeMfaFactorId=verified.id;
+  document.getElementById("mfaQrCode").hidden=true;
+  document.getElementById("mfaSecretWrap").hidden=true;
+  document.getElementById("mfaInstruction").textContent="আপনার Authenticator App খুলে বর্তমান ৬ সংখ্যার Code দিন।";
+ }else{
+  const unverified=totp.find(factor=>factor.status==="unverified");
+  if(unverified){
+   const {error}=await supabase.auth.mfa.unenroll({factorId:unverified.id});
+   if(error){showMfaMessage(error.message);return}
+  }
+  const {data:enrolled,error:enrollError}=await supabase.auth.mfa.enroll({
+   factorType:"totp",
+   friendlyName:"Friends Future Vision Super Admin"
+  });
+  if(enrollError||!enrolled?.id||!enrolled?.totp?.qr_code){
+   showMfaMessage(enrollError?.message||"Authenticator setup could not start.");return;
+  }
+  activeMfaFactorId=enrolled.id;
+  document.getElementById("mfaQrCode").src=enrolled.totp.qr_code;
+  document.getElementById("mfaQrCode").hidden=false;
+  document.getElementById("mfaSecret").textContent=enrolled.totp.secret||"";
+  document.getElementById("mfaSecretWrap").hidden=false;
+  document.getElementById("mfaInstruction").textContent="Google Authenticator, Microsoft Authenticator বা অন্য TOTP App দিয়ে QR code scan করুন। তারপর ৬ সংখ্যার Code দিন।";
+ }
+ document.getElementById("mfaCode").focus();
+};
 document.getElementById("forgotPasswordLink").addEventListener("click",async event=>{
  event.preventDefault();if(!supabaseReady)return;
  const email=document.getElementById("email").value.trim().toLowerCase();
@@ -117,8 +161,9 @@ else{
  if(data.session){
   const {data:profile}=await supabase.from("profiles").select("role,must_change_password").eq("id",data.session.user.id).maybeSingle();
   if(isPasswordRecovery){ /* Keep the recovery session active for updateUser(). */ }
+  else if(profile?.role==="super_admin")await startSuperAdminMfa();
   else if(profile?.role==="member"&&profile.must_change_password)showMandatoryPasswordChange();
-  else if(profile&&["super_admin","member"].includes(profile.role))location.replace("dashboard.html");
+  else if(profile?.role==="member")location.replace("dashboard.html");
   else{
    await supabase.auth.signOut();
    if(profile?.role==="pending")showKey("pending");
@@ -126,6 +171,26 @@ else{
   }
  }
 }
+document.getElementById("mfaForm").addEventListener("submit",async event=>{
+ event.preventDefault();
+ if(!activeMfaFactorId){showMfaMessage("Authenticator setup পাওয়া যায়নি। Page reload করে আবার চেষ্টা করুন।");return}
+ const code=document.getElementById("mfaCode").value.trim();
+ if(!/^[0-9]{6}$/.test(code)){showMfaMessage("৬ সংখ্যার Code দিন।");return}
+ const button=document.getElementById("mfaVerifyButton");button.disabled=true;button.textContent="যাচাই হচ্ছে…";
+ const {data:challenge,error:challengeError}=await supabase.auth.mfa.challenge({factorId:activeMfaFactorId});
+ if(challengeError){showMfaMessage(challengeError.message);button.disabled=false;button.textContent="Verify করে প্রবেশ করুন";return}
+ const {error:verifyError}=await supabase.auth.mfa.verify({factorId:activeMfaFactorId,challengeId:challenge.id,code});
+ if(verifyError){showMfaMessage("Code সঠিক নয় বা মেয়াদ শেষ। নতুন Code দিয়ে আবার চেষ্টা করুন।");button.disabled=false;button.textContent="Verify করে প্রবেশ করুন";return}
+ const {data:assurance,error:assuranceError}=await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+ if(assuranceError||assurance?.currentLevel!=="aal2"){showMfaMessage("MFA verification complete হয়নি। আবার চেষ্টা করুন।");button.disabled=false;button.textContent="Verify করে প্রবেশ করুন";return}
+ await supabase.auth.refreshSession();
+ location.replace("dashboard.html");
+});
+document.getElementById("mfaSignOut").addEventListener("click",async()=>{
+ await supabase.auth.signOut();
+ location.replace("login.html");
+});
+
 document.getElementById("mandatoryPasswordForm").addEventListener("submit",async event=>{
  event.preventDefault();
  const password=document.getElementById("requiredNewPassword").value;
@@ -152,6 +217,7 @@ form.addEventListener("submit",async e=>{
  }
  else{
   const {data:p,error:pe}=await supabase.from("profiles").select("role,must_change_password").eq("id",data.user.id).maybeSingle();
+  if(!pe&&p?.role==="super_admin"){await startSuperAdminMfa();return}
   if(!pe&&p?.role==="member"&&p.must_change_password){showMandatoryPasswordChange();return}
   if(!pe&&p?.role==="pending"){await supabase.auth.signOut();showKey("pendingVerified")}
   else if(!pe&&p?.role==="rejected"){await supabase.auth.signOut();showKey("rejected")}
