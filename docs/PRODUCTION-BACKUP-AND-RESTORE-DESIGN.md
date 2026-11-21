@@ -13,6 +13,16 @@ Status: DESIGN ONLY — credentials and owner authorization not configured.
 - Never store database passwords, service-role keys, Supabase access tokens, Google OAuth tokens, SMTP passwords, or VAPID private keys in Git or browser code.
 - Retain the last 12 monthly backups by default, plus a rolling set of recent manual backups; confirm Drive capacity before enabling retention.
 
+## Google Drive connection method
+
+The Drive connector is not available in this ChatGPT connection. The current proposed free alternative is a small Google Apps Script Web App owned by the user's personal Gmail account. The owner authorizes Drive access once; GitHub Actions sends only encrypted, SHA-256-verified chunks to a dedicated Drive folder. The receiver cannot list, read, or delete Drive files. Its 256-bit bearer token and folder ID live only in Apps Script Script Properties and GitHub Actions Secrets.
+
+Receiver source and owner setup instructions:
+- `backup/google-drive-receiver/Code.gs`
+- `backup/google-drive-receiver/README.md`
+
+The receiver has been committed to the release branch but has **not** been deployed or authorized. Its first test must use a harmless encrypted payload, then be downloaded and checksum-verified. Only after this test should a Development backup be connected.
+
 ## Recommended free architecture
 
 1. A GitHub Actions workflow in this repository runs on a monthly cron and on manual `workflow_dispatch`.
@@ -38,7 +48,7 @@ Names are placeholders for GitHub Actions Secrets; values must be supplied throu
 - `BACKUP_ENCRYPTION_PASSPHRASE` — long random passphrase or key.
 - Optional: `SUPABASE_ACCESS_TOKEN` — only if Management API calls are required; store only in Actions Secrets and scope access appropriately.
 
-The GitHub Actions workflow also needs permission to write workflow artifacts and access its own repository. A website "Backup Now" button would require a separate authenticated backend trigger, such as a Cloudflare Worker endpoint holding a narrowly scoped GitHub workflow-dispatch token. That token must never be exposed to browser JavaScript.
+The GitHub Actions workflow also needs permission to write workflow artifacts and access its own repository. It will use `FFV_DRIVE_RECEIVER_URL` and `FFV_BACKUP_TOKEN` secrets to reach the Apps Script receiver. A website "Backup Now" button would require a separate authenticated backend trigger, such as a Cloudflare Worker endpoint holding a narrowly scoped GitHub workflow-dispatch token. That token must never be exposed to browser JavaScript.
 
 ## Free-plan backup limitation
 
