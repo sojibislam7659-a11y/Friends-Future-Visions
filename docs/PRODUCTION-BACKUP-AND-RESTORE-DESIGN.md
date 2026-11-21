@@ -40,6 +40,7 @@ Files on `release/ffv-prod-parity-20261122`:
 - `.github/workflows/backup-production-to-drive.yml` — manual workflow dispatch with a harmless `smoke_test` default and a monthly Production schedule (first day of each month, 03:00 UTC / 09:00 Bangladesh time).
 - `scripts/export_supabase_backup.mjs` — exports Auth user metadata and downloads Storage object bytes.
 - `scripts/upload_encrypted_backup.py` — splits an encrypted archive into 8 MiB chunks, uploads each chunk, then submits a manifest with per-part and whole-archive SHA-256 values.
+- `scripts/verify_backup_parts.py` — reassembles manually downloaded Drive chunks and refuses to produce an archive unless every part and the complete encrypted archive match the manifest SHA-256.
 - `backup/google-drive-receiver/Code.gs` — Apps Script receiver. It accepts authenticated POSTs only, validates chunk sizes and hashes, rejects conflicting duplicates, and stores files in the configured Drive folder. It has no read/list/download/delete endpoint.
 - `backup/production-edge-functions/2026-11-22/` — exact source snapshots of all five live Production Edge Functions. Each saved `index.ts` was independently fetched again and compared byte-for-byte with the live source.
 
@@ -96,7 +97,7 @@ The workflow checks that the database URL points to the Production project and t
 - Each part is SHA-256 checked by the receiver.
 - The manifest declares ordered part numbers, byte sizes, part hashes, total bytes and encrypted archive SHA-256.
 - Duplicate retries are idempotent; conflicting duplicate chunks are rejected.
-- The receiver intentionally cannot read, list or delete Drive files. For recovery, the owner downloads all chunk files from the Drive folder, reassembles them in part order, verifies the encrypted archive SHA-256, decrypts with the passphrase, and validates the PostgreSQL dump.
+- The receiver intentionally cannot read, list or delete Drive files. For recovery, the owner downloads all chunk files and the manifest from the Drive folder, then runs `python scripts/verify_backup_parts.py --manifest FFV_<runId>_manifest.json --parts-dir <download-folder> --output restored.gpg`. The verifier reassembles parts in order and checks each size/hash plus the whole encrypted archive SHA-256. Only then decrypt with the passphrase and validate the PostgreSQL dump.
 - Automated 12-month Drive retention is not implemented; the receiver cannot delete files. Manage Drive retention manually until a separately reviewed retention mechanism exists.
 
 A successful upload is not a restore test. Restore rehearsal must use an isolated, owner-approved target and must never overwrite Production.
