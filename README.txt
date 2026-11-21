@@ -1,9 +1,10 @@
-FRIENDS FUTURE VISIONS FOREVER — WEBSITE
+FRIENDS FUTURE VISION FOREVER — WEBSITE
 
 PROJECT STATUS
 - Active application code is in the public/ directory.
-- The development branch is the only branch to change during ongoing work.
-- The main branch is Production. Do not merge or deploy to Production without explicit approval.
+- The development branch remains the source of ongoing Development work.
+- The release/ffv-prod-parity-20261122 branch is a staging branch for reviewing Development changes against Production configuration; it is not deployed.
+- The main branch is Production. Do not merge or deploy to Production without a verified current backup, completed tests, and explicit approval.
 - Preserve the existing design, logo, navigation, and working features unless a change is specifically approved.
 
 HOSTING
