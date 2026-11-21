@@ -1190,3 +1190,33 @@ body.dark-theme[data-page="data"] .public-drawer-nav a,
 body.dark-theme[data-page="rules"] .public-drawer-nav a{background:rgba(119,151,213,.12);border-color:rgba(185,205,255,.14);color:#cbd8ef}
 body.dark-theme[data-page="data"] .public-drawer-nav a.active,
 body.dark-theme[data-page="rules"] .public-drawer-nav a.active{background:rgba(119,151,213,.24);color:#fff}
+
+/* Consistent member identity: organization line is exactly half the member-name size. */
+.topbar-identity{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.topbar-identity strong{font-size:14px;line-height:1.2;font-weight:750}
+.topbar-identity small{font-size:.5em;line-height:1.25;display:block}
+@media(max-width:640px){
+ .topbar-identity strong{font-size:11px;line-height:1.2}
+ .topbar-identity small{font-size:.5em;line-height:1.25}
+}
+
+/* Data and Rules drawer: four equal, readable controls without clipped labels. */
+body[data-page="data"] .public-drawer-footer,
+body[data-page="rules"] .public-drawer-footer{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+body[data-page="data"] .public-drawer-footer button,
+body[data-page="data"] .public-drawer-footer a,
+body[data-page="rules"] .public-drawer-footer button,
+body[data-page="rules"] .public-drawer-footer a{
+ box-sizing:border-box;width:100%;min-width:0;min-height:44px;height:auto;padding:7px 5px;
+ font-size:10px;line-height:1.2;white-space:normal;overflow-wrap:anywhere;text-align:center
+}
+body[data-page="data"] .public-drawer-footer .public-theme-toggle,
+body[data-page="rules"] .public-drawer-footer .public-theme-toggle{grid-column:1}
+body[data-page="data"] .public-drawer-footer .public-drawer-export,
+body[data-page="data"] .public-drawer-footer .public-drawer-statement,
+body[data-page="rules"] .public-drawer-footer .public-drawer-export,
+body[data-page="rules"] .public-drawer-footer .public-drawer-statement{grid-column:2}
+body[data-page="data"] .public-drawer-footer .public-drawer-install,
+body[data-page="rules"] .public-drawer-footer .public-drawer-install{grid-column:1}
+body[data-page="data"] .public-drawer-footer .public-drawer-logout,
+body[data-page="rules"] .public-drawer-footer .public-drawer-logout{grid-column:2}
