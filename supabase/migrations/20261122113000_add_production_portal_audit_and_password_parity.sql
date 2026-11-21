@@ -454,78 +454,8 @@ begin
   if exists (
     select 1 from public.push_subscriptions
     where endpoint !~* '^https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]com|web[.]push[.]apple[.]com|[a-z0-9-]+[.]notify[.]windows[.]com)/'
-       or p256dh !~ '^[A-Za-z0-9_-]{80,100}
-create table public.notification_push_deliveries (
-  notification_id uuid not null references public.notifications(id) on delete cascade,
-  subscription_id uuid not null references public.push_subscriptions(id) on delete cascade,
-  status text not null default 'sending' check (status in ('sending','sent','failed')),
-  attempts integer not null default 0 check (attempts between 0 and 5),
-  last_status_code integer,
-  last_error text,
-  updated_at timestamptz not null default now(),
-  primary key(notification_id,subscription_id)
-);
-create index notification_push_deliveries_subscription_idx
-on public.notification_push_deliveries(subscription_id);
-alter table public.notification_push_deliveries enable row level security;
-grant all on public.notification_push_deliveries to service_role;
-revoke all on public.notification_push_deliveries from public,anon,authenticated,service_role;
-grant all on public.notification_push_deliveries to service_role;
-create policy notification_push_deliveries_service_role_all
-on public.notification_push_deliveries for all to service_role
-using (true) with check (true);
-
-CREATE OR REPLACE FUNCTION public.claim_notification_push_delivery(p_notification_id uuid, p_subscription_id uuid)
- RETURNS integer
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-DECLARE v_attempts integer;
-BEGIN
-  IF (SELECT auth.jwt()->>'role') IS DISTINCT FROM 'service_role' THEN
-    RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
-  END IF;
-  INSERT INTO public.notification_push_deliveries(notification_id,subscription_id,status,attempts,updated_at)
-  VALUES(p_notification_id,p_subscription_id,'sending',1,now())
-  ON CONFLICT(notification_id,subscription_id) DO UPDATE
-    SET status='sending',
-        attempts=public.notification_push_deliveries.attempts+1,
-        updated_at=now()
-    WHERE public.notification_push_deliveries.status<>'sent'
-      AND public.notification_push_deliveries.attempts<5
-      AND (public.notification_push_deliveries.status<>'sending'
-           OR public.notification_push_deliveries.updated_at<now()-interval '10 minutes')
-  RETURNING attempts INTO v_attempts;
-  RETURN coalesce(v_attempts,0);
-END;
-$function$;
-revoke all on function public.claim_notification_push_delivery(uuid,uuid) from public,anon,authenticated;
-grant execute on function public.claim_notification_push_delivery(uuid,uuid) to service_role;
-
-commit;
-
-       or auth_key !~ '^[A-Za-z0-9_-]{16,32}
-create table public.notification_push_deliveries (
-  notification_id uuid not null references public.notifications(id) on delete cascade,
-  subscription_id uuid not null references public.push_subscriptions(id) on delete cascade,
-  status text not null default 'sending' check (status in ('sending','sent','failed')),
-  attempts integer not null default 0 check (attempts between 0 and 5),
-  last_status_code integer,
-  last_error text,
-  updated_at timestamptz not null default now(),
-  primary key(notification_id,subscription_id)
-);
-create index notification_push_deliveries_subscription_idx
-on public.notification_push_deliveries(subscription_id);
-alter table public.notification_push_deliveries enable row level security;
-grant all on public.notification_push_deliveries to service_role;
-create policy notification_push_deliveries_service_role_all
-on public.notification_push_deliveries for all to service_role
-using (true) with check (true);
-
-commit;
-
+       or p256dh !~ '^[A-Za-z0-9_-]{80,100$'
+       or auth_key !~ '^[A-Za-z0-9_-]{16,32$'
        or (user_agent is not null and length(user_agent)>512)
   ) then
     raise exception 'Preflight failed: Production contains invalid push subscription rows';
@@ -538,51 +468,11 @@ alter table public.push_subscriptions
   alter column created_at set default now(),
   alter column updated_at set default now(),
   add constraint push_subscriptions_auth_key_format_check
-    check (auth_key ~ '^[A-Za-z0-9_-]{16,32}
-create table public.notification_push_deliveries (
-  notification_id uuid not null references public.notifications(id) on delete cascade,
-  subscription_id uuid not null references public.push_subscriptions(id) on delete cascade,
-  status text not null default 'sending' check (status in ('sending','sent','failed')),
-  attempts integer not null default 0 check (attempts between 0 and 5),
-  last_status_code integer,
-  last_error text,
-  updated_at timestamptz not null default now(),
-  primary key(notification_id,subscription_id)
-);
-create index notification_push_deliveries_subscription_idx
-on public.notification_push_deliveries(subscription_id);
-alter table public.notification_push_deliveries enable row level security;
-grant all on public.notification_push_deliveries to service_role;
-create policy notification_push_deliveries_service_role_all
-on public.notification_push_deliveries for all to service_role
-using (true) with check (true);
-
-commit;
-),
+    check (auth_key ~ '^[A-Za-z0-9_-]{16,32$'),
   add constraint push_subscriptions_endpoint_provider_check
-    check (endpoint ~* '^https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]com|web[.]push[.]apple[.]com|[a-z0-9-]+[.]notify[.]windows[.]com)/'),
+    check (endpoint ~* '^https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]org|web[.]push[.]apple[.]com|[a-z0-9-]+[.]notify[.]windows[.]com)/'),
   add constraint push_subscriptions_p256dh_format_check
-    check (p256dh ~ '^[A-Za-z0-9_-]{80,100}
-create table public.notification_push_deliveries (
-  notification_id uuid not null references public.notifications(id) on delete cascade,
-  subscription_id uuid not null references public.push_subscriptions(id) on delete cascade,
-  status text not null default 'sending' check (status in ('sending','sent','failed')),
-  attempts integer not null default 0 check (attempts between 0 and 5),
-  last_status_code integer,
-  last_error text,
-  updated_at timestamptz not null default now(),
-  primary key(notification_id,subscription_id)
-);
-create index notification_push_deliveries_subscription_idx
-on public.notification_push_deliveries(subscription_id);
-alter table public.notification_push_deliveries enable row level security;
-grant all on public.notification_push_deliveries to service_role;
-create policy notification_push_deliveries_service_role_all
-on public.notification_push_deliveries for all to service_role
-using (true) with check (true);
-
-commit;
-),
+    check (p256dh ~ '^[A-Za-z0-9_-]{80,100$'),
   add constraint push_subscriptions_user_agent_length_check
     check (user_agent is null or length(user_agent)<=512);
 
@@ -646,9 +536,38 @@ create table public.notification_push_deliveries (
 create index notification_push_deliveries_subscription_idx
 on public.notification_push_deliveries(subscription_id);
 alter table public.notification_push_deliveries enable row level security;
+revoke all on public.notification_push_deliveries from public,anon,authenticated,service_role;
 grant all on public.notification_push_deliveries to service_role;
 create policy notification_push_deliveries_service_role_all
 on public.notification_push_deliveries for all to service_role
 using (true) with check (true);
+
+CREATE OR REPLACE FUNCTION public.claim_notification_push_delivery(p_notification_id uuid, p_subscription_id uuid)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE v_attempts integer;
+BEGIN
+  IF (SELECT auth.jwt()->>'role') IS DISTINCT FROM 'service_role' THEN
+    RAISE EXCEPTION 'Service role required' USING ERRCODE='42501';
+  END IF;
+  INSERT INTO public.notification_push_deliveries(notification_id,subscription_id,status,attempts,updated_at)
+  VALUES(p_notification_id,p_subscription_id,'sending',1,now())
+  ON CONFLICT(notification_id,subscription_id) DO UPDATE
+    SET status='sending',
+        attempts=public.notification_push_deliveries.attempts+1,
+        updated_at=now()
+    WHERE public.notification_push_deliveries.status<>'sent'
+      AND public.notification_push_deliveries.attempts<5
+      AND (public.notification_push_deliveries.status<>'sending'
+           OR public.notification_push_deliveries.updated_at<now()-interval '10 minutes')
+  RETURNING attempts INTO v_attempts;
+  RETURN coalesce(v_attempts,0);
+END;
+$function$;
+revoke all on function public.claim_notification_push_delivery(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.claim_notification_push_delivery(uuid,uuid) to service_role;
 
 commit;
