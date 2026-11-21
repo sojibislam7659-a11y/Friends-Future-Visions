@@ -186,6 +186,20 @@ begin
       and p.proconfig @> array['search_path=""']
   ) then raise exception 'Member number trigger does not use an empty search_path'; end if;
 
+  if to_regprocedure('public.get_push_config()') is null
+     or has_function_privilege('anon','public.get_push_config()','EXECUTE')
+     or has_function_privilege('authenticated','public.get_push_config()','EXECUTE')
+     or not has_function_privilege('service_role','public.get_push_config()','EXECUTE') then
+    raise exception 'Push configuration RPC grants are incorrect';
+  end if;
+  if (select count(*) from vault.secrets
+      where name in ('ffvf_vapid_public_key','ffvf_vapid_private_key','ffvf_vapid_subject','ffvf_cron_token'))<>4 then
+    raise exception 'One or more expected push Vault secret names are missing';
+  end if;
+  if not exists (select 1 from cron.job where jobname='ffvf-push-delivery' and schedule='* * * * *') then
+    raise exception 'Expected minute-level push delivery cron job is missing';
+  end if;
+
   if not exists (
     select 1 from pg_policies
     where schemaname='public' and tablename='financial_postings'
