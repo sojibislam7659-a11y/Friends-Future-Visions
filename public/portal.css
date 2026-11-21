@@ -1132,3 +1132,14 @@ body.dark-theme #globalNoticeTicker #globalNoticeTickerText{color:#ff9c9c}
  #globalNoticeTicker #globalNoticeTickerText{animation:none!important;white-space:normal!important}
  #globalNoticeTicker .site-ticker-window{white-space:normal}
 }
+
+
+/* Shared visual member identity for authenticated headers. */
+.member-identity-chip{display:flex;align-items:center;gap:9px;min-width:0;max-width:min(48vw,360px);padding:5px 10px 5px 6px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text)}
+.member-avatar{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:50%;background:#082d50;color:#fff;font-size:12px;font-weight:800}
+.member-name-wrap{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.member-name-wrap strong{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:clamp(11px,1.5vw,14px);font-weight:800;color:var(--text)}
+.member-name-wrap small{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body.dark-theme .member-identity-chip{background:#14283b;border-color:#35516b;color:#f3f7fb}
+body.dark-theme .member-avatar{background:#087cc1}
+@media(max-width:600px){.member-identity-chip{gap:6px;padding:4px 7px 4px 4px;max-width:46vw}.member-avatar{width:29px;height:29px;flex-basis:29px}.member-name-wrap small{display:none}}
