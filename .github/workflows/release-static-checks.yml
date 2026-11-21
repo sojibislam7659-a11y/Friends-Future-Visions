@@ -5,10 +5,12 @@ on:
     branches:
       - development
       - release/production-updates-20261117
+      - release/ffv-prod-parity-20261122
   pull_request:
     branches:
       - development
       - main
+      - release/ffv-prod-parity-20261122
 
 jobs:
   javascript-syntax:
