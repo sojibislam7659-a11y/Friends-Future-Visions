@@ -100,6 +100,15 @@ begin
       and not exists (select 1 from auth.mfa_factors f where f.user_id=p.id and f.status='verified')
   ) then raise exception 'A Super Admin has no verified MFA factor'; end if;
 
+  select pg_get_functiondef('private.get_financial_summary_unchecked()'::regprocedure) into v_def;
+  if v_def not like '%reversal_of_id%' or v_def not like '%2031-12-31%' then
+    raise exception 'Financial summary is not the reversal-aware Development implementation';
+  end if;
+  if has_function_privilege('authenticated','private.get_financial_summary_unchecked()','EXECUTE')
+     or has_function_privilege('anon','private.get_financial_summary_unchecked()','EXECUTE') then
+    raise exception 'Unchecked financial summary helper is directly executable by API roles';
+  end if;
+
   if not exists (
     select 1 from pg_policies
     where schemaname='public' and tablename='financial_postings'
