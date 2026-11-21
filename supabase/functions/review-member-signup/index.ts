@@ -85,14 +85,10 @@ Deno.serve(async (req: Request) => {
     if (matches.length > 1)
       return json({ error: "Multiple member records use this email; resolve duplicates first" }, 409);
 
-    // Super Admin approval is the committee's manual identity check.
-    // This bypasses email ownership verification only after a unique stored member match.
+    // Email ownership verification is required before Super Admin approval.
+    // Admin approval and email verification are independent security checks.
     if (!targetUser.email_confirmed_at) {
-      const { error: confirmError } = await admin.auth.admin.updateUserById(userId, {
-        email_confirm: true
-      });
-      if (confirmError)
-        return json({ error: "Could not enable sign-in for this member", details: confirmError.message }, 502);
+      return json({ error: "Member must verify their email before approval. Ask them to open the latest verification email first." }, 409);
     }
 
     if (action === "approve") {
