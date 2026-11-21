@@ -49,20 +49,34 @@ For the existing owner deployment already created for this project, use **Deploy
 
 The endpoint is publicly reachable, so the 256-bit token is mandatory. The script only accepts checksum-verified encrypted chunks and a non-sensitive manifest. It does not expose Drive contents. If Google does not offer the **Anyone** access option, stop and report the available options; do not choose a weaker workaround.
 
-## 4. Do not configure GitHub secrets yet
+## 4. Configure GitHub repository secrets
 
-The backup workflow has not yet been built or tested end-to-end. Wait until the workflow is ready before adding:
+The backup workflow is staged at `.github/workflows/backup-production-to-drive.yml`. Add these secrets under GitHub → repository Settings → Secrets and variables → Actions. Never paste values into ChatGPT.
+
+Required for the harmless smoke test:
 - `FFV_DRIVE_RECEIVER_URL`
 - `FFV_BACKUP_TOKEN`
-- Production database connection credentials
-- Storage export credentials, if required
-- Backup encryption passphrase
+- `BACKUP_ENCRYPTION_PASSPHRASE`
 
-No secrets belong in this repository. Never paste them into ChatGPT.
+Required only for a real Production backup:
+- `FFV_PROD_DATABASE_URL`
+- `FFV_PROD_SERVICE_ROLE_KEY`
 
-## 5. Safe first test (later)
+Use the Production database URL and service-role key only. The workflow checks the database URL for Production project ref `ugtzmtmsfaajclftfeuz`.
 
-Before using any Production data, we will send a small harmless encrypted test payload, confirm that it appears in this Drive folder, download it, and verify its SHA-256 checksum. Only after that will we connect the Development project for an end-to-end backup rehearsal. Production remains excluded until the Development backup and restore path is proven.
+## 5. Safe first test
+
+After updating the Apps Script deployment and confirming GET reports version 2:
+
+1. Open GitHub Actions → **Encrypted Production Backup to Google Drive**.
+2. Click **Run workflow** and select branch `release/ffv-prod-parity-20261122`.
+3. Keep mode set to `smoke_test` (the default). This creates and uploads a small encrypted text-only test archive; it does not connect to Supabase or export member data.
+4. Confirm the workflow succeeds and the chunk plus manifest appear in the Drive folder.
+5. Download the single chunk and manifest from Drive. Compare the chunk's SHA-256 to the manifest's `archiveSha256`; then decrypt it using the owner-held passphrase and confirm it contains only `SMOKE_TEST_ONLY.txt`.
+
+Only after the smoke test passes should the owner add the Production database/service-role secrets and manually run mode `production`. The Production workflow exports the database, Auth metadata, Storage bytes and the preserved Production Edge Function snapshot, then encrypts and uploads the archive.
+
+The monthly schedule is defined for the first day of each month at 03:00 UTC, but GitHub schedules run only from the default branch. It will not activate until the workflow is merged to `main` after the backup/restore gate and explicit approval.
 
 ## Security notes
 
