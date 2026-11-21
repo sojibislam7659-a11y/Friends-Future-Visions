@@ -15,7 +15,7 @@ No function was deployed or modified during this inventory.
 
 | Function | Secret / environment names observed in source |
 |---|---|
-| `send-push` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
+| `send-push` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; Vault entries `ffvf_vapid_public_key`, `ffvf_vapid_private_key`, `ffvf_vapid_subject`, `ffvf_cron_token` |
 | `review-member-signup` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
 | `create-member-login` | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` |
 | `invite-member` | No environment secret read by the retired Development handler |
@@ -24,7 +24,11 @@ No function was deployed or modified during this inventory.
 The source of the Production-only `google-sheets-sync` function was fetched from the live
 Production project and committed to this release branch. It contains environment variable
 references only; no secret values were included. Its live version 3 must remain deployed until
-the owner explicitly approves a replacement. Do not overwrite it with the Development function
+the owner explicitly approves a replacement. The function reads `OIKKO_SYNC_SECRET`; this
+session cannot inspect the stored Edge Function secret value or verify its presence. Production
+also has `public.get_push_config()` restricted to `service_role`, all four expected VAPID/cron
+Vault secret names, and a `ffvf-push-delivery` pg_cron job scheduled every minute. Only secret
+names were checked; no decrypted values were queried. Do not overwrite it with the Development function
 set because Development has no counterpart.
 
 ## Deployment gate
