@@ -115,11 +115,22 @@ The latest Production snapshot has zero financial transactions, but this does no
 
 ## Phase 4 — SECURITY DEFINER hardening
 
-- Change public wrappers to SECURITY INVOKER where the private helper already enforces authorization.
-- Keep privileged work in private SECURITY DEFINER helpers with an empty search_path and explicit role checks.
-- Replace the Production financial summary legacy allow-list that includes `admin` with the exact intended roles `member` and `super_admin`.
-- Review EXECUTE grants for every public/private helper. Authenticated clients must not directly execute internal helpers that are intended only for trusted wrapper/service-role use.
+A Production-specific migration is now staged on `release/ffv-prod-parity-20261122`:
+
+- `supabase/migrations/20261122103000_harden_production_security_definer_wrappers.sql`
+- It has explicit schema/function preconditions and runs transactionally.
+- It moves the private-document review body into a private SECURITY DEFINER helper with an explicit Super Admin check.
+- It adds an internal role allow-list to the financial summary helper (`member`, `super_admin` only), removing legacy `admin`.
+- It changes the four public RPC wrappers to SECURITY INVOKER and grants authenticated execution only to private helpers that perform their own authorization checks.
+- It revokes anon/PUBLIC execution on the affected private and public functions.
+- The migration is staged only. It has NOT been applied to Development or Production and still requires SQL parser/runtime validation plus real member/Super Admin JWT tests after the backup gate.
+- Read-only Production preflight confirms all required source helpers/tables exist, authenticated has private-schema USAGE, and there are currently zero profiles with roles outside `member` / `super_admin`.
+
+Remaining checks before execution:
+
 - Test member, Super Admin, unauthenticated, and anon JWT contexts. SQL tests with no valid JWT are not substitutes for browser/API tests using actual user sessions.
+- Confirm the Supabase API exposed-schema configuration and PostgREST RPC resolution remain correct after private helper grants.
+- Re-run the exact ACL and SECURITY DEFINER advisor checks after applying in a restore rehearsal environment.
 
 ## Phase 5 — Edge Functions and application release
 
