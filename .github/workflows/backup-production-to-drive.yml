@@ -1,6 +1,11 @@
 name: Encrypted Production Backup to Google Drive
 
 on:
+  push:
+    branches:
+      - release/ffv-prod-parity-20261122
+    paths:
+      - backup/trigger-backup-workflow.txt
   workflow_dispatch:
     inputs:
       mode:
@@ -38,6 +43,18 @@ jobs:
     steps:
       - name: Checkout release branch
         uses: actions/checkout@v4
+
+      - name: Set push-triggered backup mode
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mode="$(tr -d '[:space:]' < backup/trigger-backup-workflow.txt)"
+          case "$mode" in
+            smoke_test|production) ;;
+            *) echo "::error::Trigger file must contain smoke_test or production."; exit 1 ;;
+          esac
+          echo "FFV_BACKUP_MODE=$mode" >> "$GITHUB_ENV"
 
       - name: Validate required owner-configured secrets
         shell: bash
