@@ -1,0 +1,129 @@
+name: Encrypted Production Backup to Google Drive
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 1 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ffv-production-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Export, encrypt and upload Production backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      FFV_PROD_DATABASE_URL: ${{ secrets.FFV_PROD_DATABASE_URL }}
+      FFV_PROD_SUPABASE_URL: https://ugtzmtmsfaajclftfeuz.supabase.co
+      FFV_PROD_SERVICE_ROLE_KEY: ${{ secrets.FFV_PROD_SERVICE_ROLE_KEY }}
+      FFV_DRIVE_RECEIVER_URL: ${{ secrets.FFV_DRIVE_RECEIVER_URL }}
+      FFV_BACKUP_TOKEN: ${{ secrets.FFV_BACKUP_TOKEN }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+      FFV_BACKUP_RUN_ID: ffv_backup_${{ github.run_id }}_${{ github.run_attempt }}
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+
+      - name: Validate required owner-configured secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "$FFV_PROD_DATABASE_URL" ]] || missing+=("FFV_PROD_DATABASE_URL")
+          [[ -n "$FFV_PROD_SERVICE_ROLE_KEY" ]] || missing+=("FFV_PROD_SERVICE_ROLE_KEY")
+          [[ -n "$FFV_DRIVE_RECEIVER_URL" ]] || missing+=("FFV_DRIVE_RECEIVER_URL")
+          [[ -n "$FFV_BACKUP_TOKEN" ]] || missing+=("FFV_BACKUP_TOKEN")
+          [[ -n "$BACKUP_ENCRYPTION_PASSPHRASE" ]] || missing+=("BACKUP_ENCRYPTION_PASSPHRASE")
+          if (( ${#missing[@]} )); then
+            printf '::error::Missing repository secrets: %s\n' "${missing[*]}"
+            exit 1
+          fi
+          case "$FFV_PROD_DATABASE_URL" in
+            *ugtzmtmsfaajclftfeuz*) ;;
+            *) echo "::error::Database URL does not identify the Production project."; exit 1 ;;
+          esac
+          [[ "$FFV_DRIVE_RECEIVER_URL" == https://script.google.com/macros/s/*/exec ]] || {
+            echo "::error::Drive receiver URL is not an Apps Script /exec URL."
+            exit 1
+          }
+          [[ ${#FFV_BACKUP_TOKEN} -ge 40 ]] || {
+            echo "::error::Drive receiver token is too short."
+            exit 1
+          }
+
+      - name: Create private working directories
+        run: |
+          umask 077
+          mkdir -p backup-output/project
+          chmod 700 backup-output backup-output/project
+
+      - name: Dump Production public and private database schemas
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            -e DATABASE_URL="$FFV_PROD_DATABASE_URL" \
+            -v "$GITHUB_WORKSPACE/backup-output/project:/backup" \
+            postgres:17-alpine \
+            sh -ceu 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --schema=public --schema=private --file=/backup/production-public-private.dump'
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE/backup-output/project:/backup" \
+            postgres:17-alpine \
+            pg_restore --list /backup/production-public-private.dump > backup-output/project/database-toc.txt
+          test -s backup-output/project/production-public-private.dump
+          test -s backup-output/project/database-toc.txt
+
+      - name: Export Auth metadata and every Storage object
+        run: node scripts/export_supabase_backup.mjs backup-output/project
+
+      - name: Export non-secret database configuration inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -e DATABASE_URL="$FFV_PROD_DATABASE_URL" \
+            -v "$GITHUB_WORKSPACE/backup-output/project:/backup" postgres:17-alpine sh -ceu '
+              psql "$DATABASE_URL" -X -A -t -c "select coalesce(json_agg(json_build_object('"'jobname'"',jobname,'"'schedule'"',schedule,'"'active'"',active,'"'username'"',username) order by jobname), '[]'::json) from cron.job" > /backup/cron-jobs.json
+              psql "$DATABASE_URL" -X -A -t -c "select coalesce(json_agg(json_build_object('"'name'"',name) order by name), '[]'::json) from vault.secrets" > /backup/vault-secret-names.json
+              psql "$DATABASE_URL" -X -A -t -c "select coalesce(json_agg(json_build_object('"'version'"',version) order by version), '[]'::json) from supabase_migrations.schema_migrations" > /backup/migration-history.json
+              psql "$DATABASE_URL" -X -A -t -c "select coalesce(json_agg(json_build_object('"'name'"',extname,'"'version'"',extversion) order by extname), '[]'::json) from pg_extension" > /backup/extensions.json
+            '
+
+      - name: Include verified Production Edge Function source snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p backup-output/project/edge-functions-source
+          cp -R backup/production-edge-functions/2026-11-22/. backup-output/project/edge-functions-source/
+          cp docs/PRODUCTION-EDGE-FUNCTION-INVENTORY.md backup-output/project/
+          cp docs/PRODUCTION-MIGRATION-PLAN.md backup-output/project/
+
+      - name: Create and encrypt archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          archive="backup-output/ffv-production-${GITHUB_RUN_ID}.tar.gz"
+          encrypted="${archive}.gpg"
+          tar -czf "$archive" -C backup-output/project .
+          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" > "$RUNNER_TEMP/ffv-backup-passphrase"
+          chmod 600 "$RUNNER_TEMP/ffv-backup-passphrase"
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-file "$RUNNER_TEMP/ffv-backup-passphrase" \
+            --symmetric --cipher-algo AES256 --s2k-digest-algo SHA512 \
+            --output "$encrypted" "$archive"
+          rm -f "$RUNNER_TEMP/ffv-backup-passphrase" "$archive"
+          test -s "$encrypted"
+          echo "ENCRYPTED_BACKUP=$encrypted" >> "$GITHUB_ENV"
+
+      - name: Upload encrypted chunks and checksum manifest to Drive
+        run: python scripts/upload_encrypted_backup.py --file "$ENCRYPTED_BACKUP"
+
+      - name: Remove temporary plaintext and encrypted workspace files
+        if: always()
+        run: |
+          rm -rf backup-output
+          rm -f "$RUNNER_TEMP/ffv-backup-passphrase"
