@@ -1264,3 +1264,27 @@ body[data-page="data"] .public-drawer-footer>.public-drawer-install,
 body[data-page="rules"] .public-drawer-footer>.public-drawer-install{grid-column:1!important}
 body[data-page="data"] .public-drawer-footer>.public-drawer-logout,
 body[data-page="rules"] .public-drawer-footer>.public-drawer-logout{grid-column:2!important}
+
+
+/* Member Details readability: keep dark-mode field surfaces and text in the same contrast theme */
+body.dark-theme .member-profile-field{
+  background:#1d3028!important;
+  border-color:#3c5749!important;
+  color:#e5efe9!important;
+}
+body.dark-theme .member-profile-field small{color:#b8cec2!important}
+body.dark-theme .member-profile-field strong{color:#f0f7f2!important}
+body.dark-theme .member-profile-grid .field label{color:#c8ded1!important}
+body.dark-theme .member-profile-grid .field input,
+body.dark-theme .member-profile-grid .field select,
+body.dark-theme .member-profile-grid .field textarea{
+  background:#1d3028!important;
+  color:#e6f0ea!important;
+  border-color:#425b4e!important;
+}
+.member-profile-topbar .topbar-identity{min-width:0}
+.member-profile-topbar .topbar-identity strong{overflow-wrap:anywhere}
+@media(max-width:480px){
+  .member-profile-grid{grid-template-columns:minmax(0,1fr)}
+  .member-profile-header{gap:10px}
+}
