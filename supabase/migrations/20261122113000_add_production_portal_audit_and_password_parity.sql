@@ -33,6 +33,9 @@ begin
 end
 $preflight$;
 
+-- Match Development's future-member default without rewriting existing rows.
+alter table public.members alter column monthly_contribution set default 2000;
+
 -- Keep the existing eight Production profiles; new flags default to the
 -- non-blocking state and do not force password changes for existing users.
 alter table public.profiles
