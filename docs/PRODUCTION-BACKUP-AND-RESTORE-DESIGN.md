@@ -1,7 +1,7 @@
 # Production Backup and Restore Design — Friends Future Vision Forever
 
 Date: 2026-11-22
-Status: DESIGN ONLY — credentials and owner authorization not configured.
+Status: PARTIALLY CONFIGURED — Apps Script receiver project exists; current receiver deployment still needs the latest hardened code and has not passed a runtime backup test.
 
 ## Requirements
 
@@ -21,7 +21,7 @@ Receiver source and owner setup instructions:
 - `backup/google-drive-receiver/Code.gs`
 - `backup/google-drive-receiver/README.md`
 
-The receiver has been committed to the release branch but has **not** been deployed or authorized. Its first test must use a harmless encrypted payload, then be downloaded and checksum-verified. Only after this test should a Development backup be connected.
+The owner created the `FFV Encrypted Backup Receiver` Apps Script project, added `FFV_BACKUP_FOLDER_ID` and `FFV_BACKUP_TOKEN` in Script Properties, deployed a Web App as `Execute as Me` / `Anyone`, and authorized it. The deployment URL was not saved in this conversation and can be recovered from Apps Script → Deploy → Manage deployments. The currently deployed Web App is still the earlier receiver version; the latest hardened `Code.gs` in this repository has not yet been pasted and redeployed. No harmless-payload runtime test has passed, no GitHub Actions receiver secrets/workflow have been configured, and no backup has been uploaded.
 
 ## Recommended free architecture
 
@@ -84,8 +84,9 @@ The Worker must use a secret stored in Cloudflare Worker Secrets, not a value in
 
 ## Current blockers
 
-- No Google Drive OAuth authorization is available in the current ChatGPT connection.
+- The Apps Script owner authorization exists, but the current deployment must be updated to the latest hardened code and its URL recovered.
 - No owner-controlled GitHub Actions Secrets have been configured for the backup workflow.
+- The Script Properties folder ID and bearer token are intentionally not visible to ChatGPT and must not be pasted into chat.
 - No Production database connection string is available to this session for a real export.
 - No encrypted archive has been uploaded or checksum-verified in Drive.
 - No restore rehearsal has been performed.
