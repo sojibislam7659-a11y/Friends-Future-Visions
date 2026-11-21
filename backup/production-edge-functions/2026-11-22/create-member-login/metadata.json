@@ -1,0 +1,12 @@
+{
+  "name": "create-member-login",
+  "slug": "create-member-login",
+  "status": "ACTIVE",
+  "version": 3,
+  "verify_jwt": true,
+  "entrypoint_path": "/tmp/user_fn_ugtzmtmsfaajclftfeuz_ccd0757e-546c-4082-b7b7-9ba5ad75b8c8_3/source/index.ts",
+  "sha256": "de293255bf258097d82e8cb9ee830ee7a47987f2a181cd2767af0ba99ab0a5c7",
+  "exported_at": "2026-11-22",
+  "source_project": "ugtzmtmsfaajclftfeuz",
+  "secrets_not_included": true
+}
