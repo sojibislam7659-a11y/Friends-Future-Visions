@@ -626,6 +626,10 @@ grant execute on function public.post_financial_transaction(uuid,text,numeric,da
 grant execute on function public.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
 grant execute on function public.correct_financial_transactions(uuid,jsonb) to authenticated;
 
+-- Production-only legacy edit RPC bypasses the immutable posting workflow.
+-- Keep its definition for rollback history, but remove all API execution grants.
+revoke all on function public.save_financial_transaction_edits(jsonb) from public,anon,authenticated,service_role;
+
 revoke all on function private.prevent_ledger_mutation() from public,anon,authenticated;
 revoke all on function private.validate_transfer_group() from public,anon,authenticated;
 commit;
