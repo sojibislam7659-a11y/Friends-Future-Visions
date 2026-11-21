@@ -151,16 +151,23 @@ Deno.serve(async (req: Request) => {
       .select("subscription_id", { count: "exact", head: true })
       .eq("notification_id", notification.id)
       .neq("status", "sent");
+    const { count: exhaustedCount, error: exhaustedError } = await supabase
+      .from("notification_push_deliveries")
+      .select("subscription_id", { count: "exact", head: true })
+      .eq("notification_id", notification.id)
+      .neq("status", "sent")
+      .gte("attempts", MAX_NOTIFICATION_ATTEMPTS);
 
     const nextAttempt = Number(notification.push_attempts || 0) + 1;
     const update: Record<string, unknown> = { push_attempts: nextAttempt };
-    if (!unresolvedError && Number(unresolvedCount || 0) === 0) {
+    if (!unresolvedError && !exhaustedError && !hadFailure && Number(unresolvedCount || 0) === 0) {
+      update.push_sent_at = new Date().toISOString();
+    } else if (!exhaustedError && Number(unresolvedCount || 0) > 0 && Number(exhaustedCount || 0) >= Number(unresolvedCount || 0)) {
       update.push_sent_at = new Date().toISOString();
     } else if (nextAttempt >= MAX_NOTIFICATION_ATTEMPTS) {
       update.push_sent_at = new Date().toISOString();
     }
     await supabase.from("notifications").update(update).eq("id", notification.id);
-    if (hadFailure) failed++;
   }
 
   return new Response(JSON.stringify({
