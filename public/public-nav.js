@@ -36,9 +36,22 @@ function buildPublicDrawer(isAuthenticated,role,displayName){
  const backdrop=document.createElement("div");backdrop.className="public-drawer-backdrop";backdrop.hidden=true;
  const drawer=document.createElement("aside");drawer.className="public-drawer";drawer.hidden=true;drawer.setAttribute("aria-label","Main menu");
  const links=isAuthenticated?[...(role==="super_admin"?[["admin.html","SUPER ADMIN","admin"]]:[]),["personal-due.html","PERSONAL DUE","due"],["proof.html","PROOF","proof"],["payment.html","PAYMENT","payment"],...(role==="member"?[["statement.html","MY STATEMENT","data"],["member.html","MY PROFILE","members"]]:[])]:[["login.html","LOGIN","profile"]];
+ const targetPage=["data","rules"].includes(document.body.dataset.page||"");
  drawer.innerHTML='<div class="public-drawer-head"><a class="public-drawer-brand" href="dashboard.html">'+BRAND_LOGO_SVG+'<strong>'+String(displayName||"Friends Future Vision Forever").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))+'</strong></a><button type="button" class="icon-button public-drawer-close" aria-label="Close menu">×</button></div><nav class="public-drawer-nav">'+links.map(([href,label,name])=>item(href,label,name)).join("")+'</nav><div class="public-drawer-footer"></div>';
- if(publicThemeButton)drawer.querySelector(".public-drawer-footer").append(publicThemeButton);
- if(isAuthenticated){const logout=document.createElement("button");logout.type="button";logout.className="secondary";logout.textContent="লগআউট";logout.addEventListener("click",async()=>{logout.disabled=true;const {error}=await supabase.auth.signOut();if(error){logout.disabled=false;logout.textContent="আবার চেষ্টা করুন"}else location.replace("login.html")});drawer.querySelector(".public-drawer-footer").append(logout);}
+ const footer=drawer.querySelector(".public-drawer-footer");
+ if(publicThemeButton)footer.append(publicThemeButton);
+ if(isAuthenticated&&targetPage){
+  if(role==="super_admin"){
+   const exportButton=document.createElement("a");exportButton.className="button secondary public-drawer-export";exportButton.href="admin.html#export";exportButton.textContent="EXPORT DATA";footer.append(exportButton);
+  }else{
+   const statement=document.createElement("a");statement.className="button secondary public-drawer-statement";statement.href="statement.html";statement.textContent="MY STATEMENT PDF";footer.append(statement);
+  }
+  const install=document.createElement("button");install.type="button";install.className="secondary public-drawer-install";install.textContent="Install App";install.disabled=true;
+  const enableInstall=()=>{install.disabled=false;};window.addEventListener("ffv-install-available",enableInstall);
+  install.addEventListener("click",async()=>{const result=await installPwa();if(!result.available)install.textContent="Install unavailable";else if(result.outcome==="accepted")install.textContent="Installed";});
+  footer.append(install);
+ }
+ if(isAuthenticated){const logout=document.createElement("button");logout.type="button";logout.className="secondary public-drawer-logout";logout.textContent="লগআউট";logout.addEventListener("click",async()=>{logout.disabled=true;const {error}=await supabase.auth.signOut();if(error){logout.disabled=false;logout.textContent="আবার চেষ্টা করুন"}else location.replace("login.html")});footer.append(logout);}
  shell.append(backdrop,drawer);
  const close=()=>{drawer.hidden=true;backdrop.hidden=true;menu?.setAttribute("aria-expanded","false")};
  const toggle=()=>{const open=drawer.hidden;close();drawer.hidden=!open;backdrop.hidden=!open;menu?.setAttribute("aria-expanded",String(!open))};
@@ -50,7 +63,7 @@ async function loadPublicTicker(){
   let message="";
   const {data,error}=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();
   if(!error&&data)message=String(data.body||data.title||"").trim();
-  if(!message){
+  if(!message&&["data","rules"].includes(document.body.dataset.page||"")){
    const fallback=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
    if(!fallback.error){
     const settings=Object.fromEntries((fallback.data||[]).map(row=>[row.setting_key,row.setting_value]));
