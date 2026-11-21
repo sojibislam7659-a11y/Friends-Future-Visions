@@ -134,6 +134,30 @@ with check (
   )
 );
 
+-- Match Development's narrow direct table privileges: Super Admin profile
+-- editing remains through its audited server-side workflow; members may only
+-- update the temporary-password flag while completing rotation.
+revoke insert,update,delete on public.profiles from authenticated;
+grant update (must_change_password) on public.profiles to authenticated;
+
+-- Require AAL2 for every privileged Super Admin action, not only portal reads.
+create or replace function private.is_super_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $function$
+  select exists (
+    select 1 from public.profiles p
+    where p.id=(select auth.uid())
+      and p.role='super_admin'
+      and (select auth.jwt()->>'aal')='aal2'
+  );
+$function$;
+revoke all on function private.is_super_admin() from public,anon;
+grant execute on function private.is_super_admin() to authenticated,service_role;
+
 -- Portal access: Super Admin requires AAL2; ordinary members must be active
 -- and must have completed any temporary-password rotation.
 create or replace function private.has_portal_access()
