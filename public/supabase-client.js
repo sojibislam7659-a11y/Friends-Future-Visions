@@ -1,12 +1,12 @@
 /*
- * OIKKO — Supabase browser client
+ * Friends Future Vision Forever — Supabase browser client
  * Only the public anon/publishable key belongs here.
  * NEVER add service_role, secret keys, or database passwords.
  */
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.119.2/+esm";
+import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
-const SUPABASE_URL = "https://tvdxbyzvkjiebwslmnvj.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_uHCRkBNpkJNNoIB_Egjpkw_eX5QW2YI";
+const SUPABASE_URL = "https://ugtzmtmsfaajclftfeuz.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_j2LBGMqLPoaA9OD70W5pAw_Kgg9XEn9";
 
 const isConfigured =
   SUPABASE_URL.startsWith("https://") &&
