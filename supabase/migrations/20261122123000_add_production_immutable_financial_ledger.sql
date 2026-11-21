@@ -72,12 +72,17 @@ create policy "Financial postings: Super Admin read"
 drop policy if exists "Transactions: Super Admin insert" on public.financial_transactions;
 drop policy if exists "Transactions: Super Admin update" on public.financial_transactions;
 drop policy if exists "Transactions: Super Admin delete" on public.financial_transactions;
+revoke all on public.financial_postings from public,anon,authenticated;
 grant select on public.financial_postings to authenticated;
 grant all on public.financial_postings to service_role;
-revoke insert,update,delete on public.financial_postings from anon,authenticated;
+
+revoke all on public.financial_transactions from anon,authenticated;
 grant select on public.financial_transactions to authenticated;
-revoke insert,update,delete on public.financial_transactions from anon,authenticated;
 grant all on public.financial_transactions to service_role;
+
+revoke all on public.financial_transaction_audit from anon,authenticated;
+grant select on public.financial_transaction_audit to authenticated;
+grant all on public.financial_transaction_audit to service_role;
 
 CREATE OR REPLACE FUNCTION private.post_financial_transaction(p_idempotency_key uuid, p_transaction_type text, p_amount numeric, p_transaction_date date, p_account_type text, p_direction text, p_member_id uuid DEFAULT NULL::uuid, p_description text DEFAULT NULL::text, p_reference_no text DEFAULT NULL::text, p_category text DEFAULT NULL::text, p_project_name text DEFAULT NULL::text, p_destination_account_type text DEFAULT NULL::text)
  RETURNS uuid
