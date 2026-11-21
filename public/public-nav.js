@@ -58,28 +58,37 @@ function buildPublicDrawer(isAuthenticated,role,displayName){
  menu?.addEventListener("click",toggle);backdrop.addEventListener("click",close);drawer.querySelector(".public-drawer-close").addEventListener("click",close);drawer.querySelectorAll("a").forEach(a=>a.addEventListener("click",close));nav.hidden=true;
 }
 async function loadPublicTicker(){
- if(!supabaseReady||document.querySelector(".public-global-ticker"))return;
+ if(!supabaseReady||!["data","rules"].includes(document.body.dataset.page||""))return;
  try{
   let message="";
-  const {data,error}=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();
-  if(!error&&data)message=String(data.body||data.title||"").trim();
-  if(!message&&["data","rules"].includes(document.body.dataset.page||"")){
-   const fallback=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
-   if(!fallback.error){
-    const settings=Object.fromEntries((fallback.data||[]).map(row=>[row.setting_key,row.setting_value]));
-    if(settings.ticker_enabled!=="false")message=String(settings.ticker_message||"").trim();
+  const noticeResult=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();
+  if(!noticeResult.error&&noticeResult.data)message=String(noticeResult.data.body||noticeResult.data.title||"").trim();
+  if(!message){
+   const settingsResult=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
+   if(!settingsResult.error){
+    const settings=Object.fromEntries((settingsResult.data||[]).map(row=>[row.setting_key,row.setting_value]));
+    const enabled=String(settings.ticker_enabled??"true").toLowerCase()!=="false";
+    const raw=settings.ticker_message;
+    const settingText=typeof raw==="string"?raw:raw&&typeof raw==="object"?String(raw.text||raw.message||""):"";
+    if(enabled)message=settingText.trim();
    }
   }
-  if(!message)return;
-  const ticker=document.createElement("div");ticker.className="site-ticker public-global-ticker";ticker.setAttribute("role","region");ticker.setAttribute("aria-label","Latest notice");
-  const label=document.createElement("strong");label.className="site-ticker-label";label.textContent="নোটিশ";
-  const w=document.createElement("div");w.className="site-ticker-window";const t=document.createElement("span");t.textContent=message;t.className="notice-marquee-text";
-  w.append(t);ticker.append(label,w);document.querySelector(".shell > .topbar")?.insertAdjacentElement("afterend",ticker);
+  let ticker=document.querySelector(".public-global-ticker");
+  if(!ticker){
+   ticker=document.createElement("div");ticker.className="site-ticker public-global-ticker";ticker.setAttribute("role","region");ticker.setAttribute("aria-label","Latest notice");
+   const label=document.createElement("strong");label.className="site-ticker-label";label.textContent="নোটিশ";
+   const windowNode=document.createElement("div");windowNode.className="site-ticker-window";
+   const textNode=document.createElement("span");textNode.className="notice-marquee-text";windowNode.append(textNode);ticker.append(label,windowNode);
+   document.querySelector(".shell > .topbar")?.insertAdjacentElement("afterend",ticker);
+  }
+  const textNode=ticker.querySelector(".site-ticker-window span");
+  if(!message){ticker.hidden=true;return}
+  if(textNode)textNode.textContent=message;
+  ticker.hidden=false;
  }catch(error){console.warn("Public notice unavailable",error)}
 }
 function showPublicNavigation(){
  setupPublicTheme();
- if(["data","rules"].includes(document.body.dataset.page||""))loadPublicTicker();
  home.href="index.html";
  nav.innerHTML=item("rules.html","RULES","rules");
  addPublicMobileNav(false);
@@ -87,6 +96,7 @@ function showPublicNavigation(){
  buildPublicDrawer(false,"public","Friends Future Vision Forever");
  login.hidden=false;bell.hidden=true;
  document.body.classList.remove("auth-pending");
+ if(["data","rules"].includes(document.body.dataset.page||""))loadPublicTicker();
 }
 async function init(){
  document.body.classList.add("auth-pending");
