@@ -120,7 +120,8 @@ Deno.serve(async (req: Request) => {
     full_name: member.full_name,
     email,
     role: "member",
-    email_verified_at: new Date().toISOString()
+    email_verified_at: new Date().toISOString(),
+    must_change_password: true
   }, { onConflict: "id" });
 
   if (upsertProfileError) {
