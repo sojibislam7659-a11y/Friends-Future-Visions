@@ -1288,3 +1288,33 @@ body.dark-theme .member-profile-grid .field textarea{
   .member-profile-grid{grid-template-columns:minmax(0,1fr)}
   .member-profile-header{gap:10px}
 }
+
+
+/* Member Details: use the same mobile navigation, drawer and ticker layout as portal pages. */
+.member-profile-topbar .menu-button{display:inline-flex!important;flex:0 0 40px;width:40px;min-width:40px;height:40px;padding:7px}
+.member-profile-topbar .topbar-brand{display:flex!important;flex:1 1 auto;min-width:0}
+.member-profile-topbar .topbar-identity{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.member-profile-topbar .topbar-identity strong{font-size:13px;line-height:1.25;overflow-wrap:anywhere}
+.member-profile-topbar .topbar-identity small{font-size:9px;line-height:1.2}
+.member-profile-topbar .actions{flex:0 0 auto;width:auto}
+.member-profile-topbar .topbar-role{white-space:nowrap}
+.member-profile-topbar .menu-button:focus-visible,
+#profileMobileMenuBtn:focus-visible{outline:3px solid #75b99a;outline-offset:2px}
+#profileSidebar .sidebar-nav{display:flex;flex-direction:column}
+#profileSidebar .sidebar-nav a{width:100%}
+#profileSidebar .sidebar-footer a.secondary{display:flex;align-items:center;justify-content:center;min-height:38px;padding:7px 8px;border-radius:9px;font-size:11px}
+@media(max-width:640px){
+ .member-profile-topbar{display:flex!important;flex-direction:row!important;align-items:center!important;gap:7px!important;padding:8px 9px!important}
+ .member-profile-topbar .menu-button{display:inline-flex!important;flex:0 0 36px!important;width:36px!important;min-width:36px!important;height:36px!important}
+ .member-profile-topbar .topbar-brand{display:flex!important;flex:1 1 auto!important;gap:6px!important;min-width:0!important}
+ .member-profile-topbar .topbar-brand .brand-mark{width:34px!important;flex:0 0 34px!important}
+ .member-profile-topbar .topbar-identity{font-size:11px!important;min-width:0!important}
+ .member-profile-topbar .topbar-identity strong{font-size:11px!important;max-width:none!important;white-space:normal!important}
+ .member-profile-topbar .topbar-identity small{display:block!important;font-size:8px!important}
+ .member-profile-topbar .actions{display:none!important}
+ .member-profile-topbar .topbar-role{display:none!important}
+ .member-profile-topbar .menu-button{display:inline-flex!important}
+ .mobile-bottom-nav{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+ .site-ticker.global-site-ticker{display:flex!important;margin:8px 0 10px!important}
+ .member-profile-topbar .topbar-identity strong{overflow-wrap:anywhere}
+}
