@@ -138,6 +138,28 @@ begin
     raise exception 'Anonymous push subscription table privileges remain';
   end if;
 
+  select pg_get_functiondef('private.save_contribution_matrix(uuid,jsonb)'::regprocedure) into v_def;
+  if v_def not like '%private.post_financial_transaction%'
+     or v_def not like '%private.reverse_financial_posting%'
+     or v_def like '%UPDATE public.financial_transactions%'
+     or v_def like '%DELETE FROM public.financial_transactions%' then
+    raise exception 'Contribution matrix is not using the immutable posting/reversal workflow';
+  end if;
+  if has_function_privilege('anon','private.save_contribution_matrix(uuid,jsonb)','EXECUTE')
+     or not has_function_privilege('authenticated','private.save_contribution_matrix(uuid,jsonb)','EXECUTE') then
+    raise exception 'Contribution matrix private helper grants are incorrect';
+  end if;
+  select pg_get_functiondef('public.is_committee_admin()'::regprocedure) into v_def;
+  if v_def not like '%private.is_super_admin%' then raise exception 'Legacy committee-admin role helper remains'; end if;
+  select pg_get_functiondef('public.is_super_admin()'::regprocedure) into v_def;
+  if v_def not like '%private.is_super_admin%' then raise exception 'Public Super Admin helper is not delegated to the AAL2 gate'; end if;
+  select pg_get_functiondef('public.save_committee_proof_metadata(jsonb)'::regprocedure) into v_def;
+  if v_def not like '%2032-01-01%' then raise exception 'Committee proof accounting period is not aligned with Development'; end if;
+  if has_function_privilege('authenticated','public.is_super_admin()','EXECUTE')
+     or has_function_privilege('authenticated','public.is_committee_admin()','EXECUTE') then
+    raise exception 'Internal admin helper RPCs are exposed to authenticated clients';
+  end if;
+
   if not exists (
     select 1 from pg_policies
     where schemaname='public' and tablename='financial_postings'
