@@ -109,6 +109,35 @@ begin
     raise exception 'Unchecked financial summary helper is directly executable by API roles';
   end if;
 
+  if to_regprocedure('public.get_member_shared_financial_data_v2()') is null
+     or to_regprocedure('private.get_member_shared_financial_data_v2()') is null then
+    raise exception 'Member shared financial data v2 RPC is missing';
+  end if;
+  if has_function_privilege('anon','public.get_member_shared_financial_data_v2()','EXECUTE')
+     or not has_function_privilege('authenticated','public.get_member_shared_financial_data_v2()','EXECUTE') then
+    raise exception 'Member shared financial data v2 RPC grants are incorrect';
+  end if;
+
+  if to_regprocedure('public.claim_notification_push_delivery(uuid,uuid)') is null
+     or has_function_privilege('anon','public.claim_notification_push_delivery(uuid,uuid)','EXECUTE')
+     or has_function_privilege('authenticated','public.claim_notification_push_delivery(uuid,uuid)','EXECUTE')
+     or not has_function_privilege('service_role','public.claim_notification_push_delivery(uuid,uuid)','EXECUTE') then
+    raise exception 'Push delivery claim RPC grants are incorrect';
+  end if;
+
+  if not exists (
+    select 1 from pg_trigger
+    where tgrelid='public.push_subscriptions'::regclass
+      and tgname='enforce_push_subscription_limit' and not tgisinternal
+  ) then raise exception 'Per-user push subscription cap trigger is missing'; end if;
+
+  if has_table_privilege('anon','public.push_subscriptions','SELECT')
+     or has_table_privilege('anon','public.push_subscriptions','INSERT')
+     or has_table_privilege('anon','public.push_subscriptions','UPDATE')
+     or has_table_privilege('anon','public.push_subscriptions','DELETE') then
+    raise exception 'Anonymous push subscription table privileges remain';
+  end if;
+
   if not exists (
     select 1 from pg_policies
     where schemaname='public' and tablename='financial_postings'
