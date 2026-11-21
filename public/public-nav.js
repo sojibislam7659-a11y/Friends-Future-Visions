@@ -75,10 +75,10 @@ async function loadPublicTicker(){
   }
   let ticker=document.querySelector(".public-global-ticker");
   if(!ticker){
-   ticker=document.createElement("div");ticker.className="site-ticker public-global-ticker";ticker.setAttribute("role","region");ticker.setAttribute("aria-label","Latest notice");
+   ticker=document.createElement("div");ticker.id="globalNoticeTicker";ticker.className="site-ticker public-global-ticker";ticker.setAttribute("role","region");ticker.setAttribute("aria-label","Latest notice");
    const label=document.createElement("strong");label.className="site-ticker-label";label.textContent="নোটিশ";
    const windowNode=document.createElement("div");windowNode.className="site-ticker-window";
-   const textNode=document.createElement("span");textNode.className="notice-marquee-text";windowNode.append(textNode);ticker.append(label,windowNode);
+   const textNode=document.createElement("span");textNode.id="globalNoticeTickerText";textNode.className="notice-marquee-text";windowNode.append(textNode);ticker.append(label,windowNode);
    document.querySelector(".shell > .topbar")?.insertAdjacentElement("afterend",ticker);
   }
   const textNode=ticker.querySelector(".site-ticker-window span");
