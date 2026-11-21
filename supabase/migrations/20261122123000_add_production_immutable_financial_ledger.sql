@@ -1,0 +1,589 @@
+-- Production immutable, idempotent financial ledger parity.
+-- STAGED ONLY. Refuses to run if Production already has ledger rows.
+-- Development's three sample transactions/postings are deliberately excluded.
+begin;
+do $preflight$
+begin
+  if to_regclass('public.financial_postings') is not null then
+    raise exception 'Preflight failed: public.financial_postings already exists';
+  end if;
+  if (select count(*) from public.financial_transactions) <> 0 then
+    raise exception 'Preflight failed: Production financial_transactions is not empty; reviewed posting backfill required';
+  end if;
+  if (select count(*) from public.financial_transaction_audit) <> 0 then
+    raise exception 'Preflight failed: Production financial audit contains rows; reconcile before applying';
+  end if;
+  if not exists (select 1 from pg_proc where oid=to_regprocedure('private.is_super_admin()')) then
+    raise exception 'Preflight failed: private.is_super_admin() is missing';
+  end if;
+end
+$preflight$;
+
+create table public.financial_postings (
+  id uuid primary key default gen_random_uuid(),
+  idempotency_key uuid not null unique,
+  request_hash text not null,
+  posting_type text not null check (posting_type in ('standard','transfer','reversal')),
+  memo text,
+  created_by uuid not null references auth.users(id),
+  created_at timestamptz not null default now(),
+  reversal_of_posting_id uuid unique references public.financial_postings(id),
+  constraint financial_postings_reversal_type_check
+    check ((posting_type='reversal')=(reversal_of_posting_id is not null))
+);
+
+alter table public.financial_transactions
+  alter column amount type numeric(14,2) using amount::numeric(14,2),
+  add column posting_id uuid not null references public.financial_postings(id),
+  add column reversal_of_id uuid references public.financial_transactions(id);
+
+alter table public.financial_transactions
+  drop constraint financial_transactions_transaction_type_check,
+  add constraint financial_transactions_transaction_type_check
+    check (transaction_type = any (array[
+      'opening_balance'::text,'contribution'::text,'withdrawal'::text,
+      'expense'::text,'other_income'::text,'investment_profit'::text,
+      'investment_loss'::text,'transfer'::text,'reversal'::text
+    ])),
+  add constraint financial_transactions_transfer_group_check
+    check ((transaction_type='transfer')=(transfer_group_id is not null)),
+  add constraint financial_transactions_reversal_reference_check
+    check (transaction_type<>'reversal' or reversal_of_id is not null),
+  add constraint financial_transactions_reversal_type_check
+    check (reversal_of_id is null or transaction_type in ('reversal','transfer'));
+
+create unique index financial_transactions_reversal_of_id_uidx
+  on public.financial_transactions(reversal_of_id) where reversal_of_id is not null;
+create index financial_transactions_posting_id_idx on public.financial_transactions(posting_id);
+create index financial_transactions_reversal_of_id_idx
+  on public.financial_transactions(reversal_of_id) where reversal_of_id is not null;
+create index financial_postings_created_by_idx on public.financial_postings(created_by);
+
+alter table public.financial_transaction_audit
+  drop constraint financial_transaction_audit_action_check,
+  add constraint financial_transaction_audit_action_check
+  check (action in ('INSERT','UPDATE','DELETE'));
+
+alter table public.financial_postings enable row level security;
+create policy "Financial postings: Super Admin read"
+  on public.financial_postings as permissive for select to authenticated
+  using ((select private.is_super_admin()));
+
+drop policy if exists "Transactions: Super Admin insert" on public.financial_transactions;
+drop policy if exists "Transactions: Super Admin update" on public.financial_transactions;
+drop policy if exists "Transactions: Super Admin delete" on public.financial_transactions;
+grant select on public.financial_postings to authenticated;
+grant all on public.financial_postings to service_role;
+revoke insert,update,delete on public.financial_postings from anon,authenticated;
+grant select on public.financial_transactions to authenticated;
+revoke insert,update,delete on public.financial_transactions from anon,authenticated;
+grant all on public.financial_transactions to service_role;
+
+CREATE OR REPLACE FUNCTION private.post_financial_transaction(p_idempotency_key uuid, p_transaction_type text, p_amount numeric, p_transaction_date date, p_account_type text, p_direction text, p_member_id uuid DEFAULT NULL::uuid, p_description text DEFAULT NULL::text, p_reference_no text DEFAULT NULL::text, p_category text DEFAULT NULL::text, p_project_name text DEFAULT NULL::text, p_destination_account_type text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+  v_posting_id uuid;
+  v_existing_id uuid;
+  v_existing_hash text;
+  v_request_hash text;
+  v_transfer_group_id uuid;
+  v_matrix_month date;
+BEGIN
+  IF NOT (SELECT private.is_super_admin()) THEN
+    RAISE EXCEPTION 'Super Admin permission required' USING ERRCODE = '42501';
+  END IF;
+  IF p_idempotency_key IS NULL THEN
+    RAISE EXCEPTION 'Idempotency key is required';
+  END IF;
+  IF p_transaction_type NOT IN (
+    'opening_balance','contribution','withdrawal','expense',
+    'other_income','investment_profit','investment_loss','transfer'
+  ) THEN
+    RAISE EXCEPTION 'Unsupported transaction type';
+  END IF;
+  IF p_amount IS NULL OR p_amount <= 0 OR p_amount <> round(p_amount,2)
+     OR p_amount > 999999999999.99 THEN
+    RAISE EXCEPTION 'Amount must be positive and use no more than two decimal places';
+  END IF;
+  IF p_transaction_date IS NULL THEN
+    RAISE EXCEPTION 'Transaction date is required';
+  END IF;
+
+  IF p_transaction_type = 'opening_balance' THEN
+    IF p_transaction_date <> DATE '2027-01-01' THEN
+      RAISE EXCEPTION 'Opening balance must be dated 1 January 2027';
+    END IF;
+  ELSIF p_transaction_type = 'contribution'
+        AND coalesce(p_reference_no,'') LIKE 'FFV_MATRIX|%' THEN
+    IF split_part(p_reference_no,'|',2) !~ '^[0-9]{4}-(0[1-9]|1[0-2])$' THEN
+      RAISE EXCEPTION 'Invalid contribution accounting month';
+    END IF;
+    v_matrix_month := to_date(split_part(p_reference_no,'|',2)||'-01','YYYY-MM-DD');
+    IF v_matrix_month < DATE '2027-01-01' OR v_matrix_month > DATE '2031-12-01' THEN
+      RAISE EXCEPTION 'Contribution accounting month must be within January 2027–December 2031';
+    END IF;
+  ELSIF p_transaction_date < DATE '2027-01-01'
+        OR p_transaction_date > DATE '2031-12-31' THEN
+    RAISE EXCEPTION 'Transaction date must be within 1 January 2027–31 December 2031';
+  END IF;
+
+  IF p_account_type NOT IN ('cash','bank','investment') THEN
+    RAISE EXCEPTION 'Invalid source account';
+  END IF;
+  IF p_transaction_type = 'transfer' THEN
+    IF p_direction <> 'out'
+       OR p_destination_account_type NOT IN ('cash','bank','investment')
+       OR p_destination_account_type = p_account_type
+       OR p_member_id IS NOT NULL THEN
+      RAISE EXCEPTION 'Transfer requires two different accounts, an outgoing source, and no member link';
+    END IF;
+  ELSE
+    IF p_destination_account_type IS NOT NULL THEN
+      RAISE EXCEPTION 'Destination account is only valid for transfers';
+    END IF;
+    IF (p_transaction_type IN ('opening_balance','contribution','other_income','investment_profit') AND p_direction <> 'in')
+       OR (p_transaction_type IN ('withdrawal','expense','investment_loss') AND p_direction <> 'out') THEN
+      RAISE EXCEPTION 'Direction does not match transaction type';
+    END IF;
+  END IF;
+  IF p_transaction_type = 'contribution' THEN
+    IF p_member_id IS NULL OR NOT EXISTS (
+      SELECT 1 FROM public.members m WHERE m.id = p_member_id AND m.status = 'active'
+    ) THEN
+      RAISE EXCEPTION 'Contribution requires an active member';
+    END IF;
+  END IF;
+
+  v_request_hash := md5(jsonb_build_object(
+    'actor',(SELECT auth.uid()),'type',p_transaction_type,'amount',p_amount,
+    'date',p_transaction_date,'account',p_account_type,'direction',p_direction,
+    'member',p_member_id,'description',p_description,'reference',p_reference_no,
+    'category',p_category,'project',p_project_name,'destination',p_destination_account_type
+  )::text);
+
+  INSERT INTO public.financial_postings(idempotency_key,request_hash,posting_type,memo,created_by)
+  VALUES (
+    p_idempotency_key,v_request_hash,
+    CASE WHEN p_transaction_type='transfer' THEN 'transfer' ELSE 'standard' END,
+    p_description,(SELECT auth.uid())
+  )
+  ON CONFLICT (idempotency_key) DO NOTHING
+  RETURNING id INTO v_posting_id;
+
+  IF v_posting_id IS NULL THEN
+    SELECT id,request_hash INTO v_existing_id,v_existing_hash
+    FROM public.financial_postings WHERE idempotency_key=p_idempotency_key;
+    IF v_existing_hash IS DISTINCT FROM v_request_hash THEN
+      RAISE EXCEPTION 'Idempotency key was already used for a different request';
+    END IF;
+    RETURN v_existing_id;
+  END IF;
+
+  IF p_transaction_type='transfer' THEN
+    v_transfer_group_id := gen_random_uuid();
+    INSERT INTO public.financial_transactions(
+      posting_id,member_id,transaction_type,amount,transaction_date,description,
+      reference_no,created_by,account_type,direction,category,project_name,transfer_group_id
+    ) VALUES
+    (v_posting_id,NULL,'transfer',p_amount,p_transaction_date,p_description,
+     p_reference_no,(SELECT auth.uid()),p_account_type,'out',p_category,p_project_name,v_transfer_group_id),
+    (v_posting_id,NULL,'transfer',p_amount,p_transaction_date,p_description,
+     p_reference_no,(SELECT auth.uid()),p_destination_account_type,'in',p_category,p_project_name,v_transfer_group_id);
+  ELSE
+    INSERT INTO public.financial_transactions(
+      posting_id,member_id,transaction_type,amount,transaction_date,description,
+      reference_no,created_by,account_type,direction,category,project_name
+    ) VALUES (
+      v_posting_id,p_member_id,p_transaction_type,p_amount,p_transaction_date,p_description,
+      p_reference_no,(SELECT auth.uid()),p_account_type,p_direction,p_category,p_project_name
+    );
+  END IF;
+  RETURN v_posting_id;
+END;
+$function$
+
+
+CREATE OR REPLACE FUNCTION private.reverse_financial_posting(p_original_posting_id uuid, p_idempotency_key uuid, p_reason text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+  v_original public.financial_postings%rowtype;
+  v_posting_id uuid;
+  v_existing_id uuid;
+  v_existing_hash text;
+  v_request_hash text;
+  v_transfer_group_id uuid;
+  v_count integer;
+  v_out_count integer;
+  v_in_count integer;
+  v_amount_count integer;
+  v_account_count integer;
+BEGIN
+  IF NOT (SELECT private.is_super_admin()) THEN
+    RAISE EXCEPTION 'Super Admin permission required' USING ERRCODE = '42501';
+  END IF;
+  IF p_original_posting_id IS NULL OR p_idempotency_key IS NULL THEN
+    RAISE EXCEPTION 'Original posting and idempotency key are required';
+  END IF;
+  IF p_reason IS NULL OR length(trim(p_reason)) < 3 THEN
+    RAISE EXCEPTION 'A reversal reason of at least three characters is required';
+  END IF;
+
+  v_request_hash := md5(jsonb_build_object(
+    'actor',(SELECT auth.uid()),
+    'operation','reverse',
+    'original',p_original_posting_id,
+    'reason',trim(p_reason)
+  )::text);
+
+  SELECT id,request_hash INTO v_existing_id,v_existing_hash
+  FROM public.financial_postings
+  WHERE idempotency_key=p_idempotency_key;
+  IF FOUND THEN
+    IF v_existing_hash IS DISTINCT FROM v_request_hash THEN
+      RAISE EXCEPTION 'Idempotency key was already used for a different request';
+    END IF;
+    RETURN v_existing_id;
+  END IF;
+
+  SELECT * INTO v_original
+  FROM public.financial_postings
+  WHERE id=p_original_posting_id
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Original posting not found';
+  END IF;
+  IF v_original.posting_type='reversal' THEN
+    RAISE EXCEPTION 'A reversal posting cannot itself be reversed';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.financial_postings p
+    WHERE p.reversal_of_posting_id=v_original.id
+  ) THEN
+    RAISE EXCEPTION 'This posting has already been reversed';
+  END IF;
+
+  SELECT
+    count(*),
+    count(*) FILTER (WHERE direction='out'),
+    count(*) FILTER (WHERE direction='in'),
+    count(DISTINCT amount),
+    count(DISTINCT account_type)
+  INTO v_count,v_out_count,v_in_count,v_amount_count,v_account_count
+  FROM public.financial_transactions
+  WHERE posting_id=v_original.id;
+
+  IF v_original.posting_type='transfer' THEN
+    IF v_count<>2 OR v_out_count<>1 OR v_in_count<>1 OR v_amount_count<>1 OR v_account_count<>2 THEN
+      RAISE EXCEPTION 'Original transfer is not balanced; reversal refused';
+    END IF;
+    v_transfer_group_id := gen_random_uuid();
+  ELSE
+    IF v_count<>1 THEN
+      RAISE EXCEPTION 'Original standard posting must contain exactly one ledger entry';
+    END IF;
+  END IF;
+
+  INSERT INTO public.financial_postings(
+    idempotency_key,request_hash,posting_type,memo,created_by,reversal_of_posting_id
+  ) VALUES (
+    p_idempotency_key,v_request_hash,'reversal',trim(p_reason),(SELECT auth.uid()),v_original.id
+  )
+  RETURNING id INTO v_posting_id;
+
+  INSERT INTO public.financial_transactions(
+    posting_id,member_id,transaction_type,amount,transaction_date,description,
+    reference_no,created_by,account_type,direction,category,project_name,
+    transfer_group_id,reversal_of_id
+  )
+  SELECT
+    v_posting_id,t.member_id,
+    CASE WHEN v_original.posting_type='transfer' THEN 'transfer' ELSE 'reversal' END,
+    t.amount,(now() AT TIME ZONE 'Asia/Dhaka')::date,
+    'Reversal of posting '||v_original.id::text||': '||trim(p_reason),
+    NULL,(SELECT auth.uid()),t.account_type,
+    CASE WHEN t.direction='in' THEN 'out' ELSE 'in' END,
+    t.category,t.project_name,
+    CASE WHEN v_original.posting_type='transfer' THEN v_transfer_group_id ELSE NULL END,
+    t.id
+  FROM public.financial_transactions t
+  WHERE t.posting_id=v_original.id;
+
+  RETURN v_posting_id;
+END;
+$function$
+
+
+CREATE OR REPLACE FUNCTION private.correct_financial_transactions(p_idempotency_key uuid, p_changes jsonb)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+  v_actor uuid := (SELECT auth.uid());
+  v_change record;
+  v_current public.financial_transactions%rowtype;
+  v_reverse_key uuid;
+  v_post_key uuid;
+  v_reversal_id uuid;
+  v_posting_id uuid;
+  v_saved integer := 0;
+  v_result jsonb := '[]'::jsonb;
+BEGIN
+  IF v_actor IS NULL OR NOT (SELECT private.is_super_admin()) THEN
+    RAISE EXCEPTION 'Super Admin permission required' USING ERRCODE = '42501';
+  END IF;
+  IF p_idempotency_key IS NULL OR p_changes IS NULL
+     OR jsonb_typeof(p_changes) <> 'array'
+     OR jsonb_array_length(p_changes) < 1
+     OR jsonb_array_length(p_changes) > 100 THEN
+    RAISE EXCEPTION 'Provide 1 to 100 transaction corrections and an idempotency key';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM jsonb_array_elements(p_changes) e
+    WHERE jsonb_typeof(e) <> 'object'
+       OR NOT (e ? 'id' AND e ? 'amount' AND e ? 'transaction_date' AND e ? 'description')
+       OR nullif(trim(e->>'id'),'') IS NULL
+       OR nullif(trim(e->>'amount'),'') IS NULL
+       OR nullif(trim(e->>'transaction_date'),'') IS NULL
+  ) THEN
+    RAISE EXCEPTION 'Each correction requires id, amount, transaction_date and description';
+  END IF;
+  IF (SELECT count(*) <> count(DISTINCT (e->>'id')::uuid) FROM jsonb_array_elements(p_changes) e) THEN
+    RAISE EXCEPTION 'Duplicate transaction IDs are not allowed';
+  END IF;
+  FOR v_change IN
+    SELECT (e->>'id')::uuid AS id,
+           (e->>'amount')::numeric AS amount,
+           (e->>'transaction_date')::date AS transaction_date,
+           nullif(trim(e->>'description'),'') AS description
+    FROM jsonb_array_elements(p_changes) e ORDER BY 1
+  LOOP
+    IF v_change.amount IS NULL OR v_change.amount <= 0
+       OR v_change.amount <> round(v_change.amount,2)
+       OR v_change.amount > 999999999999.99
+       OR v_change.transaction_date IS NULL THEN
+      RAISE EXCEPTION 'Amount must be positive with at most two decimal places and date is required';
+    END IF;
+    IF v_change.transaction_date < DATE '2027-01-01'
+       OR v_change.transaction_date > DATE '2031-12-31' THEN
+      RAISE EXCEPTION 'Corrected transaction date must be within 1 January 2027–31 December 2031';
+    END IF;
+    SELECT * INTO v_current FROM public.financial_transactions
+    WHERE id=v_change.id FOR UPDATE;
+    IF NOT FOUND THEN RAISE EXCEPTION 'Transaction not found: %',v_change.id; END IF;
+    IF v_current.posting_id IS NULL THEN RAISE EXCEPTION 'Transaction is not linked to a ledger posting'; END IF;
+    IF v_current.transaction_type IN ('transfer','reversal')
+       OR v_current.transfer_group_id IS NOT NULL
+       OR v_current.reversal_of_id IS NOT NULL
+       OR coalesce(v_current.reference_no,'') LIKE 'FFV_MATRIX|%' THEN
+      RAISE EXCEPTION 'This transaction is locked; use its dedicated correction workflow';
+    END IF;
+    v_reverse_key := md5(p_idempotency_key::text || ':' || v_current.id::text || ':reverse')::uuid;
+    v_post_key := md5(p_idempotency_key::text || ':' || v_current.id::text || ':post')::uuid;
+    v_reversal_id := private.reverse_financial_posting(
+      v_current.posting_id,v_reverse_key,
+      'Super Admin correction for transaction ' || v_current.id::text
+    );
+    v_posting_id := private.post_financial_transaction(
+      v_post_key,v_current.transaction_type,v_change.amount,v_change.transaction_date,
+      v_current.account_type,v_current.direction,v_current.member_id,v_change.description,
+      v_current.reference_no,v_current.category,v_current.project_name,NULL
+    );
+    v_result := v_result || jsonb_build_array(jsonb_build_object(
+      'transaction_id',v_current.id,'reversal_posting_id',v_reversal_id,
+      'replacement_posting_id',v_posting_id,'status','corrected'
+    ));
+    v_saved := v_saved + 1;
+  END LOOP;
+  RETURN jsonb_build_object('saved',v_saved,'corrections',v_result);
+END;
+$function$
+
+
+CREATE OR REPLACE FUNCTION private.review_payment_submission(p_submission_id uuid, p_approved boolean, p_admin_note text DEFAULT NULL::text, p_account_type text DEFAULT 'cash'::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+  r public.payment_submissions%rowtype;
+BEGIN
+  IF NOT (SELECT private.is_super_admin()) THEN
+    RAISE EXCEPTION 'Super Admin permission required';
+  END IF;
+  IF p_approved IS NULL THEN
+    RAISE EXCEPTION 'Approval decision is required';
+  END IF;
+  IF p_approved AND (p_account_type IS NULL OR p_account_type NOT IN ('cash','bank')) THEN
+    RAISE EXCEPTION 'Account type must be cash or bank';
+  END IF;
+
+  SELECT * INTO r
+  FROM public.payment_submissions
+  WHERE id=p_submission_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Payment submission not found';
+  END IF;
+  IF r.status <> 'pending' THEN
+    RAISE EXCEPTION 'Payment submission already reviewed';
+  END IF;
+
+  IF p_approved THEN
+    IF NULLIF(trim(r.reference_no),'') IS NULL THEN
+      RAISE EXCEPTION 'Transaction ID is required';
+    END IF;
+
+    PERFORM private.post_financial_transaction(
+      r.id,
+      'contribution',
+      r.amount,
+      r.payment_date,
+      p_account_type,
+      'in',
+      r.member_id,
+      'Member payment approved (' || coalesce(r.payment_method,'payment') || ')',
+      trim(r.reference_no),
+      'member_contribution',
+      NULL,
+      NULL
+    );
+  END IF;
+
+  UPDATE public.payment_submissions
+  SET status=CASE WHEN p_approved THEN 'approved' ELSE 'rejected' END,
+      admin_note=p_admin_note,
+      reviewed_by=(SELECT auth.uid()),
+      reviewed_at=now()
+  WHERE id=p_submission_id;
+END;
+$function$
+
+
+CREATE OR REPLACE FUNCTION private.prevent_ledger_mutation()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+BEGIN
+  RAISE EXCEPTION 'Posted financial records are immutable. Use the reversal workflow.'
+    USING ERRCODE = '55000';
+END;
+$function$
+
+
+CREATE OR REPLACE FUNCTION private.validate_transfer_group()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+DECLARE
+  v_count integer;
+  v_out_count integer;
+  v_in_count integer;
+  v_amount_count integer;
+  v_account_count integer;
+  v_posting_count integer;
+BEGIN
+  IF NEW.transaction_type <> 'transfer' THEN
+    RETURN NULL;
+  END IF;
+
+  SELECT
+    count(*),
+    count(*) FILTER (WHERE direction = 'out'),
+    count(*) FILTER (WHERE direction = 'in'),
+    count(DISTINCT amount),
+    count(DISTINCT account_type),
+    count(DISTINCT posting_id)
+  INTO v_count,v_out_count,v_in_count,v_amount_count,v_account_count,v_posting_count
+  FROM public.financial_transactions
+  WHERE transfer_group_id = NEW.transfer_group_id;
+
+  IF v_count <> 2 OR v_out_count <> 1 OR v_in_count <> 1
+     OR v_amount_count <> 1 OR v_account_count <> 2 OR v_posting_count <> 1 THEN
+    RAISE EXCEPTION 'A transfer must contain exactly two equal, opposite entries across two different accounts in one posting.';
+  END IF;
+
+  RETURN NULL;
+END;
+$function$
+
+
+CREATE OR REPLACE FUNCTION public.post_financial_transaction(p_idempotency_key uuid, p_transaction_type text, p_amount numeric, p_transaction_date date, p_account_type text, p_direction text, p_member_id uuid DEFAULT NULL::uuid, p_description text DEFAULT NULL::text, p_reference_no text DEFAULT NULL::text, p_category text DEFAULT NULL::text, p_project_name text DEFAULT NULL::text, p_destination_account_type text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE sql
+ SET search_path TO ''
+AS $function$
+  SELECT private.post_financial_transaction(
+    p_idempotency_key,p_transaction_type,p_amount,p_transaction_date,
+    p_account_type,p_direction,p_member_id,p_description,p_reference_no,
+    p_category,p_project_name,p_destination_account_type
+  );
+$function$
+
+
+CREATE OR REPLACE FUNCTION public.reverse_financial_posting(p_original_posting_id uuid, p_idempotency_key uuid, p_reason text)
+ RETURNS uuid
+ LANGUAGE sql
+ SET search_path TO ''
+AS $function$
+  SELECT private.reverse_financial_posting(
+    p_original_posting_id,p_idempotency_key,p_reason
+  );
+$function$
+
+
+CREATE OR REPLACE FUNCTION public.correct_financial_transactions(p_idempotency_key uuid, p_changes jsonb)
+ RETURNS jsonb
+ LANGUAGE sql
+ SET search_path TO ''
+AS $function$
+  SELECT private.correct_financial_transactions(p_idempotency_key,p_changes);
+$function$
+
+
+create trigger prevent_financial_transaction_mutation
+before update or delete on public.financial_transactions
+for each row execute function private.prevent_ledger_mutation();
+create trigger prevent_financial_posting_mutation
+before update or delete on public.financial_postings
+for each row execute function private.prevent_ledger_mutation();
+create constraint trigger validate_financial_transfer_group
+after insert on public.financial_transactions
+deferrable initially deferred
+for each row execute function private.validate_transfer_group();
+
+
+revoke all on function private.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) from public,anon;
+revoke all on function private.reverse_financial_posting(uuid,uuid,text) from public,anon;
+revoke all on function private.correct_financial_transactions(uuid,jsonb) from public,anon;
+revoke all on function private.review_payment_submission(uuid,boolean,text,text) from public,anon;
+grant execute on function private.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) to authenticated,service_role;
+grant execute on function private.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
+grant execute on function private.correct_financial_transactions(uuid,jsonb) to authenticated;
+grant execute on function private.review_payment_submission(uuid,boolean,text,text) to authenticated,service_role;
+
+revoke all on function public.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) from public,anon;
+revoke all on function public.reverse_financial_posting(uuid,uuid,text) from public,anon;
+revoke all on function public.correct_financial_transactions(uuid,jsonb) from public,anon;
+grant execute on function public.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) to authenticated,service_role;
+grant execute on function public.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
+grant execute on function public.correct_financial_transactions(uuid,jsonb) to authenticated;
+
+revoke all on function private.prevent_ledger_mutation() from public,anon,authenticated;
+revoke all on function private.validate_transfer_group() from public,anon,authenticated;
+commit;
