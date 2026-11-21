@@ -68,13 +68,11 @@ Use the Production database URL and service-role key only. The workflow checks t
 
 After updating the Apps Script deployment and confirming GET reports version 2:
 
-1. Open GitHub Actions → **Encrypted Production Backup to Google Drive**.
-2. Click **Run workflow** and select branch `release/ffv-prod-parity-20261122`.
-3. Keep mode set to `smoke_test` (the default). This creates and uploads a small encrypted text-only test archive; it does not connect to Supabase or export member data.
-4. Confirm the workflow succeeds and the chunk plus manifest appear in the Drive folder.
-5. Download the single chunk and manifest from Drive. Compare the chunk's SHA-256 to the manifest's `archiveSha256`; then decrypt it using the owner-held passphrase and confirm it contains only `SMOKE_TEST_ONLY.txt`.
+1. After the owner configures the three smoke-test secrets, update/create `backup/trigger-backup-workflow.txt` on the release branch with the exact text `smoke_test`. This push is the trigger; the marker file is not present yet.
+2. Confirm the workflow succeeds and the chunk plus manifest appear in the Drive folder.
+3. Download the single chunk and manifest from Drive. Compare the chunk's SHA-256 to the manifest's `archiveSha256`; then decrypt it using the owner-held passphrase and confirm it contains only `SMOKE_TEST_ONLY.txt`.
 
-Only after the smoke test passes should the owner add the Production database/service-role secrets and manually run mode `production`. The Production workflow exports the database, Auth metadata, Storage bytes and the preserved Production Edge Function snapshot, then encrypts and uploads the archive.
+Only after the smoke test passes should the owner add the Production database/service-role secrets and explicitly approve changing the marker file content to `production` to trigger the real backup. The Production workflow exports the database, Auth metadata, Storage bytes and the preserved Production Edge Function snapshot, then encrypts and uploads the archive.
 
 The monthly schedule is defined for the first day of each month at 03:00 UTC, but GitHub schedules run only from the default branch. It will not activate until the workflow is merged to `main` after the backup/restore gate and explicit approval.
 
