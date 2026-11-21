@@ -1,4 +1,4 @@
-const CACHE_NAME = "ffv-static-v7";
+const CACHE_NAME = "ffv-static-v8";
 const STATIC_FILE = /\.(?:css|js|svg|webp|png|woff2|webmanifest)$/i;
 const PRECACHE = [
   "/portal.css",
