@@ -40,11 +40,15 @@ Names are placeholders for GitHub Actions Secrets; values must be supplied throu
 
 The GitHub Actions workflow also needs permission to write workflow artifacts and access its own repository. A website "Backup Now" button would require a separate authenticated backend trigger, such as a Cloudflare Worker endpoint holding a narrowly scoped GitHub workflow-dispatch token. That token must never be exposed to browser JavaScript.
 
+## Free-plan backup limitation
+
+Supabase's official backup guide states automatic daily database backups are provided for Pro, Team, and Enterprise projects. Free projects should regularly export their data and maintain off-site backups. This design therefore does not rely on Supabase-managed daily backups or paid PITR.
+
 ## Important current Supabase CLI caveat
 
-The current CLI v3 documentation says database commands target the local stack by default unless an explicit `--remote` target is supplied. The `db dump` command excludes Supabase-managed schemas (including `auth` and `storage`) from its normal dump path, and data/roles require explicit flags. Therefore a plain `supabase db dump` is not, by itself, a complete backup of Auth, Storage, or hosted configuration. Pin the CLI version and explicitly test every export component.
+The current CLI v3 documentation says database commands target the local stack by default unless an explicit `--remote` target is supplied. The CLI backup guide requires Docker Desktop for `supabase db dump`; a GitHub-hosted Linux runner provides Docker support, but the workflow must pin and test the CLI version. The current CLI reference states that `db dump` excludes Supabase-managed schemas including `auth` and `storage`. The `db dump` command excludes Supabase-managed schemas (including `auth` and `storage`) from its normal dump path, and data/roles require explicit flags. Therefore a plain `supabase db dump` is not, by itself, a complete backup of Auth, Storage, or hosted configuration. Pin the CLI version and explicitly test every export component.
 
-Supabase's official backup guide also states Storage object bytes are separate from database metadata and must be transferred separately. Edge Functions can be downloaded with the CLI, but import maps and `deno.json` files may need manual restoration.
+Supabase's official backup guide also states Storage object bytes are separate from database metadata and must be transferred separately. It documents downloading Edge Functions with `supabase functions download`; import maps and `deno.json` files may need to be restored manually. Edge Functions can be downloaded with the CLI, but import maps and `deno.json` files may need manual restoration.
 
 ## Workflow behaviour and failure rules
 
