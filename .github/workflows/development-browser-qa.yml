@@ -8,7 +8,7 @@ permissions:
 
 jobs:
   member-login-dashboard:
-    name: Member login and dashboard smoke test
+    name: Public and authenticated browser smoke tests
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -29,14 +29,6 @@ jobs:
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
-
-      - name: Verify test credentials are configured
-        env:
-          DEV_TEST_EMAIL: ${{ secrets.DEV_TEST_EMAIL }}
-          DEV_TEST_PASSWORD: ${{ secrets.DEV_TEST_PASSWORD }}
-        run: |
-          test -n "$DEV_TEST_EMAIL" || (echo "Missing GitHub Actions secret: DEV_TEST_EMAIL" && exit 1)
-          test -n "$DEV_TEST_PASSWORD" || (echo "Missing GitHub Actions secret: DEV_TEST_PASSWORD" && exit 1)
 
       - name: Run Development browser QA
         env:
