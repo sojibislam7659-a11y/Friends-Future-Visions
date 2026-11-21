@@ -134,12 +134,28 @@ Remaining checks before execution:
 
 ## Phase 5 — Edge Functions and application release
 
-- Deploy `create-member-login` and `review-member-signup` only after password rotation fields, AAL2 checks, role policies, and secrets are ready.
-- Deploy `send-push` only after the delivery table and RPC are live.
-- Keep `invite-member` aligned with the Production Auth configuration and test invite/approval flows end-to-end.
-- Preserve `google-sheets-sync` until its owner confirms replacement or retirement.
+Read-only source comparison completed on 2026-11-22:
+
+| Function | Development | Production | Source parity in Release branch |
+|---|---:|---:|---|
+| `send-push` | v4, JWT off | v3, JWT off | Exact source match to Development |
+| `review-member-signup` | v5, JWT on | v4, JWT on | Exact source match to Development |
+| `invite-member` | v3, JWT on | v5, JWT on | Exact source match to Development (retired 410 response) |
+| `create-member-login` | v4, JWT on | v3, JWT on | Exact source match to Development |
+
+The four Release-branch `index.ts` files were compared byte-for-byte with the live Development function sources. All four matched exactly. This verifies source staging, not Production deployment or runtime parity.
+
+- Deploy `create-member-login` and `review-member-signup` only after password rotation fields, AAL2 checks, role policies, and required secrets are ready.
+- Deploy `send-push` only after the delivery table and RPC are live, and after the Production VAPID/cron secrets are verified through owner-controlled configuration.
+- Preserve Production `google-sheets-sync`; it has no Development counterpart and is not part of this four-function replacement set.
 - Confirm `wrangler.jsonc` and `public/supabase-client.js` point to Production only.
 - Merge release branch to main and deploy the Worker only after explicit owner approval.
+
+## Current validation status
+
+- GitHub Actions Release static checks pass on the latest tested commit.
+- PostgreSQL grammar parser passed 61 standalone migration files. One historical file, `20261119190618_use_invoker_for_financial_summary_20261120.sql`, is explicitly excluded because it is a non-standalone PL/pgSQL body fragment rather than executable migration SQL; it was left unchanged.
+- SQL grammar validation does not execute function bodies or replace runtime/JWT tests.
 
 ## Required acceptance tests
 
