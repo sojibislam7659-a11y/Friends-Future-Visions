@@ -79,7 +79,7 @@ async function loadPublicTicker(){
 }
 function showPublicNavigation(){
  setupPublicTheme();
- loadPublicTicker();
+ if(["data","rules"].includes(document.body.dataset.page||""))loadPublicTicker();
  home.href="index.html";
  nav.innerHTML=item("rules.html","RULES","rules");
  addPublicMobileNav(false);
