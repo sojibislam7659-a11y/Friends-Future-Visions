@@ -232,7 +232,7 @@ jobs:
           ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
           ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
           CREATE FUNCTION storage.foldername(text) RETURNS text[]
-            LANGUAGE sql IMMUTABLE AS $folder$ SELECT string_to_array(trim(both '/' from $1), '/') $folder$;
+            LANGUAGE sql IMMUTABLE AS $$ SELECT string_to_array(trim(both '/' from $1), '/') $$;
           CREATE FUNCTION storage.filename(text) RETURNS text
             LANGUAGE sql IMMUTABLE AS $$ SELECT regexp_replace($1, '^.*/', '') $$;
           CREATE FUNCTION storage.extension(text) RETURNS text
@@ -377,7 +377,7 @@ jobs:
           SELECT 'restored_auth_users' AS check_name, count(*) AS verified FROM auth.users;
           SQL
 
-      - name: Seed temporary-only Storage metadata, synthetic MFA fixture and legacy default ACLs
+      - name: Seed temporary-only Storage metadata, synthetic MFA fixture and legacy ACL baseline
         shell: bash
         run: |
           set -euo pipefail
@@ -390,15 +390,11 @@ jobs:
             ('member-profile-photos','member-profile-photos',false,5242880,ARRAY['image/jpeg','image/png','image/webp']),
             ('payment-qr','payment-qr',false,2097152,ARRAY['image/jpeg','image/png','image/webp']);
           INSERT INTO auth.mfa_factors (id,user_id,factor_type,status)
-          SELECT gen_random_uuid(),p.id,'totp','verified'
-          FROM public.profiles p WHERE p.role='super_admin';
-          -- pg_dump --no-privileges intentionally omits ACLs; restore Supabase's
-          -- standard schema USAGE baseline for this temporary compatibility DB.
+          SELECT gen_random_uuid(),p.id,'totp','verified' FROM public.profiles p WHERE p.role='super_admin';
           GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
           GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
           GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
           GRANT USAGE ON SCHEMA private TO authenticated, service_role;
-          -- Recreate the current Production authenticated table ACL baseline omitted by pg_dump --no-privileges.
           GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO authenticated;
           REVOKE INSERT,UPDATE,DELETE ON TABLE public.financial_transaction_audit,public.member_directory,public.notifications FROM authenticated;
           GRANT USAGE ON SEQUENCE public.member_no_seq TO authenticated;
@@ -407,10 +403,8 @@ jobs:
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon;
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT REFERENCES,TRIGGER,TRUNCATE ON TABLES TO authenticated;
           SQL
-          factor_count=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
-            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT count(*) FROM auth.mfa_factors WHERE status='verified'")
-          super_count=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
-            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT count(*) FROM public.profiles WHERE role='super_admin'")
+          factor_count=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT count(*) FROM auth.mfa_factors WHERE status='verified'")
+          super_count=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT count(*) FROM public.profiles WHERE role='super_admin'")
           [[ "$factor_count" == "$super_count" && "$super_count" -gt 0 ]] || { echo "::error::Temporary MFA fixture does not cover each Super Admin."; exit 1; }
           echo "Temporary-only verified MFA fixtures: $factor_count (not Production factors)."
 
@@ -448,29 +442,18 @@ jobs:
           DECLARE
             v_member uuid;
             v_super uuid;
-            v_profiles bigint;
-            v_members bigint;
             v_summary jsonb;
           BEGIN
-            IF to_regclass('public.financial_postings') IS NULL
-              OR to_regclass('public.site_settings') IS NULL
-              OR to_regclass('public.admin_change_audit') IS NULL
-              OR to_regclass('private.password_rotation_guards') IS NULL THEN
-              RAISE EXCEPTION 'One or more required Production parity objects are missing after migration rehearsal';
+            IF to_regclass('public.financial_postings') IS NULL OR to_regclass('public.site_settings') IS NULL OR to_regclass('public.admin_change_audit') IS NULL OR to_regclass('private.password_rotation_guards') IS NULL THEN
+              RAISE EXCEPTION 'Required Production parity objects are missing after migration rehearsal';
             END IF;
-            IF NOT has_table_privilege('anon','public.committee_rules','SELECT')
-              OR has_table_privilege('anon','public.members','SELECT')
-              OR has_table_privilege('anon','public.financial_transactions','SELECT') THEN
+            IF NOT has_table_privilege('anon','public.committee_rules','SELECT') OR has_table_privilege('anon','public.members','SELECT') OR has_table_privilege('anon','public.financial_transactions','SELECT') THEN
               RAISE EXCEPTION 'Anonymous table grants do not match the intended least-privilege boundary';
             END IF;
-            IF has_table_privilege('authenticated','public.member_contribution_rates','INSERT')
-              OR has_table_privilege('authenticated','public.member_contribution_rates','UPDATE')
-              OR has_table_privilege('authenticated','public.member_contribution_rates','DELETE')
-              OR has_table_privilege('authenticated','public.financial_transactions','TRUNCATE') THEN
+            IF has_table_privilege('authenticated','public.member_contribution_rates','INSERT') OR has_table_privilege('authenticated','public.member_contribution_rates','UPDATE') OR has_table_privilege('authenticated','public.member_contribution_rates','DELETE') OR has_table_privilege('authenticated','public.financial_transactions','TRUNCATE') THEN
               RAISE EXCEPTION 'Authenticated role retains a forbidden direct table privilege';
             END IF;
-            IF NOT has_function_privilege('anon','public.get_public_financial_summary()','EXECUTE')
-              OR has_function_privilege('anon','private.get_public_financial_summary_unchecked()','EXECUTE') THEN
+            IF NOT has_function_privilege('anon','public.get_public_financial_summary()','EXECUTE') OR has_function_privilege('anon','private.get_public_financial_summary_unchecked()','EXECUTE') THEN
               RAISE EXCEPTION 'Public aggregate RPC/helper grants are incorrect';
             END IF;
             IF (SELECT count(*) FROM storage.buckets WHERE NOT public) <> 5 THEN
@@ -479,14 +462,10 @@ jobs:
             IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='Private member docs: Super Admin insert') THEN
               RAISE EXCEPTION 'Expected private-document Storage policy is missing';
             END IF;
-            IF EXISTS (
-              SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-              WHERE n.nspname='public' AND c.relkind IN ('r','p') AND NOT c.relrowsecurity
-            ) THEN
+            IF EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p') AND NOT c.relrowsecurity) THEN
               RAISE EXCEPTION 'A public application table has RLS disabled after migration';
             END IF;
-            IF EXISTS (SELECT 1 FROM pg_constraint WHERE connamespace IN ('public'::regnamespace,'private'::regnamespace) AND NOT convalidated)
-              OR EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid=i.indrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','private') AND NOT i.indisvalid) THEN
+            IF EXISTS (SELECT 1 FROM pg_constraint WHERE connamespace IN ('public'::regnamespace,'private'::regnamespace) AND NOT convalidated) OR EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid=i.indrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','private') AND NOT i.indisvalid) THEN
               RAISE EXCEPTION 'Unvalidated constraint or invalid index after migration';
             END IF;
             v_summary := public.get_public_financial_summary();
@@ -500,14 +479,10 @@ jobs:
             END IF;
             PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_member::text,'aal','aal1')::text,true);
             PERFORM set_config('request.jwt.claim.sub',v_member::text,true);
-            IF NOT private.has_portal_access() THEN
-              RAISE EXCEPTION 'Member portal helper rejected a valid member';
-            END IF;
+            IF NOT private.has_portal_access() THEN RAISE EXCEPTION 'Member portal helper rejected a valid member'; END IF;
             PERFORM set_config('request.jwt.claims',jsonb_build_object('sub',v_super::text,'aal','aal2')::text,true);
             PERFORM set_config('request.jwt.claim.sub',v_super::text,true);
-            IF NOT private.has_portal_access() OR NOT private.is_super_admin() THEN
-              RAISE EXCEPTION 'Super Admin helper rejected the Super Admin';
-            END IF;
+            IF NOT private.has_portal_access() OR NOT private.is_super_admin() THEN RAISE EXCEPTION 'Super Admin helper rejected the Super Admin'; END IF;
           END $verify$;
           SELECT 'migration_rehearsal' AS check_name, 'PASS' AS result;
           SELECT 'verified_mfa_fixtures_temporary_only' AS check_name, count(*) AS result FROM auth.mfa_factors WHERE status='verified';
@@ -516,31 +491,8 @@ jobs:
           SQL
           member_id=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT id FROM public.profiles WHERE role='member' ORDER BY id LIMIT 1")
           super_id=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT id FROM public.profiles WHERE role='super_admin' ORDER BY id LIMIT 1")
-          member_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$member_id','aal','aal1')::text,true); SELECT set_config('request.jwt.claim.sub','$member_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | grep -E "^[0-9]+,[0-9]+$" | tail -n 1)
-          super_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$super_id','aal','aal2')::text,true); SELECT set_config('request.jwt.claim.sub','$super_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | grep -E "^[0-9]+,[0-9]+$" | tail -n 1)
-          [[ "$member_counts" == "1,1" ]] || { echo "::error::Member RLS isolation failed: $member_counts"; exit 1; }
-          [[ "$super_counts" == "8,7" ]] || { echo "::error::Super Admin RLS visibility failed: $super_counts"; exit 1; }
-          echo "Post-migration RLS counts: Member=$member_counts; Super Admin=$super_counts."
-
-      - name: Remove all temporary plaintext, encrypted files and database container
-        if: always()
-        shell: bash
-        run: |
-          docker rm -f ffv-restore-postgres >/dev/null 2>&1 || true
-          rm -rf "$RUNNER_TEMP/ffv-restore-test"
- | tail -n 1)
-          super_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$super_id','aal','aal2')::text,true); SELECT set_config('request.jwt.claim.sub','$super_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | grep -E "^[0-9]+,[0-9]+$" | tail -n 1)
-          [[ "$member_counts" == "1,1" ]] || { echo "::error::Member RLS isolation failed: $member_counts"; exit 1; }
-          [[ "$super_counts" == "8,7" ]] || { echo "::error::Super Admin RLS visibility failed: $super_counts"; exit 1; }
-          echo "Post-migration RLS counts: Member=$member_counts; Super Admin=$super_counts."
-
-      - name: Remove all temporary plaintext, encrypted files and database container
-        if: always()
-        shell: bash
-        run: |
-          docker rm -f ffv-restore-postgres >/dev/null 2>&1 || true
-          rm -rf "$RUNNER_TEMP/ffv-restore-test"
- | tail -n 1)
+          member_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$member_id','aal','aal1')::text,true); SELECT set_config('request.jwt.claim.sub','$member_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | grep -E '^[0-9]+,[0-9]+' | tail -n 1)
+          super_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$super_id','aal','aal2')::text,true); SELECT set_config('request.jwt.claim.sub','$super_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | grep -E '^[0-9]+,[0-9]+' | tail -n 1)
           [[ "$member_counts" == "1,1" ]] || { echo "::error::Member RLS isolation failed: $member_counts"; exit 1; }
           [[ "$super_counts" == "8,7" ]] || { echo "::error::Super Admin RLS visibility failed: $super_counts"; exit 1; }
           echo "Post-migration RLS counts: Member=$member_counts; Super Admin=$super_counts."
