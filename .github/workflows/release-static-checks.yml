@@ -37,6 +37,16 @@ jobs:
           python scripts/test_upload_encrypted_backup.py
           python scripts/test_verify_backup_parts.py
           ruby -e 'require "yaml"; YAML.load_file(".github/workflows/backup-production-to-drive.yml")'
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Supabase Edge Functions
+        run: |
+          set -e
+          for file in supabase/functions/*/index.ts; do
+            deno check "$file"
+          done
       - name: Validate lightweight SVG brand asset
         run: |
           python -c "import xml.etree.ElementTree as ET; ET.parse('public/friends-future-vision-logo.svg')"
