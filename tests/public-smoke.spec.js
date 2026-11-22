@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 const baseURL = "https://development-friends-future-visions-dev.sojibislam7659.workers.dev";
+const localPublicData = readFileSync(new URL("../public/public-data.js", import.meta.url), "utf8");
+const localPublicNav = readFileSync(new URL("../public/public-nav.js", import.meta.url), "utf8");
 
 test("Development login screen loads and exposes required controls", async ({ page }) => {
   const pageErrors = [];
@@ -31,6 +34,10 @@ test("Unauthenticated visitor cannot enter the Development dashboard", async ({ 
 test("Unauthenticated visitor can view aggregate-only public Data", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
+  // The development Worker is not auto-deployed from every branch push.
+  // Route the current checked-out source modules into the live Dev HTML/API.
+  await page.route("**/public-data.js", route => route.fulfill({ status: 200, contentType: "application/javascript", body: localPublicData }));
+  await page.route("**/public-nav.js", route => route.fulfill({ status: 200, contentType: "application/javascript", body: localPublicNav }));
 
   const response = await page.goto(`${baseURL}/data.html`, { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBe(200);
