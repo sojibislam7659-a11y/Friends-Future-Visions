@@ -1,6 +1,6 @@
 # Production Backup and Restore Design
 
-**Status: Encrypted Production backup uploaded to Google Drive; isolated PostgreSQL 17 restore rehearsal passed. Hosted Auth/Storage service restoration remains outside the scope of this rehearsal.**
+**Status: Encrypted Production backup uploaded to Google Drive; PostgreSQL 17 restore and all-nine-migration isolated rehearsal passed. Hosted Auth/Storage service restoration remains outside the scope of this rehearsal.**
 
 ## 1. Objective
 
@@ -106,9 +106,9 @@ A successful upload is not a restore test. Restore rehearsal must use an isolate
 3. **DONE:** Latest encrypted archive and SHA-256 manifest were accepted by the configured Google Drive folder; temporary runner workspace was removed.
 4. **DONE:** Isolated restore rehearsal passed in GitHub Actions run `45070745560` using `ffv_backup_45070634542_1`.
 5. **DONE WITH LIMITATION:** PostgreSQL 17 restore, RLS, constraints, indexes, foreign keys, Auth ID references, Storage object-byte hashes, Edge Function snapshots, and cleanup checks passed. The workflow does not recreate a live Supabase Storage service or prove hosted Auth provider settings/password recovery.
-6. **PENDING:** Verify that the merged Production MFA bootstrap is live on the Cloudflare Worker; the existing Super Admin must enroll and verify a TOTP factor. Production currently has zero verified MFA factors.
-7. **PENDING:** Rehearse all Production-specific migrations in the exact order listed in `supabase/migrations/README.md` against the isolated restore. Do not apply the remaining portal/ledger migrations to Production before the rehearsal and owner approval.
-8. **PENDING:** After migration approval, deploy schema-dependent Edge Functions one at a time, preserve Production-only `google-sheets-sync`, and run live Member/Super Admin acceptance tests before the final Worker release.
+6. **DONE:** All nine staged Production migrations applied in order to a second isolated restored PostgreSQL 17 database and final checks passed in run `45072671436`. The rehearsal used a synthetic verified MFA factor/AAL2 claim only in the temporary database; it did not create a real Production factor or modify Production.
+7. **PENDING:** Verify that the merged Production MFA bootstrap is live on the Cloudflare Worker; the existing Super Admin must enroll and verify a TOTP factor. Production currently has zero verified MFA factors.
+8. **PENDING:** Obtain final owner acceptance, apply the already-rehearsed migrations in the documented order, deploy schema-dependent Edge Functions one at a time, preserve Production-only `google-sheets-sync`, and run live Member/Super Admin acceptance tests before the final Worker release.
 ## 9. Website “Backup Now” button
 
 A direct website button is not implemented. It would require a separate authenticated Cloudflare Worker endpoint that:
