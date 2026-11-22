@@ -76,7 +76,7 @@ begin
   ) then
     raise exception 'Unexpected profile role remains after migration';
   end if;
-end
+end;
 $verify$;
 
 select
