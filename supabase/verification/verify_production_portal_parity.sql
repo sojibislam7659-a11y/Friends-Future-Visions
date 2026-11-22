@@ -1,0 +1,140 @@
+-- Read-only verification for the Production portal/audit/push/password parity migration.
+-- Run only against an isolated Production restore rehearsal after applying
+-- 20261122113000_add_production_portal_audit_and_password_parity.sql.
+
+do $verify$
+declare
+  v_count integer;
+  v_def text;
+  v_rls boolean;
+  v_force boolean;
+begin
+  if to_regclass('public.site_settings') is null
+     or to_regclass('public.admin_change_audit') is null
+     or to_regclass('public.notification_push_deliveries') is null
+     or to_regclass('private.password_rotation_guards') is null then
+    raise exception 'Missing one or more portal parity tables';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='profiles'
+      and column_name='must_change_password' and data_type='boolean'
+  ) or not exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='profiles'
+      and column_name='password_change_required_at'
+  ) then
+    raise exception 'Temporary password rotation columns are missing';
+  end if;
+
+  if not exists (
+    select 1 from information_schema.columns
+    where table_schema='public' and table_name='members'
+      and column_name='monthly_contribution'
+      and column_default like '%2000%'
+  ) then
+    raise exception 'Monthly contribution default does not match Development';
+  end if;
+
+  select c.relrowsecurity,c.relforcerowsecurity into v_rls,v_force
+  from pg_class c where c.oid='public.site_settings'::regclass;
+  if not v_rls or not v_force then
+    raise exception 'site_settings must have RLS enabled and forced';
+  end if;
+
+  select c.relrowsecurity into v_rls
+  from pg_class c where c.oid='public.admin_change_audit'::regclass;
+  if not v_rls then
+    raise exception 'admin_change_audit RLS is not enabled';
+  end if;
+
+  select count(*) into v_count
+  from information_schema.triggers
+  where trigger_schema='public' and trigger_name='audit_admin_change'
+    and event_object_table in (
+      'committee_documents','committee_proofs','member_contribution_rates',
+      'member_private_documents','members','notices','payment_methods',
+      'payment_submissions','profile_change_requests','profiles','site_settings'
+    );
+  if v_count <> 33 then
+    raise exception 'Expected 33 admin audit trigger events across 11 tables; found %',v_count;
+  end if;
+
+  if has_column_privilege('authenticated','public.profiles','full_name','UPDATE') then
+    raise exception 'Authenticated still has a legacy full_name UPDATE grant';
+  end if;
+  if not has_column_privilege('authenticated','public.profiles','must_change_password','UPDATE') then
+    raise exception 'Authenticated cannot complete the controlled password rotation flag update';
+  end if;
+
+  if has_table_privilege('authenticated','private.password_rotation_guards','SELECT')
+     or has_table_privilege('authenticated','private.password_rotation_guards','INSERT')
+     or has_table_privilege('anon','private.password_rotation_guards','SELECT')
+     or has_table_privilege('service_role','private.password_rotation_guards','SELECT') then
+    raise exception 'Password rotation guard table is exposed to an API role';
+  end if;
+  if has_schema_privilege('anon','private','USAGE') then
+    raise exception 'Anonymous role still has private schema USAGE';
+  end if;
+
+  if not has_table_privilege('authenticated','public.site_settings','SELECT')
+     or has_table_privilege('anon','public.site_settings','SELECT') then
+    raise exception 'site_settings grants are unexpected';
+  end if;
+  if has_table_privilege('authenticated','public.admin_change_audit','INSERT')
+     or has_table_privilege('authenticated','public.admin_change_audit','UPDATE')
+     or has_table_privilege('authenticated','public.admin_change_audit','DELETE') then
+    raise exception 'Authenticated can mutate admin audit rows';
+  end if;
+
+  if has_table_privilege('authenticated','public.notification_push_deliveries','SELECT')
+     or has_table_privilege('authenticated','public.notification_push_deliveries','INSERT')
+     or has_table_privilege('anon','public.notification_push_deliveries','SELECT') then
+    raise exception 'Push delivery diagnostics are exposed to browser roles';
+  end if;
+  if not has_function_privilege('service_role','public.claim_notification_push_delivery(uuid,uuid)','EXECUTE')
+     or has_function_privilege('authenticated','public.claim_notification_push_delivery(uuid,uuid)','EXECUTE')
+     or has_function_privilege('anon','public.claim_notification_push_delivery(uuid,uuid)','EXECUTE') then
+    raise exception 'Push delivery claim RPC grants are unexpected';
+  end if;
+
+  select pg_get_functiondef('private.is_super_admin()'::regprocedure) into v_def;
+  if position('aal2' in lower(v_def))=0 then
+    raise exception 'Super Admin helper does not require AAL2';
+  end if;
+  select pg_get_functiondef('private.has_portal_access()'::regprocedure) into v_def;
+  if position('aal2' in lower(v_def))=0
+     or position('must_change_password' in lower(v_def))=0 then
+    raise exception 'Portal access helper is missing MFA or password-rotation gates';
+  end if;
+
+  if exists (
+    select 1 from public.profiles
+    where role not in ('member','super_admin') or role is null
+  ) then
+    raise exception 'Legacy or unexpected profile role remains';
+  end if;
+  if exists (
+    select 1 from public.profiles p
+    where p.role='super_admin'
+      and not exists (
+        select 1 from auth.mfa_factors f
+        where f.user_id=p.id and f.status='verified'
+      )
+  ) then
+    raise exception 'A Super Admin has no verified MFA factor';
+  end if;
+
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid='public.push_subscriptions'::regclass
+      and conname='push_subscriptions_endpoint_provider_check'
+      and position('mozilla[.]com' in pg_get_constraintdef(oid))>0
+  ) then
+    raise exception 'Push provider constraint does not match the Development Mozilla endpoint';
+  end if;
+end
+$verify$;
+
+select 'portal, audit, password rotation, push delivery and MFA parity verified' as verification_result;
