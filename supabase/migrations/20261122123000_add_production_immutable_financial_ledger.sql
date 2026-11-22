@@ -16,7 +16,7 @@ begin
   if not exists (select 1 from pg_proc where oid=to_regprocedure('private.is_super_admin()')) then
     raise exception 'Preflight failed: private.is_super_admin() is missing';
   end if;
-end
+end;
 $preflight$;
 
 create table public.financial_postings (
