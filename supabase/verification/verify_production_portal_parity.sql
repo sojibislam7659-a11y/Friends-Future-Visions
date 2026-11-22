@@ -194,6 +194,37 @@ begin
   ) <> 59 then
     raise exception 'Expected 59 public policies matching Development after all migrations';
   end if;
+
+  if not has_table_privilege('anon','public.committee_rules','SELECT')
+     or has_table_privilege('anon','public.committee_rules','INSERT')
+     or has_table_privilege('anon','public.committee_rules','UPDATE')
+     or has_table_privilege('anon','public.committee_rules','DELETE') then
+    raise exception 'Anonymous committee_rules access must be SELECT only';
+  end if;
+
+  if exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) acl
+    where n.nspname='public'
+      and c.relkind in ('r','p','v','m','f')
+      and acl.grantee='anon'::regrole::oid
+      and not (c.relname='committee_rules' and acl.privilege_type='SELECT')
+  ) then
+    raise exception 'Legacy anonymous privileges remain on public tables';
+  end if;
+
+  if exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    cross join lateral aclexplode(coalesce(c.relacl,acldefault('S',c.relowner))) acl
+    where n.nspname='public' and c.relkind='S'
+      and acl.grantee='anon'::regrole::oid
+  ) then
+    raise exception 'Anonymous sequence privileges remain in public schema';
+  end if;
 end;
 $verify$;
 
