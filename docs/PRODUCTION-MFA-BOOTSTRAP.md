@@ -1,30 +1,33 @@
-# Production MFA bootstrap — staged pre-migration deployment
+# Production MFA bootstrap — merged pre-migration login
 
-## Why this branch exists
+## Current status
 
-The Production schema migration intentionally requires a verified MFA factor for the Super Admin. The current Production login page on `main` does not contain the TOTP enrollment flow. Applying the migration first would block the only Super Admin from accessing privileged features; deploying the full Development frontend first would query the not-yet-existing `profiles.must_change_password` column and could break sign-in.
+- Bootstrap PR #10 was merged into `main`.
+- PR #21 integrated the same verified backup/MFA bootstrap files into the staged release branch.
+- The login JavaScript includes a compatibility fallback: it reads `profiles.role,must_change_password` when available and falls back to `profiles.role` only before the additive password-state migration.
+- CI and the release browser/static checks passed.
+- Cloudflare Worker deployment is **not independently confirmed** through the available control connection. The Production login page must be checked before the Super Admin attempts enrollment.
+- Production currently has **zero verified TOTP factors**. No real Production MFA factor has been created yet.
 
-This branch solves that sequencing problem with a minimal login-only bootstrap, based on the current Production `main` branch:
+## What the bootstrap changes
 
 - `public/login.html` — adds the existing Development MFA enrollment/challenge UI.
-- `public/login.js` — adds the Development TOTP enrollment and verification flow.
-- `public/brand-logo.js` — supplies the logo module required by the new login page.
-- The existing Production `public/supabase-client.js`, `portal.css`, `password-visibility.js`, and other pages remain unchanged.
+- `public/login.js` — adds TOTP enrollment and verification, preserving the existing Production Supabase client and pre-migration schema compatibility.
+- `public/brand-logo.js` — provides the shared Friends Future Visions Forever logo.
+- The bootstrap does not apply database migrations, modify member/financial rows, or deploy the full portal.
 
-## Pre-migration compatibility
+## Verified backup and migration gates
 
-The login module first attempts to read `profiles.role,must_change_password`. If Production has not yet received the additive profile migration, it falls back to reading `profiles.role` only and treats `must_change_password` as false. This lets the Super Admin complete TOTP enrollment while the current Production schema is still in place. The fallback does not bypass role checks or MFA verification.
+1. Encrypted Drive backup `ffv_backup_45070634542_1` uploaded successfully (workflow run `45070634542`).
+2. Isolated PostgreSQL 17 restore passed (workflow run `45070745560`).
+3. All nine staged Production migrations applied in exact order and passed final schema/ACL/RLS/Storage/public-summary checks against a second isolated restored database (workflow run `45072671436`).
+4. The migration rehearsal used a synthetic verified TOTP factor and AAL2 claim only inside the temporary database. It did not create a real Production factor or modify Production.
 
-The favicon reference was changed to the existing Production `friends-future-vision-logo.svg`. Brand text uses singular **Friends Future Vision Forever**.
+## Remaining owner action
 
-## Safe rollout sequence
+1. Open the Production login page from a laptop/PC and sign in with the existing Super Admin account.
+2. If the TOTP setup screen appears, scan the QR code using a trusted authenticator app on the phone and enter the 6-digit code on the login page.
+3. Do not share the QR code, secret key, recovery material, or one-time code in ChatGPT.
+4. After enrollment, the project owner can verify that Production `auth.mfa_factors` contains one `totp` factor with status `verified`. The migration preflight must then pass.
 
-1. Complete the encrypted backup smoke test, Production backup, checksum verification and isolated restore rehearsal.
-2. Owner explicitly approves the bootstrap deployment.
-3. Deploy only this branch's login assets to the Production Worker (no database migration yet).
-4. Super Admin signs in with the existing Production account. The login page prompts to scan a TOTP QR code and verify a 6-digit code using an authenticator app.
-5. Confirm the Production Auth account now has a verified MFA factor and can reach the current dashboard.
-6. Apply the ordered Production migrations in the release plan. The MFA preflight must pass.
-7. Only then deploy the full `release/ffv-prod-parity-20261122` application and the staged Edge Functions, followed by live QA.
-
-Do not merge or deploy this branch before the backup/restore gate. It is separate from the full parity release branch and is not deployed. The branch has a dedicated CI workflow checking JS syntax, MFA DOM elements, Production Supabase ref, schema fallback and singular brand text.
+Only after real TOTP enrollment and final owner acceptance should the nine rehearsed migrations, schema-dependent Edge Functions, and full release be applied to Production. Preserve the current Production Worker and data until then.
