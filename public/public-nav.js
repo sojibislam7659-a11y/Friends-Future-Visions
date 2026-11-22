@@ -5,7 +5,7 @@ const svg=n=>'<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="
 const item=(href,label,n)=>'<a href="'+href+'"'+(location.pathname.split("/").pop()===href?' class="active" aria-current="page"':'')+'>'+svg(n)+'<span>'+label+'</span></a>';
 function showPublicNavigation(){
  home.href="index.html";
- nav.innerHTML=item("rules.html","RULES","rules");
+ nav.innerHTML=item("rules.html","RULES","rules")+item("data.html","DATA","data");
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
  menu.addEventListener("click",()=>{nav.hidden=!nav.hidden;menu.setAttribute("aria-expanded",String(!nav.hidden))});
  login.hidden=false;bell.hidden=true;
@@ -18,7 +18,7 @@ async function init(){
  const session=s?.session;
  if(error||!session?.user?.id){showPublicNavigation();return}
  const {data:profile,error:pe}=await supabase.from("profiles").select("role").eq("id",session.user.id).maybeSingle();
- if(pe||!profile||!["super_admin","admin","member"].includes(profile.role)){await supabase.auth.signOut();location.replace("login.html");return}
+ if(pe||!profile||!["super_admin","member"].includes(profile.role)){await supabase.auth.signOut();location.replace("login.html");return}
  home.href="dashboard.html";
  const role=profile.role;
  const links=[item("rules.html","RULES","rules"),item("member-info.html","MEMBER INFO","members"),item("data.html","DATA","data"),item("personal-due.html","PERSONAL DUE","due"),item("proof.html","PROOF","proof"),item("payment.html","PAYMENT","payment"),...(role==="super_admin"?[item("admin.html","SUPER ADMIN","admin")]:[]),...(role==="member"?[item("member.html","MY PROFILE","members")]:[])];
