@@ -110,10 +110,11 @@ jobs:
             --passphrase-file "$RUNNER_TEMP/ffv-restore-test/passphrase" \
             --output "$RUNNER_TEMP/ffv-restore-test/production-backup.tar.gz" \
             --decrypt "$RUNNER_TEMP/ffv-restore-test/production-backup.gpg"
-          python - <<'PY'
+          RESTORE_TMP="$RUNNER_TEMP/ffv-restore-test" python - <<'PY'
+          import os
           import tarfile
           from pathlib import Path, PurePosixPath
-          root = Path("$RUNNER_TEMP/ffv-restore-test")
+          root = Path(os.environ["RESTORE_TMP"])
           archive = root / "production-backup.tar.gz"
           target = root / "project"
           target.mkdir(mode=0o700)
