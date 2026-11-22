@@ -165,6 +165,11 @@ begin
   from pg_proc where oid='public.get_member_shared_financial_data_v2()'::regprocedure;
   if v_definer then raise exception 'Public shared financial data wrapper must be SECURITY INVOKER'; end if;
 
+  select pg_get_functiondef('private.get_member_shared_financial_data_v2()'::regprocedure) into v_def;
+  if position('coalesce(rate.monthly_amount,2000)' in lower(v_def))=0 then
+    raise exception 'Shared due calculation must default missing member rate to 2000';
+  end if;
+
   if not exists (
     select 1 from pg_trigger
     where tgrelid='public.financial_transactions'::regclass
