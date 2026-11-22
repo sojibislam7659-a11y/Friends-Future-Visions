@@ -255,6 +255,30 @@ begin
   if not has_column_privilege('authenticated','public.notifications','read_at','UPDATE') then
     raise exception 'Members cannot mark their own notifications as read';
   end if;
+
+  if exists (
+    select 1
+    from pg_default_acl d
+    cross join lateral aclexplode(d.defaclacl) acl
+    where d.defaclrole='postgres'::regrole
+      and d.defaclnamespace='public'::regnamespace
+      and acl.grantee='anon'::regrole::oid
+  ) then
+    raise exception 'Future public objects created by postgres still inherit anon privileges';
+  end if;
+
+  if exists (
+    select 1
+    from pg_default_acl d
+    cross join lateral aclexplode(d.defaclacl) acl
+    where d.defaclrole='postgres'::regrole
+      and d.defaclnamespace='public'::regnamespace
+      and d.defaclobjtype='r'
+      and acl.grantee='authenticated'::regrole::oid
+      and acl.privilege_type in ('REFERENCES','TRIGGER','TRUNCATE')
+  ) then
+    raise exception 'Future public tables still grant unnecessary authenticated privileges';
+  end if;
 end;
 $verify$;
 
