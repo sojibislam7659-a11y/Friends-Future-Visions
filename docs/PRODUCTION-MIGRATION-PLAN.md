@@ -158,11 +158,20 @@ Read-only source comparison completed on 2026-11-22:
 | `invite-member` | v3, JWT on | v5, JWT on | Exact source match to Development (retired 410 response) |
 | `create-member-login` | v4, JWT on | v3, JWT on | Exact source match to Development |
 
-The four Release-branch `index.ts` files were compared byte-for-byte with the live Development function sources. All four matched exactly. This verifies source staging, not Production deployment or runtime parity.
+The four Release-branch `index.ts` files were compared byte-for-byte with the live Development sources; all four match Development exactly. The captured live Production baseline is older for three functions:
+- `send-push`: Production snapshot is older and lacks the new delivery-claim/idempotency path.
+- `review-member-signup`: Production snapshot is older and lacks the current AAL2/password-rotation safeguards.
+- `create-member-login`: Production snapshot is older and lacks the current AAL2/password-rotation safeguards.
+- `invite-member`: Production already matches the retired HTTP 410 implementation; no redeploy is required.
+The CI baseline check records these expected differences. Deno type-checking is added for the four Release functions and the preserved Production-only Google Sheets function.
 
-- Deploy `create-member-login` and `review-member-signup` only after password rotation fields, AAL2 checks, role policies, and required secrets are ready.
-- Deploy `send-push` only after the delivery table and RPC are live, and after the Production VAPID/cron secrets are verified through owner-controlled configuration.
-- Preserve Production `google-sheets-sync`; it has no Development counterpart and is not part of this four-function replacement set.
+Required standard Edge Function environment names are `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; the Production-only `google-sheets-sync` also requires `OIKKO_SYNC_SECRET`. Secret values cannot be read back. The following Vault secret *names* exist in both projects: `ffvf_cron_token`, `ffvf_vapid_private_key`, `ffvf_vapid_public_key`, and `ffvf_vapid_subject`.
+
+Read-only operational comparison found all three cron jobs active in both projects with matching schedules and matching reminder-function definitions: `ffvf-meeting-reminders` (every minute), `ffvf-monthly-due-reminders` (03:00 on day 1), and `ffvf-push-delivery` (every minute). Recent push endpoint calls returned HTTP 200 with zero processed/sent/failed; both projects currently have zero push subscriptions, so an end-to-end device delivery test remains outstanding.
+
+- After the portal and ledger migrations pass in the restore rehearsal, deploy only `create-member-login`, `review-member-signup`, and `send-push` from the Release branch. Do not redeploy `invite-member` unless a future source change requires it.
+- Preserve Production `google-sheets-sync`; it has no Development counterpart and must remain deployed.
+- Verify the Production `OIKKO_SYNC_SECRET` remains configured through owner-controlled settings; do not copy secret values into Git.
 - Confirm `wrangler.jsonc` and `public/supabase-client.js` point to Production only.
 - Merge release branch to main and deploy the Worker only after explicit owner approval.
 
