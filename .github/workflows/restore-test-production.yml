@@ -1,0 +1,284 @@
+name: Manual Encrypted Production Backup Restore Test
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/restore-test-production.yml"
+      - "backup/google-drive-receiver/Code.gs"
+      - "scripts/download_encrypted_backup.py"
+      - "scripts/verify_restore_payload.py"
+      - "scripts/seed_restore_auth.py"
+      - "scripts/test_download_encrypted_backup.py"
+  workflow_dispatch:
+    inputs:
+      backup_run_id:
+        description: "Exact run ID from the Drive manifest filename, without _manifest.json"
+        required: true
+        type: string
+      confirm_restore:
+        description: "Type RESTORE_TEST to confirm an isolated, temporary restore"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate restore tooling (no secrets, no Drive access)
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python syntax and unit tests
+        run: |
+          set -euo pipefail
+          python -m py_compile scripts/download_encrypted_backup.py scripts/verify_restore_payload.py scripts/seed_restore_auth.py
+          python -m unittest scripts.test_download_encrypted_backup
+      - name: Apps Script syntax
+        run: |
+          set -euo pipefail
+          cp backup/google-drive-receiver/Code.gs /tmp/ffv-drive-receiver.js
+          node --check /tmp/ffv-drive-receiver.js
+      - name: Workflow YAML syntax
+        run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/restore-test-production.yml")'
+
+  guard:
+    name: Validate explicit restore authorization
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate confirmation, backup ID and required Drive secrets
+        env:
+          CONFIRM_RESTORE: ${{ inputs.confirm_restore }}
+          BACKUP_RUN_ID: ${{ inputs.backup_run_id }}
+          FFV_DRIVE_RECEIVER_URL: ${{ secrets.FFV_DRIVE_RECEIVER_URL }}
+          FFV_BACKUP_TOKEN: ${{ secrets.FFV_BACKUP_TOKEN }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          [[ "$CONFIRM_RESTORE" == "RESTORE_TEST" ]] || { echo "::error::Type RESTORE_TEST exactly."; exit 1; }
+          [[ "$BACKUP_RUN_ID" =~ ^[A-Za-z0-9_-]{16,64}$ ]] || { echo "::error::Backup run ID format is invalid."; exit 1; }
+          [[ "$FFV_DRIVE_RECEIVER_URL" == https://script.google.com/macros/s/*/exec ]] || { echo "::error::Drive receiver URL is missing or invalid."; exit 1; }
+          [[ ${#FFV_BACKUP_TOKEN} -ge 40 ]] || { echo "::error::Drive receiver token is missing or too short."; exit 1; }
+          [[ ${#BACKUP_ENCRYPTION_PASSPHRASE} -ge 20 ]] || { echo "::error::Backup encryption passphrase is missing or too short."; exit 1; }
+          echo "Restore authorization inputs validated. No Production database credentials are used."
+
+  restore_test:
+    name: Download, decrypt, verify and restore in temporary PostgreSQL
+    if: github.event_name == 'workflow_dispatch'
+    needs: guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      FFV_DRIVE_RECEIVER_URL: ${{ secrets.FFV_DRIVE_RECEIVER_URL }}
+      FFV_BACKUP_TOKEN: ${{ secrets.FFV_BACKUP_TOKEN }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+      BACKUP_RUN_ID: ${{ inputs.backup_run_id }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create private temporary workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$RUNNER_TEMP/ffv-restore-test"
+          chmod 700 "$RUNNER_TEMP/ffv-restore-test"
+          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" > "$RUNNER_TEMP/ffv-restore-test/passphrase"
+          chmod 600 "$RUNNER_TEMP/ffv-restore-test/passphrase"
+
+      - name: Download encrypted backup from Google Drive and verify every checksum
+        run: |
+          set -euo pipefail
+          python scripts/download_encrypted_backup.py \
+            --run-id "$BACKUP_RUN_ID" \
+            --output "$RUNNER_TEMP/ffv-restore-test/production-backup.gpg"
+
+      - name: Decrypt and safely extract archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-file "$RUNNER_TEMP/ffv-restore-test/passphrase" \
+            --output "$RUNNER_TEMP/ffv-restore-test/production-backup.tar.gz" \
+            --decrypt "$RUNNER_TEMP/ffv-restore-test/production-backup.gpg"
+          RESTORE_TMP="$RUNNER_TEMP/ffv-restore-test" python - <<'PY'
+          import os
+          import tarfile
+          from pathlib import Path, PurePosixPath
+          root = Path(os.environ["RESTORE_TMP"])
+          archive = root / "production-backup.tar.gz"
+          target = root / "project"
+          target.mkdir(mode=0o700)
+          with tarfile.open(archive, "r:gz") as bundle:
+              for item in bundle.getmembers():
+                  path = PurePosixPath(item.name)
+                  if path.is_absolute() or ".." in path.parts:
+                      raise SystemExit("Unsafe archive path rejected.")
+              bundle.extractall(target, filter="data")
+          PY
+
+      - name: Verify Auth metadata, Storage bytes, database dump and Edge Function snapshots
+        run: python scripts/verify_restore_payload.py "$RUNNER_TEMP/ffv-restore-test/project"
+
+      - name: Start isolated temporary PostgreSQL 17
+        shell: bash
+        run: |
+          set -euo pipefail
+          PG_PASSWORD="$(openssl rand -hex 24)"
+          echo "::add-mask::$PG_PASSWORD"
+          echo "FFV_RESTORE_PG_PASSWORD=$PG_PASSWORD" >> "$GITHUB_ENV"
+          docker run -d --name ffv-restore-postgres \
+            -e POSTGRES_PASSWORD="$PG_PASSWORD" \
+            -e POSTGRES_DB=ffv_restore_test \
+            -p 127.0.0.1:55432:5432 \
+            -v "$RUNNER_TEMP/ffv-restore-test/project:/restore:ro" \
+            postgres:17
+          for attempt in $(seq 1 40); do
+            if docker exec ffv-restore-postgres pg_isready -U postgres -d ffv_restore_test >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+          docker exec ffv-restore-postgres pg_isready -U postgres -d ffv_restore_test
+
+      - name: Create minimal Supabase Auth and Storage compatibility schemas
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE anon NOLOGIN;
+          CREATE ROLE authenticated NOLOGIN;
+          CREATE ROLE service_role NOLOGIN BYPASSRLS;
+          CREATE SCHEMA auth;
+          CREATE TABLE auth.users (
+            instance_id uuid,
+            id uuid PRIMARY KEY,
+            aud varchar(255),
+            role varchar(255),
+            email varchar(255),
+            encrypted_password varchar(255),
+            email_confirmed_at timestamptz,
+            invited_at timestamptz,
+            confirmation_token varchar(255),
+            confirmation_sent_at timestamptz,
+            recovery_token varchar(255),
+            recovery_sent_at timestamptz,
+            email_change_token_new varchar(255),
+            email_change varchar(255),
+            email_change_sent_at timestamptz,
+            last_sign_in_at timestamptz,
+            raw_app_meta_data jsonb,
+            raw_user_meta_data jsonb,
+            is_super_admin boolean,
+            created_at timestamptz,
+            updated_at timestamptz,
+            phone varchar(32),
+            phone_confirmed_at timestamptz,
+            phone_change varchar(32),
+            phone_change_token varchar(255),
+            phone_change_sent_at timestamptz,
+            confirmed_at timestamptz,
+            email_change_token_current varchar(255),
+            email_change_confirm_status smallint,
+            banned_until timestamptz,
+            reauthentication_token varchar(255),
+            reauthentication_sent_at timestamptz,
+            is_sso_user boolean,
+            deleted_at timestamptz,
+            is_anonymous boolean
+          );
+          CREATE FUNCTION auth.uid() RETURNS uuid
+            LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+          CREATE FUNCTION auth.jwt() RETURNS jsonb
+            LANGUAGE sql STABLE AS $$ SELECT coalesce(nullif(current_setting('request.jwt.claims', true), '')::jsonb, '{}'::jsonb) $$;
+          CREATE FUNCTION auth.role() RETURNS text
+            LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.role', true), '') $$;
+          CREATE FUNCTION auth.email() RETURNS text
+            LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.email', true), '') $$;
+          CREATE SCHEMA storage;
+          CREATE TABLE storage.buckets (
+            id text PRIMARY KEY, name text, owner_id uuid, public boolean,
+            file_size_limit bigint, allowed_mime_types text[], created_at timestamptz, updated_at timestamptz
+          );
+          CREATE TABLE storage.objects (
+            id uuid PRIMARY KEY, bucket_id text, name text, owner_id uuid,
+            metadata jsonb, created_at timestamptz, updated_at timestamptz, last_accessed_at timestamptz
+          );
+          CREATE FUNCTION storage.foldername(text) RETURNS text[]
+            LANGUAGE sql IMMUTABLE AS $$ SELECT string_to_array(trim(both '/' from $1), '/') $$;
+          CREATE FUNCTION storage.filename(text) RETURNS text
+            LANGUAGE sql IMMUTABLE AS $$ SELECT regexp_replace($1, '^.*/', '') $$;
+          CREATE FUNCTION storage.extension(text) RETURNS text
+            LANGUAGE sql IMMUTABLE AS $$ SELECT lower(regexp_replace($1, '^.*\\.', '')) $$;
+          SQL
+
+      - name: Seed Auth user IDs and metadata needed by foreign keys
+        run: |
+          set -euo pipefail
+          python scripts/seed_restore_auth.py \
+            "$RUNNER_TEMP/ffv-restore-test/project/auth-users.json" \
+            "$RUNNER_TEMP/ffv-restore-test/auth-seed.sql"
+          docker cp "$RUNNER_TEMP/ffv-restore-test/auth-seed.sql" ffv-restore-postgres:/tmp/auth-seed.sql
+          docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -v ON_ERROR_STOP=1 -f /tmp/auth-seed.sql
+
+      - name: Restore Production application schemas and data into temporary PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+            pg_restore --exit-on-error --single-transaction --clean --if-exists \
+              --no-owner --no-privileges \
+              --dbname=postgresql://postgres:"$FFV_RESTORE_PG_PASSWORD"@127.0.0.1:5432/ffv_restore_test \
+              /restore/production-public-private.dump
+
+      - name: Verify restored schema, application rows and Auth references
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -X -v ON_ERROR_STOP=1 <<'SQL'
+          DO $$
+          DECLARE orphan_count bigint := 0;
+          BEGIN
+            IF to_regclass('public.members') IS NULL THEN
+              RAISE EXCEPTION 'Restored public.members table is missing';
+            END IF;
+            IF to_regnamespace('private') IS NULL THEN
+              RAISE EXCEPTION 'Restored private schema is missing';
+            END IF;
+            IF EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_schema='public' AND table_name='members' AND column_name='auth_user_id'
+            ) THEN
+              EXECUTE 'SELECT count(*) FROM public.members m WHERE m.auth_user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM auth.users u WHERE u.id=m.auth_user_id)'
+                INTO orphan_count;
+              IF orphan_count <> 0 THEN
+                RAISE EXCEPTION 'Restored members contain % orphan Auth references', orphan_count;
+              END IF;
+            END IF;
+          END $$;
+          SELECT 'public_tables' AS check_name, count(*) AS verified
+            FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';
+          SELECT 'private_tables' AS check_name, count(*) AS verified
+            FROM information_schema.tables WHERE table_schema='private' AND table_type='BASE TABLE';
+          SELECT 'restored_members' AS check_name, count(*) AS verified FROM public.members;
+          SELECT 'restored_auth_users' AS check_name, count(*) AS verified FROM auth.users;
+          SQL
+
+      - name: Remove all temporary plaintext, encrypted files and database container
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f ffv-restore-postgres >/dev/null 2>&1 || true
+          rm -rf "$RUNNER_TEMP/ffv-restore-test"
