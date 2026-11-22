@@ -34,11 +34,50 @@ function toast(message, isError = false) {
   setTimeout(() => node.remove(), 4500);
 }
 
+function renderPublicSummary(summary) {
+  const value = summary || {};
+  const number = key => Number(value[key] || 0);
+  const cards = [
+    ["মোট সম্পদ", number("total_assets")],
+    ["নগদ ব্যালেন্স", number("cash_balance")],
+    ["ব্যাংক ব্যালেন্স", number("bank_balance")],
+    ["বিনিয়োগ ব্যালেন্স", number("investment_balance")],
+    ["মোট জমা", number("total_contributions")],
+    ["মোট খরচ", number("total_expenses")],
+    ["অন্যান্য আয়", number("other_income")],
+    ["বিনিয়োগ লাভ", number("investment_profit")],
+    ["বিনিয়োগ ক্ষতি", number("investment_loss")]
+  ];
+  const trends = Array.isArray(value.monthly_trend) ? value.monthly_trend.slice(-12).reverse() : [];
+  const rows = trends.map(row =>
+    "<tr><td>" + esc(row.month || "—") + "</td><td>" + money(row.contributions) +
+    "</td><td>" + money(row.expenses) + "</td><td>" + money(row.income) +
+    "</td><td>" + money(row.investment_loss) + "</td></tr>"
+  ).join("");
+  root.innerHTML =
+    "<h1>সমিতির সামগ্রিক আর্থিক তথ্য</h1>" +
+    "<p class='lead'>এখানে শুধু সমিতির মোট হিসাব দেখানো হয়। সদস্যভিত্তিক জমা, বকেয়া ও ব্যক্তিগত তথ্য প্রকাশ করা হয় না।</p>" +
+    (number("transaction_count") === 0
+      ? "<div class='notice'>এখনো কোনো আর্থিক লেনদেন রেকর্ড করা হয়নি। হিসাব যোগ হলে এখানে আপডেট দেখা যাবে।</div>"
+      : "<div class='notice'>সর্বশেষ হিসাব: " + esc(value.last_updated ? dateTime(value.last_updated) : "তথ্য পাওয়া যায়নি") + " · মোট লেনদেন: " + number("transaction_count") + "</div>") +
+    "<div class='grid'>" + cards.map(([label,amount]) =>
+      "<article class='card'><div class='label'>" + esc(label) + "</div><div class='value'>" + money(amount) + "</div></article>"
+    ).join("") + "</div>" +
+    "<section class='section'><h2>সাম্প্রতিক মাসের সারাংশ</h2>" +
+    (rows
+      ? "<div class='table-wrap'><table><thead><tr><th>মাস</th><th>জমা</th><th>খরচ</th><th>আয়</th><th>বিনিয়োগ ক্ষতি</th></tr></thead><tbody>" + rows + "</tbody></table></div>"
+      : empty("এখনো মাসভিত্তিক আর্থিক তথ্য নেই।")) +
+    "</section><p class='muted small'>সদস্যভিত্তিক Contribution Matrix ও ব্যক্তিগত তথ্য দেখতে <a href='login.html'>লগইন করুন</a>।</p>";
+}
+
 async function loadMatrix() {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
   const user = sessionData?.session?.user;
-  if (sessionError || !user) {
-    root.innerHTML = empty("লগইন সেশন পাওয়া যায়নি। আবার লগইন করুন।");
+  if (sessionError) throw sessionError;
+  if (!user) {
+    const { data: publicSummary, error: publicError } = await supabase.rpc("get_public_financial_summary");
+    if (publicError) throw publicError;
+    renderPublicSummary(publicSummary);
     return;
   }
 
