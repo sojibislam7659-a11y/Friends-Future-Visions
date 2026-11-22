@@ -1,6 +1,6 @@
 -- Read-only verification for the Production portal/audit/push/password parity migration.
 -- Run only against an isolated Production restore rehearsal after applying
--- 20261122113000_add_production_portal_audit_and_password_parity.sql.
+-- the portal, public-policy, Storage-policy, and immutable-ledger migrations.
 
 do $verify$
 declare
@@ -133,6 +133,43 @@ begin
       and position('mozilla[.]com' in pg_get_constraintdef(oid))>0
   ) then
     raise exception 'Push provider constraint does not match the Development Mozilla endpoint';
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='notifications'
+      and policyname='notifications_read_own_or_super_admin'
+      and cmd='SELECT'
+      and qual like '%private.has_portal_access%'
+      and qual like '%private.is_super_admin%'
+  ) or not exists (
+    select 1 from pg_policies
+    where schemaname='public' and tablename='notifications'
+      and policyname='notifications_update_own'
+      and cmd='UPDATE'
+      and qual like '%private.has_portal_access%'
+      and with_check like '%private.has_portal_access%'
+  ) then
+    raise exception 'Notification policies do not match Development portal-access rules';
+  end if;
+
+  if exists (
+    select 1 from pg_policies
+    where schemaname='public' and (
+      (tablename='notifications' and policyname='notifications_read_own')
+      or (tablename='committee_documents' and policyname='Committee documents: Super Admin manage')
+      or (tablename='payment_methods' and policyname='Payment methods: Super Admin manage')
+      or (tablename='payment_submissions' and policyname='Payments: Super Admin full access')
+      or (tablename='profiles' and policyname='Profiles: Super Admin update')
+    )
+  ) then
+    raise exception 'Legacy Production-only public RLS policy remains';
+  end if;
+
+  if (
+    select count(*) from pg_policies where schemaname='public'
+  ) <> 59 then
+    raise exception 'Expected 59 public policies matching Development after all migrations';
   end if;
 end;
 $verify$;
