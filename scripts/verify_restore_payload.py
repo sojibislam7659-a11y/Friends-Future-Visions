@@ -63,6 +63,8 @@ def verify(root: Path) -> dict:
     bucket_names = {bucket.get("name") for bucket in buckets}
     if len(bucket_names) != len(buckets) or None in bucket_names:
         raise ValueError("Storage bucket names are missing or duplicated.")
+    if any(not isinstance(name, str) or name in (".", "..") or not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,99}", name) for name in bucket_names):
+        raise ValueError("Storage bucket name is unsafe.")
 
     total_bytes = 0
     seen_paths = set()
@@ -73,8 +75,9 @@ def verify(root: Path) -> dict:
         expected_hash = item.get("sha256")
         if bucket not in bucket_names or not isinstance(object_path, str):
             raise ValueError("Storage object references an unknown bucket or invalid path.")
+        segments = object_path.split("/")
         relative = PurePosixPath(object_path)
-        if relative.is_absolute() or any(part in ("", ".", "..") for part in relative.parts):
+        if relative.is_absolute() or any(part in ("", ".", "..") for part in segments):
             raise ValueError("Storage object path is unsafe.")
         if not isinstance(size, int) or size < 0 or not isinstance(expected_hash, str) or not re.fullmatch(r"[a-f0-9]{64}", expected_hash):
             raise ValueError("Storage object size or checksum is invalid.")
