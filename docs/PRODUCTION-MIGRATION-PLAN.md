@@ -62,7 +62,7 @@ Production also has `pg_net` installed in `public`. Moving it requires checking 
 
 ## Phase 0 — Mandatory backup and restore gate
 
-<badge>Passed</badge>
+**PASSED**
 
 1. **Fresh encrypted backup succeeded:** GitHub Actions run `45070634542`; Drive backup ID `ffv_backup_45070634542_1`. The workflow exported the Production PostgreSQL 17 custom-format database dump, Auth metadata, all Storage object bytes and inventory, non-secret configuration inventory, and Production Edge Function source snapshots. It encrypted and verified the archive, uploaded the encrypted chunk and manifest to Drive, and cleaned its temporary runner workspace.
 2. **Actual isolated restore rehearsal succeeded:** GitHub Actions run `45070745560`. It downloaded the exact Drive backup, verified chunk/archive hashes, decrypted the archive, validated the payload, started temporary PostgreSQL 17, seeded only the Auth IDs/metadata needed for FK checks, restored the public/private database dump, and passed the RLS, validated-constraint, valid-index, foreign-key/orphan, member/Auth-reference, and cleanup checks.
@@ -256,7 +256,3 @@ The encrypted Drive backup and isolated PostgreSQL 17 restore rehearsal are comp
 4. Complete the ordered Production migrations, Edge Function rollout, and full release only after the above gates and post-migration acceptance tests pass.
 
 The public Data experience is implemented as aggregate-only for anonymous visitors; the member-level contribution matrix remains behind authenticated access. No individual contribution or personal due data is exposed publicly.
-
-
-
-The encrypted Production backup and owner-controlled Google Drive authorization are now verified. The isolated restore rehearsal remains pending, and the Production Super Admin currently has zero verified MFA factors. Therefore no Production migration or deployment can be responsibly marked ready or executed yet.
