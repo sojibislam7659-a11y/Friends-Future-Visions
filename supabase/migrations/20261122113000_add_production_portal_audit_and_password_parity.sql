@@ -104,6 +104,9 @@ begin
 end;
 $function$;
 
+revoke all on function private.capture_password_rotation_guard() from public,anon,authenticated,service_role;
+revoke all on function private.guard_temporary_password_change() from public,anon,authenticated,service_role;
+
 drop trigger if exists capture_password_rotation_guard on public.profiles;
 create trigger capture_password_rotation_guard
 after insert or update of must_change_password, password_change_required_at
@@ -141,6 +144,10 @@ with check (
 -- editing remains through its audited server-side workflow; members may only
 -- update the temporary-password flag while completing rotation.
 revoke insert,update,delete on public.profiles from authenticated;
+-- Production has a legacy column-level UPDATE grant on full_name; table-level
+-- REVOKE does not remove column ACLs, so remove it explicitly before granting
+-- the sole member self-service column used for password rotation.
+revoke update (full_name) on public.profiles from authenticated;
 grant update (must_change_password) on public.profiles to authenticated;
 
 -- Require AAL2 for every privileged Super Admin action, not only portal reads.
@@ -440,6 +447,8 @@ begin
 end;
 $function$;
 
+revoke all on function private.audit_admin_change() from public,anon,authenticated,service_role;
+
 drop trigger if exists audit_admin_change on public.profiles;
 create trigger audit_admin_change
 after insert or update or delete on public.profiles
@@ -470,7 +479,7 @@ alter table public.push_subscriptions
   add constraint push_subscriptions_auth_key_format_check
     check (auth_key ~ '^[A-Za-z0-9_-]{16,32}$'),
   add constraint push_subscriptions_endpoint_provider_check
-    check (endpoint ~* '^https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]org|web[.]push[.]apple[.]com|[a-z0-9-]+[.]notify[.]windows[.]com)/'),
+    check (endpoint ~* '^https://(fcm[.]googleapis[.]com|updates[.]push[.]services[.]mozilla[.]com|web[.]push[.]apple[.]com|[a-z0-9-]+[.]notify[.]windows[.]com)/'),
   add constraint push_subscriptions_p256dh_format_check
     check (p256dh ~ '^[A-Za-z0-9_-]{80,100}$'),
   add constraint push_subscriptions_user_agent_length_check
