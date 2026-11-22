@@ -398,6 +398,10 @@ jobs:
           GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
           GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
           GRANT USAGE ON SCHEMA private TO authenticated, service_role;
+          -- Recreate the current Production authenticated table ACL baseline omitted by pg_dump --no-privileges.
+          GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO authenticated;
+          REVOKE INSERT,UPDATE,DELETE ON TABLE public.financial_transaction_audit,public.member_directory,public.notifications FROM authenticated;
+          GRANT USAGE ON SEQUENCE public.member_no_seq TO authenticated;
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon;
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon;
