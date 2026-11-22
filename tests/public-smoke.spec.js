@@ -39,7 +39,11 @@ test("Unauthenticated visitor can view aggregate-only public Data", async ({ pag
   await expect(page.locator("#publicData")).not.toContainText("Member ID");
   expect(pageErrors, "Public Data page JavaScript errors detected").toEqual([]);
 
-  await page.locator("#siteMenu").click();
+  if ((page.viewportSize()?.width || 9999) <= 600) {
+    await page.locator(".public-more-button").click();
+  } else {
+    await page.locator("#siteMenu").click();
+  }
   await expect(page.locator("#siteNav")).toContainText("DATA");
   await page.screenshot({ path: `playwright-release-results/public-data-${page.viewportSize()?.width || "unknown"}.png`, fullPage: true });
 });
