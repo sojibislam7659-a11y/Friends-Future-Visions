@@ -653,7 +653,7 @@ BEGIN
   )
   FROM totals t);
 END;
-$function$
+$function$;
 
 
 revoke all on function private.get_financial_summary_unchecked() from public,anon,authenticated,service_role;
@@ -938,7 +938,7 @@ BEGIN
   LEFT JOIN configured cfg ON cfg.member_id=mg.id
   ORDER BY mg.member_no,mg.month_start;
 END;
-$function$
+$function$;
 
 
 CREATE OR REPLACE FUNCTION public.get_member_shared_financial_data_v2()
