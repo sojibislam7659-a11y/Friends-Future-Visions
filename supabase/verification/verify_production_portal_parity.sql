@@ -167,6 +167,29 @@ begin
   end if;
 
   if (
+    select count(*) from pg_policies
+    where schemaname='public'
+      and (
+        (tablename='committee_documents' and policyname in (
+          'Committee documents: Super Admin insert',
+          'Committee documents: Super Admin update',
+          'Committee documents: Super Admin delete'
+        ))
+        or (tablename='payment_methods' and policyname in (
+          'Payment methods: Super Admin insert',
+          'Payment methods: Super Admin update',
+          'Payment methods: Super Admin delete'
+        ))
+        or (tablename='payment_submissions' and policyname in (
+          'Payments: Super Admin update',
+          'Payments: Super Admin delete'
+        ))
+      )
+  ) <> 8 then
+    raise exception 'Committee/payment Super Admin policy set does not match Development';
+  end if;
+
+  if (
     select count(*) from pg_policies where schemaname='public'
   ) <> 59 then
     raise exception 'Expected 59 public policies matching Development after all migrations';
