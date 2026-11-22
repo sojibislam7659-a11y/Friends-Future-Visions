@@ -107,6 +107,17 @@ The shared-public-policy comparison found four remaining groups that differ from
 
 The migration is policy-only and depends on the authorization helpers created in Phase 1. The full public-policy target is 59 policies, matching the current Development snapshot; the combined read-only checks are in `verify_production_portal_parity.sql`.
 
+## Phase 1D — Public table grant hardening
+
+A direct ACL comparison found that Production still grants `anon` broad table privileges on multiple public tables, while Development grants unauthenticated access only to `committee_rules SELECT`. Production also has unnecessary authenticated `REFERENCES`, `TRIGGER`, and `TRUNCATE` privileges, plus direct writes on `member_contribution_rates` that Development performs through the audited RPC.
+
+The staged migrations:
+- `20261122124500_revoke_legacy_anon_table_grants.sql` removes all direct anonymous privileges on public tables and sequences, then restores only `committee_rules SELECT`.
+- `20261122125000_align_public_table_grants.sql` removes authenticated `REFERENCES`, `TRIGGER`, and `TRUNCATE` privileges, routes contribution-rate writes through the audited Super Admin RPC, and retains only SELECT/UPDATE for direct `committee_rules` access.
+- They do not modify table rows, Storage objects, or service-role privileges. Existing RLS policies remain in force.
+
+The read-only grant checks are included in `verify_production_portal_parity.sql`. Member notification read receipts remain supported through the existing `notifications.read_at` column grant.
+
 ## Phase 2 — Push delivery runtime verification
 
 The schema migration in Phase 1 already adds the subscription constraints, five-device cap, `notification_push_deliveries` table, and service-role-only `claim_notification_push_delivery(uuid,uuid)` RPC. Read-only comparison confirms the Production and Development push cron jobs are both active, the `get_push_config()` function definitions match, and the four required Vault secret names are present in both projects.
@@ -202,6 +213,8 @@ Read-only operational comparison found all three cron jobs active in both projec
 3. `20261122114500_align_public_policy_parity.sql` (RLS policy metadata only; preserve all existing rows)
 4. `20261122115000_align_storage_policy_parity.sql` (Storage policy metadata only; preserve all existing objects)
 5. `20261122123000_add_production_immutable_financial_ledger.sql` (blocked if any Production financial transaction or audit row appears before release)
+6. `20261122124500_revoke_legacy_anon_table_grants.sql` (retain only anonymous committee-rules SELECT)
+7. `20261122125000_align_public_table_grants.sql` (remove non-app privileges and route rate changes through the RPC)
 
 These files are staged only on the release branch. None has been applied to Development or Production.
 
