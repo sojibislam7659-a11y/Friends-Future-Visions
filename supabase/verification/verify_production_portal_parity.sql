@@ -225,6 +225,36 @@ begin
   ) then
     raise exception 'Anonymous sequence privileges remain in public schema';
   end if;
+
+  if exists (
+    select 1
+    from pg_class c
+    join pg_namespace n on n.oid=c.relnamespace
+    cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) acl
+    where n.nspname='public'
+      and c.relkind in ('r','p','v','m','f')
+      and acl.grantee='authenticated'::regrole::oid
+      and acl.privilege_type in ('REFERENCES','TRIGGER','TRUNCATE')
+  ) then
+    raise exception 'Authenticated retains REFERENCES, TRIGGER, or TRUNCATE on a public table';
+  end if;
+
+  if has_table_privilege('authenticated','public.member_contribution_rates','INSERT')
+     or has_table_privilege('authenticated','public.member_contribution_rates','UPDATE')
+     or has_table_privilege('authenticated','public.member_contribution_rates','DELETE') then
+    raise exception 'Contribution-rate writes must go through the audited RPC';
+  end if;
+
+  if not has_table_privilege('authenticated','public.committee_rules','SELECT')
+     or not has_table_privilege('authenticated','public.committee_rules','UPDATE')
+     or has_table_privilege('authenticated','public.committee_rules','INSERT')
+     or has_table_privilege('authenticated','public.committee_rules','DELETE') then
+    raise exception 'Authenticated committee_rules grants must be SELECT and UPDATE only';
+  end if;
+
+  if not has_column_privilege('authenticated','public.notifications','read_at','UPDATE') then
+    raise exception 'Members cannot mark their own notifications as read';
+  end if;
 end;
 $verify$;
 
