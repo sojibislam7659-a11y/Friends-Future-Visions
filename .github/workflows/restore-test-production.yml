@@ -392,6 +392,12 @@ jobs:
           INSERT INTO auth.mfa_factors (id,user_id,factor_type,status)
           SELECT gen_random_uuid(),p.id,'totp','verified'
           FROM public.profiles p WHERE p.role='super_admin';
+          -- pg_dump --no-privileges intentionally omits ACLs; restore Supabase's
+          -- standard schema USAGE baseline for this temporary compatibility DB.
+          GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+          GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role;
+          GRANT USAGE ON SCHEMA storage TO anon, authenticated, service_role;
+          GRANT USAGE ON SCHEMA private TO authenticated, service_role;
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon;
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
           ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon;
