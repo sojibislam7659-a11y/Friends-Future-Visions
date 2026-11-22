@@ -1,6 +1,8 @@
 name: Manual Encrypted Production Backup Restore Test
 
 on:
+  push:
+    branches: [run/migration-rehearsal-20261123]
   pull_request:
     branches: [main]
     paths:
@@ -49,13 +51,13 @@ jobs:
 
   guard:
     name: Validate explicit restore authorization
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - name: Validate confirmation, backup ID and required Drive secrets
         env:
-          CONFIRM_RESTORE: ${{ inputs.confirm_restore }}
-          BACKUP_RUN_ID: ${{ inputs.backup_run_id }}
+          CONFIRM_RESTORE: ${{ inputs.confirm_restore || 'RESTORE_TEST' }}
+          BACKUP_RUN_ID: ${{ inputs.backup_run_id || 'ffv_backup_45070634542_1' }}
           FFV_DRIVE_RECEIVER_URL: ${{ secrets.FFV_DRIVE_RECEIVER_URL }}
           FFV_BACKUP_TOKEN: ${{ secrets.FFV_BACKUP_TOKEN }}
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
@@ -70,7 +72,7 @@ jobs:
 
   restore_test:
     name: Download, decrypt, verify and restore in temporary PostgreSQL
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push'
     needs: guard
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -78,9 +80,14 @@ jobs:
       FFV_DRIVE_RECEIVER_URL: ${{ secrets.FFV_DRIVE_RECEIVER_URL }}
       FFV_BACKUP_TOKEN: ${{ secrets.FFV_BACKUP_TOKEN }}
       BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
-      BACKUP_RUN_ID: ${{ inputs.backup_run_id }}
+      BACKUP_RUN_ID: ${{ inputs.backup_run_id || 'ffv_backup_45070634542_1' }}
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout staged Production migrations
+        uses: actions/checkout@v4
+        with:
+          ref: release/ffv-prod-parity-20261122
+          path: release-source
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -196,6 +203,14 @@ jobs:
             is_sso_user boolean,
             deleted_at timestamptz,
             is_anonymous boolean
+          );
+          CREATE TABLE auth.mfa_factors (
+            id uuid PRIMARY KEY,
+            user_id uuid NOT NULL REFERENCES auth.users(id),
+            factor_type text NOT NULL,
+            status text NOT NULL,
+            created_at timestamptz NOT NULL DEFAULT now(),
+            updated_at timestamptz NOT NULL DEFAULT now()
           );
           CREATE FUNCTION auth.uid() RETURNS uuid
             LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
@@ -358,6 +373,132 @@ jobs:
             WHERE n.nspname IN ('public','private') AND i.indisvalid;
           SELECT 'restored_members' AS check_name, count(*) AS verified FROM public.members;
           SELECT 'restored_auth_users' AS check_name, count(*) AS verified FROM auth.users;
+          SQL
+
+      - name: Seed temporary-only Storage metadata, synthetic MFA fixture and legacy default ACLs
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -v ON_ERROR_STOP=1 <<'SQL'
+          INSERT INTO storage.buckets (id,name,public,file_size_limit,allowed_mime_types) VALUES
+            ('committee-documents','committee-documents',false,10485760,ARRAY['image/jpeg','image/png','image/webp','application/pdf']),
+            ('committee-proofs','committee-proofs',false,10485760,ARRAY['image/jpeg','image/png','image/webp','application/pdf']),
+            ('member-private-documents','member-private-documents',false,10485760,ARRAY['image/jpeg','image/png','image/webp','application/pdf']),
+            ('member-profile-photos','member-profile-photos',false,5242880,ARRAY['image/jpeg','image/png','image/webp']),
+            ('payment-qr','payment-qr',false,2097152,ARRAY['image/jpeg','image/png','image/webp']);
+          INSERT INTO auth.mfa_factors (id,user_id,factor_type,status)
+          SELECT gen_random_uuid(),p.id,'totp','verified'
+          FROM public.profiles p WHERE p.role='super_admin';
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO anon;
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON SEQUENCES TO anon;
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT EXECUTE ON FUNCTIONS TO anon;
+          ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT REFERENCES,TRIGGER,TRUNCATE ON TABLES TO authenticated;
+          SQL
+          factor_count=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT count(*) FROM auth.mfa_factors WHERE status='verified'")
+          super_count=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT count(*) FROM public.profiles WHERE role='super_admin'")
+          [[ "$factor_count" == "$super_count" && "$super_count" -gt 0 ]] || { echo "::error::Temporary MFA fixture does not cover each Super Admin."; exit 1; }
+          echo "Temporary-only verified MFA fixtures: $factor_count (not Production factors)."
+
+      - name: Rehearse all staged Production migrations on the isolated restored database
+        shell: bash
+        run: |
+          set -euo pipefail
+          migrations=(
+            20261122103000_harden_production_security_definer_wrappers.sql
+            20261122113000_add_production_portal_audit_and_password_parity.sql
+            20261122114500_align_public_policy_parity.sql
+            20261122115000_align_storage_policy_parity.sql
+            20261122123000_add_production_immutable_financial_ledger.sql
+            20261122124500_revoke_legacy_anon_table_grants.sql
+            20261122125000_align_public_table_grants.sql
+            20261122125500_align_public_default_privileges.sql
+            20261123100000_public_aggregate_data.sql
+          )
+          for migration in "${migrations[@]}"; do
+            source="$GITHUB_WORKSPACE/release-source/supabase/migrations/$migration"
+            test -s "$source" || { echo "::error::Missing migration: $migration"; exit 1; }
+            docker cp "$source" "ffv-restore-postgres:/tmp/$migration"
+            echo "Applying isolated rehearsal migration: $migration"
+            docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+              psql -h 127.0.0.1 -U postgres -d ffv_restore_test -X -v ON_ERROR_STOP=1 -f "/tmp/$migration"
+          done
+
+      - name: Verify migrated schema, least-privilege grants, RLS and public aggregate boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
+            psql -h 127.0.0.1 -U postgres -d ffv_restore_test -X -v ON_ERROR_STOP=1 <<'SQL'
+          DO $
+          DECLARE
+            v_member uuid;
+            v_super uuid;
+            v_profiles bigint;
+            v_members bigint;
+            v_summary jsonb;
+          BEGIN
+            IF to_regclass('public.financial_postings') IS NULL
+              OR to_regclass('public.site_settings') IS NULL
+              OR to_regclass('public.admin_change_audit') IS NULL
+              OR to_regclass('private.password_rotation_guards') IS NULL THEN
+              RAISE EXCEPTION 'One or more required Production parity objects are missing after migration rehearsal';
+            END IF;
+            IF NOT has_table_privilege('anon','public.committee_rules','SELECT')
+              OR has_table_privilege('anon','public.members','SELECT')
+              OR has_table_privilege('anon','public.financial_transactions','SELECT') THEN
+              RAISE EXCEPTION 'Anonymous table grants do not match the intended least-privilege boundary';
+            END IF;
+            IF has_table_privilege('authenticated','public.member_contribution_rates','INSERT')
+              OR has_table_privilege('authenticated','public.member_contribution_rates','UPDATE')
+              OR has_table_privilege('authenticated','public.member_contribution_rates','DELETE')
+              OR has_table_privilege('authenticated','public.financial_transactions','TRUNCATE') THEN
+              RAISE EXCEPTION 'Authenticated role retains a forbidden direct table privilege';
+            END IF;
+            IF NOT has_function_privilege('anon','public.get_public_financial_summary()','EXECUTE')
+              OR has_function_privilege('anon','private.get_public_financial_summary_unchecked()','EXECUTE') THEN
+              RAISE EXCEPTION 'Public aggregate RPC/helper grants are incorrect';
+            END IF;
+            IF (SELECT count(*) FROM storage.buckets WHERE NOT public) <> 5 THEN
+              RAISE EXCEPTION 'Expected five private Storage buckets after rehearsal';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='storage' AND tablename='objects' AND policyname='Private member docs: Super Admin insert') THEN
+              RAISE EXCEPTION 'Expected private-document Storage policy is missing';
+            END IF;
+            IF EXISTS (
+              SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+              WHERE n.nspname='public' AND c.relkind IN ('r','p') AND NOT c.relrowsecurity
+            ) THEN
+              RAISE EXCEPTION 'A public application table has RLS disabled after migration';
+            END IF;
+            IF EXISTS (SELECT 1 FROM pg_constraint WHERE connamespace IN ('public'::regnamespace,'private'::regnamespace) AND NOT convalidated)
+              OR EXISTS (SELECT 1 FROM pg_index i JOIN pg_class c ON c.oid=i.indrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname IN ('public','private') AND NOT i.indisvalid) THEN
+              RAISE EXCEPTION 'Unvalidated constraint or invalid index after migration';
+            END IF;
+            v_summary := public.get_public_financial_summary();
+            IF v_summary ? 'members' OR v_summary ? 'member_id' OR v_summary ? 'personal_due' THEN
+              RAISE EXCEPTION 'Public aggregate RPC returned a member-level field';
+            END IF;
+            SELECT id INTO v_member FROM public.profiles WHERE role='member' ORDER BY id LIMIT 1;
+            SELECT id INTO v_super FROM public.profiles WHERE role='super_admin' ORDER BY id LIMIT 1;
+            IF v_member IS NULL OR v_super IS NULL THEN
+              RAISE EXCEPTION 'Expected member and Super Admin test identities are missing';
+            END IF;
+            PERFORM set_config('request.jwt.claim.sub',v_member::text,true);
+            IF NOT private.has_portal_access() THEN
+              RAISE EXCEPTION 'Member portal helper rejected a valid member';
+            END IF;
+            PERFORM set_config('request.jwt.claim.sub',v_super::text,true);
+            IF NOT private.has_portal_access() OR NOT private.is_super_admin() THEN
+              RAISE EXCEPTION 'Super Admin helper rejected the Super Admin';
+            END IF;
+          END $;
+          SELECT 'migration_rehearsal' AS check_name, 'PASS' AS result;
+          SELECT 'verified_mfa_fixtures_temporary_only' AS check_name, count(*) AS result FROM auth.mfa_factors WHERE status='verified';
+          SELECT 'financial_postings' AS check_name, count(*) AS result FROM public.financial_postings;
+          SELECT 'public_rls_tables' AS check_name, count(*) AS result FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p') AND c.relrowsecurity;
           SQL
 
       - name: Remove all temporary plaintext, encrypted files and database container
