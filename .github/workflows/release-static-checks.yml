@@ -50,6 +50,8 @@ jobs:
           deno check backup/production-edge-functions/2026-11-22/google-sheets-sync/index.ts
       - name: Verify Production Edge Function source parity
         run: python scripts/check_edge_function_snapshots.py
+      - name: Validate Cloudflare Worker package without deploying
+        run: npx --yes wrangler@4 deploy --dry-run
       - name: Validate lightweight SVG brand asset
         run: |
           python -c "import xml.etree.ElementTree as ET; ET.parse('public/friends-future-vision-logo.svg')"
