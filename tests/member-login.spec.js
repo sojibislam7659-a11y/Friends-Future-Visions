@@ -33,7 +33,7 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
     const style = getComputedStyle(element);
     return { name: style.animationName, duration: style.animationDuration };
   });
-  expect(tickerAnimation.name).not.toBe("none");
+  expect(tickerAnimation.name).toBe("ffv-global-notice-marquee");
   expect(Number.parseFloat(tickerAnimation.duration)).toBeGreaterThan(0);
   await expect(page.locator(".matrix-amount").first()).toBeDisabled();
   await expect(page.locator(".matrix-save-actions")).toHaveCount(0);
