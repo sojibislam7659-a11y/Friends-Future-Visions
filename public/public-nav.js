@@ -90,7 +90,7 @@ async function loadPublicTicker(){
 function showPublicNavigation(){
  setupPublicTheme();
  home.href="index.html";
- nav.innerHTML=item("rules.html","RULES","rules");
+ nav.innerHTML=item("rules.html","RULES","rules")+item("data.html","DATA","data");
  addPublicMobileNav(false);
  menu.setAttribute("aria-expanded","false");menu.setAttribute("aria-controls","siteNav");
  buildPublicDrawer(false,"public","Friends Future Vision Forever");
