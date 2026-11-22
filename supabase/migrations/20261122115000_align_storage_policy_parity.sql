@@ -45,7 +45,7 @@ begin
      or to_regprocedure('private.has_portal_access()') is null then
     raise exception 'Preflight failed: portal authorization helpers are missing';
   end if;
-end
+end;
 $preflight$;
 
 -- Production called this policy "Super Admin upload"; Development uses
