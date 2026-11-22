@@ -157,7 +157,9 @@ jobs:
               'grantee',grantee,'table',table_name,'privilege',privilege_type,
               'grantable',is_grantable
             ) order by table_name,grantee,privilege_type),'[]'::jsonb)
-              from information_schema.role_table_grants where table_schema='storage')
+              from information_schema.role_table_grants where table_schema='storage'),
+            'storage_db_bucket_count', (select count(*) from storage.buckets),
+            'storage_db_object_count', (select count(*) from storage.objects)
           );
           SQL
           docker run --rm -e DATABASE_URL="$FFV_PROD_DATABASE_URL" \
@@ -165,6 +167,22 @@ jobs:
             sh -ceu 'psql "$DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 -f /backup/config-inventory.sql > /backup/config-inventory.json'
           rm -f backup-output/project/config-inventory.sql
           test -s backup-output/project/config-inventory.json
+
+      - name: Cross-check exported Storage objects and buckets against Production database
+        shell: bash
+        run: |
+          set -euo pipefail
+          db_buckets=$(jq -r '.storage_db_bucket_count' backup-output/project/config-inventory.json)
+          db_objects=$(jq -r '.storage_db_object_count' backup-output/project/config-inventory.json)
+          api_buckets=$(jq 'length' backup-output/project/storage-buckets.json)
+          api_objects=$(jq -r '.object_count' backup-output/project/storage-objects.json)
+          [[ "$db_buckets" == "$api_buckets" ]] || {
+            echo "::error::Storage bucket count mismatch: database=$db_buckets API=$api_buckets"; exit 1;
+          }
+          [[ "$db_objects" == "$api_objects" ]] || {
+            echo "::error::Storage object count mismatch: database=$db_objects API=$api_objects"; exit 1;
+          }
+          echo "Storage inventory counts match Production database."
 
       - name: Include preserved Production Edge Function source snapshot
         run: |
