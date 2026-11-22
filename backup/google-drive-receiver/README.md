@@ -1,90 +1,50 @@
-# Google Drive receiver setup (owner authorization required)
+# FFV Google Drive encrypted backup receiver
 
-This receiver accepts **already-encrypted** backup chunks and stores them in one dedicated Google Drive folder. It cannot list, read, download, or delete Drive files. The source is `Code.gs`.
+This receiver stores encrypted backup chunks in one owner-selected Google Drive folder. It supports authenticated uploads and narrowly scoped recovery reads. It does not provide Drive listing, arbitrary file reads, or delete operations.
 
-This is a setup component only. It does not create backups by itself and it is not enabled until the owner deploys it and stores the required secrets.
+## Required existing Script Properties
 
-## 1. Create the Drive destination
+- `FFV_BACKUP_TOKEN`: the existing random 256-bit bearer token.
+- `FFV_BACKUP_FOLDER_ID`: the existing dedicated backup folder ID.
 
-1. Sign in to the personal Gmail account that should own the backups.
-2. Create a folder named `Friends Future Vision Forever Backup`.
-3. Open the folder and copy its ID from the URL (the long value after `/folders/`). Keep it private.
+Never put either value in Git, an issue, or ChatGPT.
 
-## 2. Create the Apps Script receiver
+## Update the existing Apps Script deployment
 
-1. Open https://script.google.com/ and choose **New project**.
-2. Rename it `FFV Encrypted Backup Receiver`.
-3. Replace the starter code in `Code.gs` with the contents of this repository's `backup/google-drive-receiver/Code.gs`.
-4. In **Project Settings**, find **Script Properties** and add:
-   - `FFV_BACKUP_FOLDER_ID` = the Drive folder ID from step 1.
-   - `FFV_BACKUP_TOKEN` = a new random token generated locally (instructions below).
-5. Do not paste either value into GitHub files, issues, or ChatGPT.
+1. Open the existing `FFV Encrypted Backup Receiver` project at https://script.google.com/.
+2. Replace the full contents of `Code.gs` with this repository's `backup/google-drive-receiver/Code.gs`.
+3. Save the project.
+4. Open **Deploy → Manage deployments**.
+5. Find the existing Web App deployment and click its pencil (Edit) icon.
+6. Under **Version**, choose **New version**, then click **Deploy**.
+7. Keep the same `/exec` URL and existing Script Properties. Do not create a second Web App, a second Drive folder, or a new token.
+8. Open the same `/exec` URL in a browser. The health response must show `"version":3`.
 
-### Generate the token on Windows
+If Google asks for authorization, approve the existing script's Drive access while signed in to the Gmail account that owns the backup folder.
 
-Open PowerShell and run:
+## Security model
 
-```powershell
-$bytes = New-Object byte[] 32
-$rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
-$rng.GetBytes($bytes)
-$token = [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+','-').Replace('/','_')
-Set-Clipboard $token
-```
+- Every upload and recovery request must provide the existing 256-bit token.
+- Recovery is limited to a caller-supplied run ID matching the strict `[A-Za-z0-9_-]{16,64}` format.
+- A manifest is returned only by exact generated manifest filename.
+- A chunk is returned only when it is listed in that run's manifest and its stored byte size and SHA-256 match the manifest.
+- Chunk reads are limited to 8 MiB, matching the uploader's maximum chunk size.
+- The endpoint never lists Drive contents or accepts arbitrary Drive file IDs, names, or paths.
+- The endpoint has no delete operation.
+- No token, archive bytes, or manifest contents are logged.
 
-This generates a 256-bit random token and copies it to your clipboard. Paste it directly into the Apps Script property value field. Keep a separate secure copy for the GitHub Actions secret setup later. **Do not send it in this chat.**
+## Restore-test workflow
 
-## 3. Deploy or update the Web App
+After this receiver version is deployed and reports version 3, the owner can run **Manual Encrypted Production Backup Restore Test** in GitHub Actions.
 
-For a first deployment:
-1. Click **Deploy → New deployment**.
-2. Select type **Web app**.
-3. Description: `FFV encrypted backup receiver`.
-4. Execute as: **Me**.
-5. Who has access: **Anyone** (the endpoint must be reachable by GitHub Actions without an interactive Google login).
-6. Click **Deploy** and approve the Google Drive authorization prompt while signed in to the intended personal Gmail.
-7. Copy the Web App URL ending in `/exec`. Keep it private.
+For the existing first Production backup, the manifest file name is:
 
-For the existing owner deployment already created for this project, use **Deploy → Manage deployments → Edit (pencil) → Version: New version → Deploy** after replacing `Code.gs`. Keep the existing Script Properties; do not generate a new token or folder ID unless intentionally rotating them. Open the same `/exec` URL with GET after redeployment. The expected response must include `"version":2`; the currently deployed older receiver is expected to report version 1 until this update is completed.
+`FFV_ffv_backup_45054000337_1_manifest.json`
 
-The endpoint is publicly reachable, so the 256-bit token is mandatory. The script only accepts checksum-verified encrypted chunks and a non-sensitive manifest. It does not expose Drive contents. If Google does not offer the **Anyone** access option, stop and report the available options; do not choose a weaker workaround.
+Enter the run ID only:
 
-## 4. Configure GitHub repository secrets
+`ffv_backup_45054000337_1`
 
-The backup workflow is staged at `.github/workflows/backup-production-to-drive.yml`. Add these secrets under GitHub → repository Settings → Secrets and variables → Actions. Never paste values into ChatGPT.
+Then type `RESTORE_TEST` as the confirmation. The workflow downloads the encrypted chunks directly from this receiver, verifies every chunk and the whole-archive SHA-256, decrypts inside the temporary GitHub Actions runner, checks every exported Storage object's SHA-256, and restores the application database dump into a disposable PostgreSQL 17 container.
 
-Required for the harmless smoke test:
-- `FFV_DRIVE_RECEIVER_URL`
-- `FFV_BACKUP_TOKEN`
-- `BACKUP_ENCRYPTION_PASSPHRASE`
-
-Required only for a real Production backup:
-- `FFV_PROD_DATABASE_URL`
-- `FFV_PROD_SERVICE_ROLE_KEY`
-
-Use the Production database URL and service-role key only. The workflow checks the database URL for Production project ref `ugtzmtmsfaajclftfeuz`.
-
-## 5. Safe first test
-
-After updating the Apps Script deployment and confirming GET reports version 2:
-
-1. After the owner configures the three smoke-test secrets, update/create `backup/trigger-backup-workflow.txt` on the release branch with the exact text `smoke_test`. This push is the trigger; the marker file is not present yet.
-2. Confirm the workflow succeeds and the chunk plus manifest appear in the Drive folder.
-3. Download the single chunk and manifest from Drive. Compare the chunk's SHA-256 to the manifest's `archiveSha256`; then decrypt it using the owner-held passphrase and confirm it contains only `SMOKE_TEST_ONLY.txt`.
-
-Only after the smoke test passes should the owner add the Production database/service-role secrets and explicitly approve changing the marker file content to `production` to trigger the real backup. The Production workflow exports the database, Auth metadata, Storage bytes and the preserved Production Edge Function snapshot, then encrypts and uploads the archive.
-
-The monthly schedule is defined for the first day of each month at 03:00 UTC, but GitHub schedules run only from the default branch. It will not activate until the workflow is merged to `main` after the backup/restore gate and explicit approval.
-
-## Security notes
-
-- The receiver has no Drive read/list/delete endpoint.
-- File names are generated by the script; caller-supplied paths are ignored.
-- Each chunk's SHA-256 is verified before saving.
-- The manifest is rejected unless every declared chunk exists and its byte length and SHA-256 match; the manifest is written last.
-- The manifest must contain `runId`, `totalParts`, `totalBytes`, `archiveSha256`, and an ordered `parts` array. Each part entry is `{ "part": 1, "sizeBytes": 8388608, "sha256": "<64 lowercase hex chars>" }` (with the actual final chunk size for the last part).
-- The archive-level SHA-256 is checked again after download and reassembly by the restore verifier; the receiver does not claim to verify the complete archive hash itself.
-- Duplicate retries are idempotent; conflicting duplicate content is rejected.
-- No token, database URL, backup contents, or file bytes are logged.
-- The receiver stores only encrypted archive chunks. The encryption key remains owner-held.
-- Google Apps Script quotas and execution limits can change; this is not a substitute for an independent restore test.
+The restore workflow does not use Production database credentials, does not write to Supabase, does not create a GitHub artifact, and does not upload anything back to Drive. The temporary runner files and database container are removed in an always-run cleanup step.
