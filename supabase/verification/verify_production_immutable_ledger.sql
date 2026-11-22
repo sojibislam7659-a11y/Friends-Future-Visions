@@ -145,6 +145,26 @@ begin
     raise exception 'Shared financial data v2 RPC grants are unexpected';
   end if;
 
+  if not has_function_privilege('authenticated','public.save_contribution_matrix(uuid,jsonb)','EXECUTE')
+     or has_function_privilege('anon','public.save_contribution_matrix(uuid,jsonb)','EXECUTE')
+     or not has_function_privilege('authenticated','private.save_contribution_matrix(uuid,jsonb)','EXECUTE')
+     or has_function_privilege('anon','private.save_contribution_matrix(uuid,jsonb)','EXECUTE')
+     or has_function_privilege('service_role','private.save_contribution_matrix(uuid,jsonb)','EXECUTE') then
+    raise exception 'Contribution Matrix save RPC grants are unexpected';
+  end if;
+
+  select prosecdef into v_definer
+  from pg_proc where oid='public.save_contribution_matrix(uuid,jsonb)'::regprocedure;
+  if v_definer then raise exception 'Public contribution matrix wrapper must be SECURITY INVOKER'; end if;
+
+  select prosecdef into v_definer
+  from pg_proc where oid='private.save_contribution_matrix(uuid,jsonb)'::regprocedure;
+  if not v_definer then raise exception 'Private contribution matrix helper must be SECURITY DEFINER'; end if;
+
+  select prosecdef into v_definer
+  from pg_proc where oid='public.get_member_shared_financial_data_v2()'::regprocedure;
+  if v_definer then raise exception 'Public shared financial data wrapper must be SECURITY INVOKER'; end if;
+
   if not exists (
     select 1 from pg_trigger
     where tgrelid='public.financial_transactions'::regclass
