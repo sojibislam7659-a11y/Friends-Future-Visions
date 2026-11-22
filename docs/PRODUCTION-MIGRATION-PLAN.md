@@ -87,15 +87,22 @@ A Production-specific schema migration is staged at `supabase/migrations/2026112
 - Tighten profile update grants and policies so only the Super Admin can edit member profile fields, while the member can only complete the controlled password-rotation transition.
 - Reconcile private schema USAGE and all table/function grants against Development. In particular, revoke anon private-schema USAGE and broad table privileges only after verifying every application call path.
 
-## Phase 2 — Push delivery hardening
+## Phase 1B — Storage policy parity
 
-- Recheck all Production `push_subscriptions` rows against endpoint host, p256dh, auth key, and user-agent rules.
-- Add constraints only if the live preflight reports zero violations; otherwise resolve invalid records deliberately before adding constraints.
-- Add per-user subscription cap trigger and update own-row policies using the Development `private.has_portal_access()` gate.
-- Apply the Development provider endpoint, p256dh, auth-key, and user-agent format constraints after a zero-violation preflight; restore missing Production defaults for id/created_at/updated_at.
-- Create `public.notification_push_deliveries` with service_role-only access, the composite key, attempt limits, and subscription index.
-- Add `public.claim_notification_push_delivery(uuid,uuid)` restricted to service_role.
-- Deploy Development `send-push` only after table/RPC and required VAPID secrets are verified. Preserve Production `google-sheets-sync`.
+The five Production Storage buckets already match Development exactly: all remain private, with the same file-size limits and MIME allow-lists. There are two Production policy differences on `member-private-documents`:
+
+- Production calls the Super Admin upload policy `Private member docs: Super Admin upload`; Development uses `Private member docs: Super Admin insert` with the same Super Admin check.
+- Development additionally lets a signed-in member read only the nominee photo whose exact Storage path is stored on that member's own `members.nominee_photo_path` row. Production currently lacks this owner-read branch.
+
+The staged migration `supabase/migrations/20261122115000_align_storage_policy_parity.sql` changes only these two policy definitions. It checks all five bucket configurations first and does not move, overwrite, or delete any Storage objects. The two existing Production objects remain untouched. Verification is in `supabase/verification/verify_production_storage_policy_parity.sql`.
+
+## Phase 2 — Push delivery runtime verification
+
+The schema migration in Phase 1 already adds the subscription constraints, five-device cap, `notification_push_deliveries` table, and service-role-only `claim_notification_push_delivery(uuid,uuid)` RPC. Read-only comparison confirms the Production and Development push cron jobs are both active, the `get_push_config()` function definitions match, and the four required Vault secret names are present in both projects.
+
+- After the Phase 1 schema migration, verify `send-push` with a real pending notification and enrolled device. Current Production and Development each have zero push subscriptions; recent cron calls return HTTP 200 with zero messages processed, so this is not yet an end-to-end delivery test.
+- Deploy the newer Release `send-push` source only after the schema migration is applied and the restore rehearsal passes.
+- Preserve Production `google-sheets-sync`; it has no Development counterpart.
 
 ## Phase 3 — Financial ledger migration (highest risk)
 
@@ -181,7 +188,8 @@ Read-only operational comparison found all three cron jobs active in both projec
 
 1. `20261122103000_harden_production_security_definer_wrappers.sql`
 2. `20261122113000_add_production_portal_audit_and_password_parity.sql` (blocked until all Production Super Admin accounts have verified MFA)
-3. `20261122123000_add_production_immutable_financial_ledger.sql` (blocked if any Production financial transaction or audit row appears before release)
+3. `20261122115000_align_storage_policy_parity.sql` (policy metadata only; preserve all existing Storage objects)
+4. `20261122123000_add_production_immutable_financial_ledger.sql` (blocked if any Production financial transaction or audit row appears before release)
 
 These files are staged only on the release branch. None has been applied to Development or Production.
 
