@@ -242,14 +242,22 @@ jobs:
               --dbname=postgresql://postgres:"$FFV_RESTORE_PG_PASSWORD"@127.0.0.1:5432/ffv_restore_test \
               /restore/production-public-private.dump
 
-      - name: Verify restored schema, application rows and Auth references
+      - name: Verify restored schema, RLS, constraints, indexes, triggers and every foreign key
         shell: bash
         run: |
           set -euo pipefail
           docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
             psql -h 127.0.0.1 -U postgres -d ffv_restore_test -X -v ON_ERROR_STOP=1 <<'SQL'
           DO $$
-          DECLARE orphan_count bigint := 0;
+          DECLARE
+            orphan_count bigint;
+            rls_missing text;
+            unvalidated_count bigint;
+            invalid_index_count bigint;
+            fk record;
+            join_predicate text;
+            nonnull_predicate text;
+            query_text text;
           BEGIN
             IF to_regclass('public.members') IS NULL THEN
               RAISE EXCEPTION 'Restored public.members table is missing';
@@ -257,6 +265,62 @@ jobs:
             IF to_regnamespace('private') IS NULL THEN
               RAISE EXCEPTION 'Restored private schema is missing';
             END IF;
+
+            SELECT string_agg(format('%I.%I', n.nspname, c.relname), ', ' ORDER BY n.nspname, c.relname)
+              INTO rls_missing
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public'
+              AND c.relkind IN ('r','p')
+              AND NOT c.relrowsecurity;
+            IF rls_missing IS NOT NULL THEN
+              RAISE EXCEPTION 'RLS is disabled on restored public tables: %', rls_missing;
+            END IF;
+
+            SELECT count(*) INTO unvalidated_count
+            FROM pg_constraint
+            WHERE connamespace IN (
+              SELECT oid FROM pg_namespace WHERE nspname IN ('public','private')
+            ) AND NOT convalidated;
+            IF unvalidated_count > 0 THEN
+              RAISE EXCEPTION 'Restored application schemas contain % unvalidated constraints', unvalidated_count;
+            END IF;
+
+            SELECT count(*) INTO invalid_index_count
+            FROM pg_index i
+            JOIN pg_class t ON t.oid=i.indrelid
+            JOIN pg_namespace n ON n.oid=t.relnamespace
+            WHERE n.nspname IN ('public','private') AND NOT i.indisvalid;
+            IF invalid_index_count > 0 THEN
+              RAISE EXCEPTION 'Restored application schemas contain % invalid indexes', invalid_index_count;
+            END IF;
+
+            -- Validate all restored FK relationships, including references to
+            -- the separately seeded temporary auth.users table.
+            FOR fk IN
+              SELECT con.oid, con.conrelid, con.confrelid, con.conkey, con.confkey,
+                     con.conname, con.connamespace
+              FROM pg_constraint con
+              JOIN pg_namespace ns ON ns.oid=con.connamespace
+              WHERE con.contype='f' AND ns.nspname IN ('public','private')
+            LOOP
+              SELECT string_agg(format('child.%I = parent.%I', ca.attname, pa.attname), ' AND ' ORDER BY keys.ord),
+                     string_agg(format('child.%I IS NOT NULL', ca.attname), ' AND ' ORDER BY keys.ord)
+                INTO join_predicate, nonnull_predicate
+              FROM unnest(fk.conkey, fk.confkey) WITH ORDINALITY AS keys(child_attnum,parent_attnum,ord)
+              JOIN pg_attribute ca ON ca.attrelid=fk.conrelid AND ca.attnum=keys.child_attnum
+              JOIN pg_attribute pa ON pa.attrelid=fk.confrelid AND pa.attnum=keys.parent_attnum;
+
+              query_text := format(
+                'SELECT count(*) FROM %s child WHERE %s AND NOT EXISTS (SELECT 1 FROM %s parent WHERE %s)',
+                fk.conrelid::regclass, nonnull_predicate, fk.confrelid::regclass, join_predicate
+              );
+              EXECUTE query_text INTO orphan_count;
+              IF orphan_count > 0 THEN
+                RAISE EXCEPTION 'Foreign key % has % orphan rows', fk.conname, orphan_count;
+              END IF;
+            END LOOP;
+
             IF EXISTS (
               SELECT 1 FROM information_schema.columns
               WHERE table_schema='public' AND table_name='members' AND column_name='auth_user_id'
@@ -268,10 +332,30 @@ jobs:
               END IF;
             END IF;
           END $$;
+
           SELECT 'public_tables' AS check_name, count(*) AS verified
             FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE';
           SELECT 'private_tables' AS check_name, count(*) AS verified
             FROM information_schema.tables WHERE table_schema='private' AND table_type='BASE TABLE';
+          SELECT 'rls_enabled_public_tables' AS check_name, count(*) AS verified
+            FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname='public' AND c.relkind IN ('r','p') AND c.relrowsecurity;
+          SELECT 'rls_forced_public_tables' AS check_name, count(*) AS verified
+            FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname='public' AND c.relkind IN ('r','p') AND c.relforcerowsecurity;
+          SELECT 'restored_policies' AS check_name, count(*) AS verified
+            FROM pg_policies WHERE schemaname IN ('public','private');
+          SELECT 'restored_triggers' AS check_name, count(*) AS verified
+            FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid
+            JOIN pg_namespace n ON n.oid=c.relnamespace
+            WHERE n.nspname IN ('public','private') AND NOT t.tgisinternal;
+          SELECT 'restored_constraints' AS check_name, count(*) AS verified
+            FROM pg_constraint con JOIN pg_namespace n ON n.oid=con.connamespace
+            WHERE n.nspname IN ('public','private');
+          SELECT 'restored_indexes' AS check_name, count(*) AS verified
+            FROM pg_index i JOIN pg_class t ON t.oid=i.indrelid
+            JOIN pg_namespace n ON n.oid=t.relnamespace
+            WHERE n.nspname IN ('public','private') AND i.indisvalid;
           SELECT 'restored_members' AS check_name, count(*) AS verified FROM public.members;
           SELECT 'restored_auth_users' AS check_name, count(*) AS verified FROM auth.users;
           SQL
