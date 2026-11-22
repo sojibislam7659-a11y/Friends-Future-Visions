@@ -187,7 +187,7 @@ begin
   ) then
     raise exception 'Financial audit INSERT action is not allowed';
   end if;
-end
+end;
 $verify$;
 
 select
