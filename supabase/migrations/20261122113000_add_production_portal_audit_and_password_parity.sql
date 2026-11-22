@@ -24,6 +24,36 @@ begin
   ) then
     raise exception 'Preflight failed: every Production Super Admin must enroll and verify an MFA factor before AAL2 access is enabled';
   end if;
+  if exists (
+    select 1
+    from unnest(array[
+      'committee_documents','committee_proofs','member_contribution_rates',
+      'member_private_documents','members','notices','payment_methods',
+      'payment_submissions','profile_change_requests','profiles'
+    ]) as required(table_name)
+    where to_regclass('public.' || required.table_name) is null
+  ) then
+    raise exception 'Preflight failed: one or more Development audit target tables are missing';
+  end if;
+  if exists (
+    select 1 from pg_trigger
+    where not tgisinternal
+      and tgname='audit_admin_change'
+      and tgrelid in (
+        'public.committee_documents'::regclass,
+        'public.committee_proofs'::regclass,
+        'public.member_contribution_rates'::regclass,
+        'public.member_private_documents'::regclass,
+        'public.members'::regclass,
+        'public.notices'::regclass,
+        'public.payment_methods'::regclass,
+        'public.payment_submissions'::regclass,
+        'public.profile_change_requests'::regclass,
+        'public.profiles'::regclass
+      )
+  ) then
+    raise exception 'Preflight failed: an admin audit trigger already exists; reconcile manually';
+  end if;
   if not exists (select 1 from pg_proc where oid=to_regprocedure('private.is_super_admin()')) then
     raise exception 'Preflight failed: private.is_super_admin() is missing';
   end if;
@@ -49,6 +79,7 @@ create table private.password_rotation_guards (
   password_hash_fingerprint text not null,
   captured_at timestamptz not null default now()
 );
+revoke all on private.password_rotation_guards from public,anon,authenticated,service_role;
 
 revoke usage on schema private from anon;
 grant usage on schema private to authenticated;
@@ -449,12 +480,39 @@ $function$;
 
 revoke all on function private.audit_admin_change() from public,anon,authenticated,service_role;
 
-drop trigger if exists audit_admin_change on public.profiles;
-create trigger audit_admin_change
-after insert or update or delete on public.profiles
+-- Match all Development audit targets, not only profile/settings rows.
+drop trigger if exists audit_admin_change on public.committee_documents;
+create trigger audit_admin_change after insert or update or delete on public.committee_documents
 for each row execute function private.audit_admin_change();
-create trigger audit_admin_change
-after insert or update or delete on public.site_settings
+drop trigger if exists audit_admin_change on public.committee_proofs;
+create trigger audit_admin_change after insert or update or delete on public.committee_proofs
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.member_contribution_rates;
+create trigger audit_admin_change after insert or update or delete on public.member_contribution_rates
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.member_private_documents;
+create trigger audit_admin_change after insert or update or delete on public.member_private_documents
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.members;
+create trigger audit_admin_change after insert or update or delete on public.members
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.notices;
+create trigger audit_admin_change after insert or update or delete on public.notices
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.payment_methods;
+create trigger audit_admin_change after insert or update or delete on public.payment_methods
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.payment_submissions;
+create trigger audit_admin_change after insert or update or delete on public.payment_submissions
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.profile_change_requests;
+create trigger audit_admin_change after insert or update or delete on public.profile_change_requests
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.profiles;
+create trigger audit_admin_change after insert or update or delete on public.profiles
+for each row execute function private.audit_admin_change();
+drop trigger if exists audit_admin_change on public.site_settings;
+create trigger audit_admin_change after insert or update or delete on public.site_settings
 for each row execute function private.audit_admin_change();
 
 -- Align push subscription validation, ownership and per-account device limits.
