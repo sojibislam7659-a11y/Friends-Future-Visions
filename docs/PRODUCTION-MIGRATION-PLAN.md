@@ -6,11 +6,16 @@ Source of intended application behaviour: Development (`tvdxbyzvkjiebwslmnvj`)
 
 ## Release status
 
-**RELEASE WORK STAGED — NOT APPROVED FOR PRODUCTION EXECUTION.**
+**BACKUP AND RESTORE GATE PASSED — FULL PRODUCTION RELEASE STILL BLOCKED ON SUPER ADMIN MFA ENROLLMENT AND FINAL OWNER ACCEPTANCE.**
 
-This document is not an executable migration. No Production SQL, Edge Function deployment, Worker deployment, or user-data change was performed while preparing it.
+A fresh encrypted Production backup was uploaded to Google Drive and successfully restored into an isolated temporary PostgreSQL 17 instance. The release login bootstrap PR #10 has been merged to `main`; Cloudflare Worker deployment is not independently confirmed through the available control connection. The Super Admin still has zero verified TOTP factors.
 
-Production must remain online and retain all current member, profile, Auth, financial, Storage, and integration data until the owner explicitly approves a release after a verified current backup and restore rehearsal.
+Limited, reversible Production security hardening was applied on 2026-11-23 and is included in the fresh backup/restore rehearsal:
+- Anonymous table/sequence grants in `public` were revoked; only `committee_rules SELECT` remains for `anon`.
+- `private.has_portal_access()` and `public.get_financial_summary()` now allow only `member` and `super_admin`, removing the legacy `admin` role.
+- An aggregate-only, read-only `public.get_public_financial_summary()` RPC was added for the public DATA page. It exposes no member identifiers, personal dues, or individual contribution rows.
+
+No member rows, financial transaction rows, Auth users, Storage objects, or passwords were changed. The full portal/ledger migrations, Edge Function rollout, and full application release remain staged and must not be executed until the Super Admin enrolls TOTP and the owner confirms the production release window.
 
 ## Latest Production preflight observations
 
@@ -28,20 +33,20 @@ Read-only checks on 2026-11-22:
 - Existing Production `financial_transactions` has `transfer_group_id`, but not `posting_id` or `reversal_of_id`. Its amount is `numeric(12,2)` (Development uses `numeric(14,2)`); current constraints permit transfers but not reversal transaction types.
 - Production `financial_transaction_audit` has an INSERT audit trigger, but its action CHECK currently allows only UPDATE/DELETE. The staged ledger migration corrects this mismatch before new ledger writes.
 - Production currently has no `financial_postings`, `site_settings`, `admin_change_audit`, `notification_push_deliveries`, or private password-rotation guard table.
-- Production currently grants broad table-level privileges on some tables to anon/authenticated, including push_subscriptions and notifications. RLS policies currently constrain row access, but privileges should be reduced as defense in depth. Do not revoke until frontend and function dependencies are verified.
+- Production anonymous grants were reduced on 2026-11-23: `anon` now has only SELECT on `committee_rules` in the public schema and no public sequence privileges. Authenticated privilege cleanup and future-object default ACL hardening remain pending; do not infer those phases are complete.
 - Existing Production profile update and financial transaction policies are not identical to Development.
 
 These counts and checks are snapshots, not guarantees about future state. The latest read-only recheck still shows 53 Production migrations, 8 Auth users, 7 members, 8 profiles, 0 financial transactions, 0 financial audit rows, 2 Storage objects, 50 public RLS policies and 18 Storage object policies. Development has 59 public RLS policies and the same 18 Storage object policies.
 
 ## Latest advisor snapshot
 
-- Production Security Advisor: 1 public-schema extension warning (`pg_net`), 4 authenticated-executable SECURITY DEFINER warnings, and 1 leaked-password-protection warning.
-- Production Performance Advisor: 4 multiple-permissive-policy warnings and 19 unused-index informational findings.
-- Production Health Advisor: no findings.
-- Development Security Advisor: 1 public-schema extension warning and 1 leaked-password-protection warning; Development has no authenticated-executable SECURITY DEFINER warnings in this snapshot.
-- Development Performance Advisor: 21 unused-index informational findings; Development Health Advisor: no findings.
+Production Security Advisor after the 2026-11-23 hardening:
+- 1 public-schema extension warning (`pg_net`).
+- 1 anonymous-executable SECURITY DEFINER warning for `get_public_financial_summary()`. This is intentional: it is a no-argument, read-only RPC returning only aggregate committee totals/monthly trends; no member-level or personal data.
+- 5 authenticated-executable SECURITY DEFINER warnings: the four pre-existing wrappers plus the new aggregate summary wrapper. The four original wrappers still require the staged Phase 4 hardening; the aggregate wrapper is intentionally callable by anon/authenticated.
+- 1 leaked-password-protection warning. This is an Auth project setting and may be plan-gated; do not claim it can be enabled on the current Free plan without checking account entitlement.
 
-Do not delete unused indexes solely from a short usage snapshot; evaluate workload and query plans first. Review the 4 duplicate permissive policy groups for simplification only after checking exact RLS semantics. Leaked-password protection is a project Auth setting and may be plan-gated; do not claim it can be enabled on the current Free plan without checking account entitlement.
+Production Performance/Health advisor snapshots should be refreshed after the coordinated migration. Do not delete unused indexes solely from a short usage snapshot.
 
 ## Why Development migrations cannot be copied verbatim
 
@@ -57,27 +62,17 @@ Production also has `pg_net` installed in `public`. Moving it requires checking 
 
 ## Phase 0 — Mandatory backup and restore gate
 
-Before any Production write:
+<badge>Passed</badge>
 
-1. **Completed 2026-11-22:** The encrypted Production backup workflow ran successfully on `main` (GitHub run `45054000337`; backup run ID `ffv_backup_45054000337_1`). Apps Script receiver version 3 was live; all five required GitHub Actions secrets and the Production target validated. The workflow exported PostgreSQL 17 custom-format data, Auth metadata, every Storage object byte, non-secret configuration inventory, and Production Edge Function snapshots; it encrypted and verified the archive, uploaded the encrypted chunk and manifest to Drive, and cleaned its temporary runner workspace. The isolated restore rehearsal is still pending.
-2. Verify file integrity and inspect archive/SQL contents.
-3. Export Auth users and related Auth rows/configuration. Do not assume a database-only dump reproduces all hosted Auth provider settings or signing secrets.
-4. Download the bytes of every Storage object, not just `storage.objects` metadata; record bucket/object metadata and verify object checksums.
-5. All five current Production Edge Function `index.ts` files have already been snapshotted under `backup/production-edge-functions/2026-11-22/` and re-fetched for byte-for-byte verification. Function names, versions, JWT flags and environment names are recorded. Secret values must be re-provisioned from owner-controlled secure storage; they cannot be retrieved through ordinary function listing APIs.
-6. The staged backup workflow records cron job names/schedules, Vault secret names, migration versions and extension versions. Hosted Auth redirect/SMTP/OAuth settings, webhook configuration, Cloudflare secrets and Edge Function secret values are not automatically exported; record and re-provision them manually. Do not put secrets in Git.
-7. Create an isolated restore target and perform a restore rehearsal. Verify table/schema counts, Auth metadata, Storage object checksums, Edge Function source, RLS policies, re-provisioned secrets, and application smoke tests.
-8. Only after the restore rehearsal passes, request explicit owner approval for a scheduled Production maintenance window.
-
-A schema-only backup, old PC dump, or Git branch is not a complete Production backup.
-
-A separate MFA bootstrap branch was created from the untouched Production `main` base: `release/ffv-mfa-bootstrap-20261122` (draft PR #10). It adds only the login MFA enrollment/challenge UI and a fallback for the not-yet-added `profiles.must_change_password` column. Its CI passed (`44951016852`). It is not merged or deployed. After backup/restore passes, this login-only branch must be deployed first so the existing Production Super Admin can enroll TOTP; only then can the AAL2-gated schema migration pass.
-
-The encrypted Production backup is already stored in Google Drive. Its manifest is
-`FFV_ffv_backup_45054000337_1_manifest.json`. The deployed Apps Script receiver is version 3, and the
-successful backup run confirmed all required repository secrets are configured. The monthly backup
-workflow is on `main` and scheduled for 03:00 UTC on the first day of each month (09:00 Bangladesh
-time). The remaining Phase 0 gate is the manual isolated restore test; no Production migration or
-deployment is authorized by a successful backup alone.
+1. **Fresh encrypted backup succeeded:** GitHub Actions run `45070634542`; Drive backup ID `ffv_backup_45070634542_1`. The workflow exported the Production PostgreSQL 17 custom-format database dump, Auth metadata, all Storage object bytes and inventory, non-secret configuration inventory, and Production Edge Function source snapshots. It encrypted and verified the archive, uploaded the encrypted chunk and manifest to Drive, and cleaned its temporary runner workspace.
+2. **Actual isolated restore rehearsal succeeded:** GitHub Actions run `45070745560`. It downloaded the exact Drive backup, verified chunk/archive hashes, decrypted the archive, validated the payload, started temporary PostgreSQL 17, seeded only the Auth IDs/metadata needed for FK checks, restored the public/private database dump, and passed the RLS, validated-constraint, valid-index, foreign-key/orphan, member/Auth-reference, and cleanup checks.
+3. Storage object bytes were checksum-verified from the backup payload. The rehearsal does not recreate a live Supabase Storage service or prove hosted Storage API recovery; bucket/object inventory and bytes were validated as backup payloads.
+4. Hosted Auth provider settings, signing secrets, SMTP/OAuth configuration, Cloudflare secrets, and Edge Function secret values are not all exported by the database dump. Their names/inventory are recorded where available; secret values must remain owner-controlled and must never be copied into Git or chat.
+5. The backup/restore rehearsal did not write to the Production database. The fresh backup was created after the limited 2026-11-23 security hardening listed above, so that hardening is included in the verified restore point.
+6. The Apps Script receiver remains Version 3. The monthly encrypted Drive backup schedule remains 03:00 UTC on the first day of each month (09:00 Bangladesh time).
+7. **MFA bootstrap:** PR #10 (`release/ffv-mfa-bootstrap-20261122`) was merged to `main` after the restore passed. It adds the login-only TOTP enrollment/challenge flow and the pre-migration password-flag fallback. CI passed. Cloudflare Worker deployment status is not independently confirmed; verify the login page reflects this commit before asking the Super Admin to enroll.
+8. Production currently has zero verified MFA factors. The Super Admin must sign in and enroll a TOTP factor using an authenticator app. Only after the factor is verified may the AAL2-gated portal migration proceed.
+9. **The restore gate is complete; the remaining Phase 0 blocker is Super Admin TOTP enrollment and explicit owner acceptance of the scheduled Production release window.**
 
 ## Phase 1 — Additive configuration and audit capabilities
 
@@ -114,14 +109,13 @@ The migration is policy-only and depends on the authorization helpers created in
 
 ## Phase 1D — Public table grant hardening
 
-A direct ACL comparison found that Production still grants `anon` broad table privileges on multiple public tables, while Development grants unauthenticated access only to `committee_rules SELECT`. Production also has unnecessary authenticated `REFERENCES`, `TRIGGER`, and `TRUNCATE` privileges, plus direct writes on `member_contribution_rates` that Development performs through the audited RPC.
+A direct ACL comparison found that Production granted `anon` broad table privileges on multiple public tables. On 2026-11-23, the anonymous portion was applied directly and verified:
+- Revoked all `anon` privileges on all tables and sequences in schema `public`.
+- Restored only `SELECT` on `public.committee_rules`.
+- Rechecked `information_schema.role_table_grants`: `committee_rules SELECT` is the only remaining public-table grant to `anon`.
+- Anonymous read tests confirmed published Rules remain accessible while `members` and `member_private_documents` are denied.
 
-The staged migrations:
-- `20261122124500_revoke_legacy_anon_table_grants.sql` removes all direct anonymous privileges on public tables and sequences, then restores only `committee_rules SELECT`.
-- `20261122125000_align_public_table_grants.sql` removes authenticated `REFERENCES`, `TRIGGER`, and `TRUNCATE` privileges, routes contribution-rate writes through the audited Super Admin RPC, and retains only SELECT/UPDATE for direct `committee_rules` access.
-- They do not modify table rows, Storage objects, or service-role privileges. Existing RLS policies remain in force.
-
-The read-only grant checks are included in `verify_production_portal_parity.sql`. Member notification read receipts remain supported through the existing `notifications.read_at` column grant.
+The staged migration `20261122124500_revoke_legacy_anon_table_grants.sql` remains in the release sequence as an idempotent declaration of this state. The separate authenticated privilege cleanup in `20261122125000_align_public_table_grants.sql` has NOT been applied. It must still be reviewed and executed after the portal/ledger authorization paths are deployed and tested.
 
 ## Phase 1E — Future public-object default privileges
 
@@ -166,24 +160,15 @@ A Production-specific immutable ledger migration is staged at `supabase/migratio
 
 ## Phase 4 — SECURITY DEFINER hardening
 
-A Production-specific migration is staged at `supabase/migrations/20261122103000_harden_production_security_definer_wrappers.sql`. It must run before the two later schema migrations. It has not been applied.
+A Production-specific migration is staged at `supabase/migrations/20261122103000_harden_production_security_definer_wrappers.sql`. It has not been applied.
 
-A Production-specific migration is now staged on `release/ffv-prod-parity-20261122`:
+The 2026-11-23 limited pre-release hardening updated:
+- `private.has_portal_access()` to allow only `member` and `super_admin`.
+- `public.get_financial_summary()` to reject the legacy `admin` role and accept only `member` / `super_admin`.
 
-- `supabase/migrations/20261122103000_harden_production_security_definer_wrappers.sql`
-- It has explicit schema/function preconditions and runs transactionally.
-- It moves the private-document review body into a private SECURITY DEFINER helper with an explicit Super Admin check.
-- It adds an internal role allow-list to the financial summary helper (`member`, `super_admin` only), removing legacy `admin`.
-- It changes the four public RPC wrappers to SECURITY INVOKER and grants authenticated execution only to private helpers that perform their own authorization checks.
-- It revokes anon/PUBLIC execution on the affected private and public functions.
-- The migration is staged only. It has NOT been applied to Development or Production and still requires SQL parser/runtime validation plus real member/Super Admin JWT tests after the backup gate.
-- Read-only Production preflight confirms all required source helpers/tables exist, authenticated has private-schema USAGE, and there are currently zero profiles with roles outside `member` / `super_admin`.
+Both functions still use SECURITY DEFINER in Production. The four original wrappers remain SECURITY DEFINER until the staged migration is applied and verified. The new `public.get_public_financial_summary()` is a separate, intentionally anonymous-callable SECURITY DEFINER wrapper with an empty search_path; it returns aggregate-only fields and delegates to a private helper. Its advisor warning is expected and must be documented, not blindly revoked.
 
-Remaining checks before execution:
-
-- Test member, Super Admin, unauthenticated, and anon JWT contexts. SQL tests with no valid JWT are not substitutes for browser/API tests using actual user sessions.
-- Confirm the Supabase API exposed-schema configuration and PostgREST RPC resolution remain correct after private helper grants.
-- Re-run the exact ACL and SECURITY DEFINER advisor checks after applying in a restore rehearsal environment.
+The staged migration still requires SQL parser/runtime validation plus real member/Super Admin JWT tests after the MFA and backup gates. Test member, Super Admin, unauthenticated, and anon contexts; confirm private helper grants and PostgREST resolution.
 
 ## Phase 5 — Edge Functions and application release
 
@@ -205,7 +190,7 @@ The CI baseline check records these expected differences. Deno type-checking is 
 
 Required standard Edge Function environment names are `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; the Production-only `google-sheets-sync` also requires `OIKKO_SYNC_SECRET`. Secret values cannot be read back. The following Vault secret *names* exist in both projects: `ffvf_cron_token`, `ffvf_vapid_private_key`, `ffvf_vapid_public_key`, and `ffvf_vapid_subject`.
 
-The Release browser QA workflow passed 6 Chromium tests across Desktop Chrome and Pixel 7 mobile viewports: login controls, unauthenticated dashboard redirect, authenticated member dashboard, and member read-only DATA matrix checks. The Release frontend was served locally and pointed at the Development Supabase project; Production was not contacted.
+The Release browser QA workflow passed 8 Chromium tests across Desktop Chrome and Pixel 7 mobile viewports (run `45071354591`): login controls, unauthenticated dashboard redirect, authenticated member dashboard and read-only matrix, plus anonymous aggregate-only public DATA and public navigation. The Release frontend was served locally and pointed at Development Supabase; Production was not contacted.
 
 Read-only operational comparison found all three cron jobs active in both projects with matching schedules and matching reminder-function definitions: `ffvf-meeting-reminders` (every minute), `ffvf-monthly-due-reminders` (03:00 on day 1), and `ffvf-push-delivery` (every minute). Recent push endpoint calls returned HTTP 200 with zero processed/sent/failed; both projects currently have zero push subscriptions, so an end-to-end device delivery test remains outstanding.
 
@@ -230,15 +215,17 @@ These files are staged only on the release branch. None has been applied to Deve
 
 ## Current validation status
 
-- GitHub Actions Release static checks pass on commit `afeada4e75c30ad40ec77afee7101803f3a244d8` (run `44987415436`).
-- PostgreSQL grammar parser passed 68 standalone migration files and 5 verification files.
-- The enhanced CI parsed 106 PL/pgSQL function and DO-block bodies, rather than treating dollar-quoted bodies as opaque strings.
-- Deno type-checking passed for all four Release Edge Functions and the preserved Production-only `google-sheets-sync` snapshot. Cloudflare `wrangler deploy --dry-run` also passed, validating the Worker package without deploying it.
-- The Edge Function baseline check passed: `send-push`, `review-member-signup`, and `create-member-login` are intentionally different from the captured Production source and require rollout after schema migration; `invite-member` is already identical.
-- Release browser QA passed 6 Chromium tests across Desktop Chrome and Pixel 7 mobile viewports (run `44987415433`), including member login, dashboard access, unauthenticated redirect, member read-only DATA matrix checks, mobile navigation, no horizontal page overflow on the DATA page, and the right-to-left notice ticker animation. The test frontend was served locally and connected to Development Supabase only.
-- The three Production-only read-only verification scripts are `supabase/verification/verify_production_portal_parity.sql`, `supabase/verification/verify_production_storage_policy_parity.sql`, and `supabase/verification/verify_production_immutable_ledger.sql`; they are intended for an isolated Production restore rehearsal after applying their respective migrations.
-- One historical file, `20261119190618_use_invoker_for_financial_summary_20261120.sql`, remains explicitly excluded because it is a non-standalone PL/pgSQL body fragment rather than executable migration SQL; it was left unchanged.
-- SQL parsing and Deno type-checking do not execute migrations or replace real Super Admin MFA/JWT tests, live push delivery with an enrolled device, and restore-rehearsal acceptance tests.
+- Fresh encrypted Drive backup run `45070634542` succeeded; manifest ID is `ffv_backup_45070634542_1`.
+- Isolated restore rehearsal run `45070745560` succeeded, including PostgreSQL 17 restore and catalog integrity checks.
+- Production anonymous ACL hardening was applied and verified: only `committee_rules SELECT` remains for `anon` in schema `public`.
+- Production role helper allow-list now contains only `member` and `super_admin`; the full SECURITY DEFINER migration remains pending.
+- Development browser QA passed after the public DATA change (run `45070818077`).
+- Release static checks passed on the public DATA release commit (run `45071354645`): JavaScript syntax, backup tooling, Deno Edge Function type-checks, Production Edge Function source parity, Wrangler dry-run, SVG validation, PostgreSQL migration parsing, and diff checks.
+- Release browser QA passed 8/8 tests across Desktop Chrome and Pixel 7 (run `45071354591`), including anonymous aggregate-only public DATA.
+- The release QA uses a locally served frontend and Development Supabase only. It does not prove Production Worker deployment, Production Auth enrollment, live push delivery, or Production acceptance.
+- Production currently has 7 member rows, 8 profiles, 0 financial transactions, 0 member contribution-rate rows, 2 Storage objects, and 0 verified MFA factors. The shared matrix returns 420 member-month rows (7 × 60), but all 420 are marked `due_configured=false`; no transaction history or monthly rates have been entered. The 12-member target therefore still needs five member records and owner-confirmed contribution rates. Do not invent these values.
+- Production Security Advisor currently reports `pg_net` in public, the intentional aggregate-only anonymous SECURITY DEFINER RPC, five authenticated-executable SECURITY DEFINER wrappers, and leaked-password protection disabled. The staged migration and Auth settings review remain required.
+- SQL parsing and Deno type-checking do not execute migrations or replace real Super Admin MFA/JWT tests, live push delivery with an enrolled device, and final Production acceptance tests.
 
 ## Required acceptance tests
 
@@ -260,5 +247,16 @@ These files are staged only on the release branch. None has been applied to Deve
 - Security and performance advisors are reviewed after migration.
 
 ## Current release blocker
+
+The encrypted Drive backup and isolated PostgreSQL 17 restore rehearsal are complete. The remaining blockers are:
+
+1. Verify that the merged MFA bootstrap is live on the Production Worker, then have the existing Super Admin enroll and verify a TOTP factor. Current Production verified-factor count is zero.
+2. Obtain explicit owner acceptance before the coordinated Production schema/Edge Function/full Worker release.
+3. Complete member onboarding and finance setup: Production has 7 member rows (target 12), no financial transaction rows, no contribution-rate history, and no configured due rows. Five member records and the exact member contribution rates must be supplied/confirmed by the owner; do not assume all rates.
+4. Complete the ordered Production migrations, Edge Function rollout, and full release only after the above gates and post-migration acceptance tests pass.
+
+The public Data experience is implemented as aggregate-only for anonymous visitors; the member-level contribution matrix remains behind authenticated access. No individual contribution or personal due data is exposed publicly.
+
+
 
 The encrypted Production backup and owner-controlled Google Drive authorization are now verified. The isolated restore rehearsal remains pending, and the Production Super Admin currently has zero verified MFA factors. Therefore no Production migration or deployment can be responsibly marked ready or executed yet.
