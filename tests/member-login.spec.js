@@ -44,6 +44,9 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   await page.screenshot({ path: `test-results/member-data-matrix-${page.viewportSize()?.width || "unknown"}.png`, fullPage: true });
 
   // Member detail and personal pages must stay within the authenticated member scope.
+  await page.goto(`${baseURL}/member-profile.html?id=00000000-0000-0000-0000-000000000001`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#app")).toContainText("নিরাপত্তার কারণে অন্য সদস্যের Profile দেখার অনুমতি নেই।", { timeout: 30000 });
+
   await page.goto(`${baseURL}/member-profile.html`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#memberProfileContent")).toBeVisible({ timeout: 30000 });
   await expect(page.locator("#toggleMemberEditor")).toHaveCount(0);
