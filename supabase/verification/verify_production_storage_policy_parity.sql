@@ -65,7 +65,7 @@ begin
   if v_count <> 18 then
     raise exception 'Expected 18 Storage object policies matching Development; found %',v_count;
   end if;
-end
+end;
 $verify$;
 
 select count(*) as storage_object_count,
