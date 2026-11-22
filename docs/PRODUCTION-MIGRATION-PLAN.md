@@ -31,7 +31,7 @@ Read-only checks on 2026-11-22:
 - Production currently grants broad table-level privileges on some tables to anon/authenticated, including push_subscriptions and notifications. RLS policies currently constrain row access, but privileges should be reduced as defense in depth. Do not revoke until frontend and function dependencies are verified.
 - Existing Production profile update and financial transaction policies are not identical to Development.
 
-These counts and checks are snapshots, not guarantees about future state. The latest read-only recheck still shows 53 Production migrations, 8 Auth users, 7 members, 8 profiles, 0 financial transactions and 0 financial audit rows.
+These counts and checks are snapshots, not guarantees about future state. The latest read-only recheck still shows 53 Production migrations, 8 Auth users, 7 members, 8 profiles, 0 financial transactions, 0 financial audit rows, 2 Storage objects, 50 public RLS policies and 18 Storage object policies. Development has 59 public RLS policies and the same 18 Storage object policies.
 
 ## Latest advisor snapshot
 
