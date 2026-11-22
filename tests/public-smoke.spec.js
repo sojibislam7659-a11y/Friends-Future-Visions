@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 const baseURL = process.env.FFV_QA_BASE_URL || "https://development-friends-future-visions-dev.sojibislam7659.workers.dev";
 
-test("Development login screen loads and exposes required controls", async ({ page }) => {
+test("Login screen loads and exposes required controls", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
@@ -18,7 +18,7 @@ test("Development login screen loads and exposes required controls", async ({ pa
   await page.screenshot({ path: "test-results/development-login.png", fullPage: true });
 });
 
-test("Unauthenticated visitor cannot enter the Development dashboard", async ({ page }) => {
+test("Unauthenticated visitor cannot enter the authenticated dashboard", async ({ page }) => {
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
