@@ -27,6 +27,14 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   expect(pageErrors, "Browser JavaScript errors detected").toEqual([]);
   await page.goto(`${baseURL}/data.html`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#publicData")).toContainText("Member Contribution Matrix", { timeout: 30000 });
+  await expect(page.locator("#globalNoticeTicker")).toBeVisible();
+  await expect(page.locator("#globalNoticeTickerText")).not.toBeEmpty();
+  const tickerAnimation = await page.locator("#globalNoticeTickerText").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { name: style.animationName, duration: style.animationDuration };
+  });
+  expect(tickerAnimation.name).not.toBe("none");
+  expect(Number.parseFloat(tickerAnimation.duration)).toBeGreaterThan(0);
   await expect(page.locator(".matrix-amount").first()).toBeDisabled();
   await expect(page.locator(".matrix-save-actions")).toHaveCount(0);
   if ((page.viewportSize()?.width || 9999) <= 600) {
