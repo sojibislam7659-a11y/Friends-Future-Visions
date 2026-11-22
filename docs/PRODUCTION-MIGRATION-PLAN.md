@@ -118,6 +118,10 @@ The staged migrations:
 
 The read-only grant checks are included in `verify_production_portal_parity.sql`. Member notification read receipts remain supported through the existing `notifications.read_at` column grant.
 
+## Phase 1E — Future public-object default privileges
+
+Production's `postgres` default ACL for the `public` schema grants `anon` broad table, sequence, and function privileges on future objects; it also gives `authenticated` unnecessary REFERENCES/TRIGGER/TRUNCATE table privileges. Development's corresponding defaults do not. The staged `20261122125500_align_public_default_privileges.sql` removes those defaults for objects created by `postgres` in `public`, without changing Supabase-managed defaults in other schemas or the existing service-role defaults. The portal verification script checks that future objects will not regain these grants.
+
 ## Phase 2 — Push delivery runtime verification
 
 The schema migration in Phase 1 already adds the subscription constraints, five-device cap, `notification_push_deliveries` table, and service-role-only `claim_notification_push_delivery(uuid,uuid)` RPC. Read-only comparison confirms the Production and Development push cron jobs are both active, the `get_push_config()` function definitions match, and the four required Vault secret names are present in both projects.
@@ -215,6 +219,7 @@ Read-only operational comparison found all three cron jobs active in both projec
 5. `20261122123000_add_production_immutable_financial_ledger.sql` (blocked if any Production financial transaction or audit row appears before release)
 6. `20261122124500_revoke_legacy_anon_table_grants.sql` (retain only anonymous committee-rules SELECT)
 7. `20261122125000_align_public_table_grants.sql` (remove non-app privileges and route rate changes through the RPC)
+8. `20261122125500_align_public_default_privileges.sql` (prevent future anon grants on public objects)
 
 These files are staged only on the release branch. None has been applied to Development or Production.
 
