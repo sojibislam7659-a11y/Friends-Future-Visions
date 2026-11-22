@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const baseURL = "https://development-friends-future-visions-dev.sojibislam7659.workers.dev";
+const baseURL = process.env.FFV_QA_BASE_URL || "https://development-friends-future-visions-dev.sojibislam7659.workers.dev";
 
 test("Development login screen loads and exposes required controls", async ({ page }) => {
   const pageErrors = [];
