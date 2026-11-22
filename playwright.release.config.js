@@ -1,4 +1,4 @@
-import { defineConfig } from "@playwright/test";
+import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
@@ -14,6 +14,10 @@ export default defineConfig({
     video: "retain-on-failure"
   },
   outputDir: "playwright-release-results",
+  projects: [
+    { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
+    { name: "mobile-chromium", use: { ...devices["Pixel 7"] } }
+  ],
   webServer: {
     command: "npx --yes http-server public -p 4173 -c-1",
     url: "http://127.0.0.1:4173/login.html",
