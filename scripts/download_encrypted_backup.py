@@ -61,7 +61,7 @@ def validate_manifest(manifest: dict, expected_run_id: str) -> None:
     parts = manifest.get("parts")
     if not isinstance(total_parts, int) or not 1 <= total_parts <= MAX_PARTS:
         raise ValueError("Drive manifest part count is invalid.")
-    if not isinstance(total_bytes, int) or total_bytes < 1:
+    if not isinstance(total_bytes, int) or total_bytes < 1 or total_bytes > MAX_PARTS * MAX_CHUNK_BYTES:
         raise ValueError("Drive manifest total size is invalid.")
     if not isinstance(archive_hash, str) or not re.fullmatch(r"[a-f0-9]{64}", archive_hash):
         raise ValueError("Drive manifest archive checksum is invalid.")
@@ -95,6 +95,8 @@ def download_backup(receiver_url: str, token: str, run_id: str, output_path: Pat
     manifest = response.get("manifest")
     validate_manifest(manifest, run_id)
 
+    if output_path.exists():
+        raise FileExistsError("Refusing to overwrite an existing restore output file.")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path = output_path.with_name(output_path.name + ".partial")
     overall = hashlib.sha256()
@@ -109,8 +111,8 @@ def download_backup(receiver_url: str, token: str, run_id: str, output_path: Pat
                 if response.get("part") != part or response.get("sizeBytes") != descriptor["sizeBytes"]:
                     raise ValueError("Drive receiver returned unexpected chunk metadata.")
                 encoded = response.get("data")
-                if not isinstance(encoded, str):
-                    raise ValueError("Drive receiver returned no chunk data.")
+                if not isinstance(encoded, str) or len(encoded) > ((MAX_CHUNK_BYTES + 2) // 3) * 4:
+                    raise ValueError("Drive receiver returned missing or oversized chunk data.")
                 data = base64.b64decode(encoded, validate=True)
                 if len(data) != descriptor["sizeBytes"] or sha256(data) != descriptor["sha256"]:
                     raise ValueError("Downloaded encrypted chunk failed SHA-256 verification.")
