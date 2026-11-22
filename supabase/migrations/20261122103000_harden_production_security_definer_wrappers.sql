@@ -25,7 +25,7 @@ begin
      or to_regclass('public.members') is null then
     raise exception 'Preflight failed: required public tables are missing';
   end if;
-end
+end;
 $preflight$;
 
 -- The summary helper is SECURITY DEFINER so it can aggregate the complete
