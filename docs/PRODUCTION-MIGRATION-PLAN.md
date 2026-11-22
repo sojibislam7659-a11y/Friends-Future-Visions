@@ -151,12 +151,12 @@ Remaining checks before execution:
 
 Read-only source comparison completed on 2026-11-22:
 
-| Function | Development | Production | Source parity in Release branch |
-|---|---:|---:|---|
-| `send-push` | v4, JWT off | v3, JWT off | Exact source match to Development |
-| `review-member-signup` | v5, JWT on | v4, JWT on | Exact source match to Development |
-| `invite-member` | v3, JWT on | v5, JWT on | Exact source match to Development (retired 410 response) |
-| `create-member-login` | v4, JWT on | v3, JWT on | Exact source match to Development |
+| Function | Development | Production | Release vs Development | Captured Production baseline vs Release |
+|---|---:|---:|---|---|
+| `send-push` | v4, JWT off | v3, JWT off | Exact match | Older; deploy after schema migration |
+| `review-member-signup` | v5, JWT on | v4, JWT on | Exact match | Older; deploy after schema migration |
+| `invite-member` | v3, JWT on | v5, JWT on | Exact match (retired 410) | Already matches; no redeploy needed |
+| `create-member-login` | v4, JWT on | v3, JWT on | Exact match | Older; deploy after schema migration |
 
 The four Release-branch `index.ts` files were compared byte-for-byte with the live Development sources; all four match Development exactly. The captured live Production baseline is older for three functions:
 - `send-push`: Production snapshot is older and lacks the new delivery-claim/idempotency path.
@@ -166,6 +166,8 @@ The four Release-branch `index.ts` files were compared byte-for-byte with the li
 The CI baseline check records these expected differences. Deno type-checking is added for the four Release functions and the preserved Production-only Google Sheets function.
 
 Required standard Edge Function environment names are `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`; the Production-only `google-sheets-sync` also requires `OIKKO_SYNC_SECRET`. Secret values cannot be read back. The following Vault secret *names* exist in both projects: `ffvf_cron_token`, `ffvf_vapid_private_key`, `ffvf_vapid_public_key`, and `ffvf_vapid_subject`.
+
+The Release browser QA workflow passed 6 Chromium tests across Desktop Chrome and Pixel 7 mobile viewports: login controls, unauthenticated dashboard redirect, authenticated member dashboard, and member read-only DATA matrix checks. The Release frontend was served locally and pointed at the Development Supabase project; Production was not contacted.
 
 Read-only operational comparison found all three cron jobs active in both projects with matching schedules and matching reminder-function definitions: `ffvf-meeting-reminders` (every minute), `ffvf-monthly-due-reminders` (03:00 on day 1), and `ffvf-push-delivery` (every minute). Recent push endpoint calls returned HTTP 200 with zero processed/sent/failed; both projects currently have zero push subscriptions, so an end-to-end device delivery test remains outstanding.
 
