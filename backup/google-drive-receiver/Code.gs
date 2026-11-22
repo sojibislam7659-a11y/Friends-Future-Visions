@@ -1,9 +1,9 @@
 /**
  * Friends Future Vision Forever — encrypted backup receiver.
  *
- * Receives already-encrypted archive chunks from a trusted GitHub Actions
- * workflow and writes them into one owner-selected Google Drive folder.
- * This endpoint never reads or returns Drive contents.
+ * Receives already-encrypted archive chunks and provides token-authenticated,
+ * exact-run recovery endpoints for the trusted GitHub Actions restore workflow.
+ * It does not expose generic Drive folder listing or browsing.
  *
  * Required Script Properties:
  *   FFV_BACKUP_TOKEN  - random 256-bit bearer token
@@ -14,7 +14,7 @@
  */
 
 function doGet() {
-  return json_({ ok: true, service: 'FFV encrypted backup receiver', version: 2 });
+  return json_({ ok: true, service: 'FFV encrypted backup receiver', version: 3 });
 }
 
 function doPost(e) {
@@ -146,6 +146,70 @@ function doPost(e) {
       return json_({ ok: true, name: manifestName });
     }
 
+
+    // Read-only recovery endpoints. They expose only files belonging to the
+    // exact run ID and manifest, and only to callers holding the 256-bit token.
+    if (payload.type === 'download_manifest') {
+      var manifestName = 'FFV_' + payload.runId + '_manifest.json';
+      var manifestFiles = folder.getFilesByName(manifestName);
+      if (!manifestFiles.hasNext()) return json_({ ok: false, error: 'backup_not_found' });
+
+      var storedManifest;
+      try {
+        storedManifest = JSON.parse(manifestFiles.next().getBlob().getDataAsString());
+      } catch (_) {
+        return json_({ ok: false, error: 'manifest_invalid_json' });
+      }
+      if (!validManifest_(storedManifest, payload.runId)) {
+        return json_({ ok: false, error: 'manifest_invalid' });
+      }
+      return json_({ ok: true, manifest: storedManifest });
+    }
+
+    if (payload.type === 'download_chunk') {
+      var requestedPart = Number(payload.part);
+      if (!Number.isInteger(requestedPart) || requestedPart < 1 || requestedPart > 100) {
+        return json_({ ok: false, error: 'invalid_part_number' });
+      }
+
+      var storedManifestName = 'FFV_' + payload.runId + '_manifest.json';
+      var storedManifestFiles = folder.getFilesByName(storedManifestName);
+      if (!storedManifestFiles.hasNext()) return json_({ ok: false, error: 'backup_not_found' });
+
+      var chunkManifest;
+      try {
+        chunkManifest = JSON.parse(storedManifestFiles.next().getBlob().getDataAsString());
+      } catch (_) {
+        return json_({ ok: false, error: 'manifest_invalid_json' });
+      }
+      if (!validManifest_(chunkManifest, payload.runId) || requestedPart > chunkManifest.totalParts) {
+        return json_({ ok: false, error: 'manifest_or_part_invalid' });
+      }
+
+      var descriptor = chunkManifest.parts[requestedPart - 1];
+      var chunkName = 'FFV_' + payload.runId + '_part_' +
+        ('0000' + requestedPart).slice(-4) + '.enc';
+      var chunkFiles = folder.getFilesByName(chunkName);
+      if (!chunkFiles.hasNext()) return json_({ ok: false, error: 'chunk_not_found' });
+
+      var chunkBytes = chunkFiles.next().getBlob().getBytes();
+      if (chunkBytes.length !== descriptor.sizeBytes ||
+          !constantTimeEqual_(sha256_(chunkBytes), descriptor.sha256)) {
+        return json_({ ok: false, error: 'stored_chunk_integrity_failed' });
+      }
+      if (chunkBytes.length > 8 * 1024 * 1024) {
+        return json_({ ok: false, error: 'chunk_exceeds_download_limit' });
+      }
+
+      return json_({
+        ok: true,
+        part: requestedPart,
+        sizeBytes: chunkBytes.length,
+        sha256: descriptor.sha256,
+        data: Utilities.base64Encode(chunkBytes)
+      });
+    }
+
     return json_({ ok: false, error: 'unsupported_payload_type' });
   } catch (err) {
     // Do not log request bodies, tokens, or file contents.
@@ -173,4 +237,26 @@ function constantTimeEqual_(a, b) {
 function json_(value) {
   return ContentService.createTextOutput(JSON.stringify(value))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function validManifest_(manifest, expectedRunId) {
+  if (!manifest || manifest.runId !== expectedRunId ||
+      !Number.isInteger(manifest.totalParts) ||
+      manifest.totalParts < 1 || manifest.totalParts > 100 ||
+      !/^[a-f0-9]{64}$/.test(String(manifest.archiveSha256 || '')) ||
+      !Array.isArray(manifest.parts) ||
+      manifest.parts.length !== manifest.totalParts ||
+      !Number.isSafeInteger(manifest.totalBytes) || manifest.totalBytes < 1) {
+    return false;
+  }
+  var sum = 0;
+  for (var i = 0; i < manifest.parts.length; i++) {
+    var part = manifest.parts[i];
+    if (!part || part.part !== i + 1 ||
+        !Number.isSafeInteger(part.sizeBytes) || part.sizeBytes < 1 ||
+        part.sizeBytes > 8 * 1024 * 1024 ||
+        !/^[a-f0-9]{64}$/.test(String(part.sha256 || ''))) return false;
+    sum += part.sizeBytes;
+  }
+  return sum === manifest.totalBytes;
 }
