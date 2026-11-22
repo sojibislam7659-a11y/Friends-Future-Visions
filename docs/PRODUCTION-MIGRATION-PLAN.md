@@ -225,12 +225,12 @@ These files are staged only on the release branch. None has been applied to Deve
 
 ## Current validation status
 
-- GitHub Actions Release static checks pass on commit `019dc6f31688c2499f347c9a7312ede5089d942b` (run `44987340341`).
+- GitHub Actions Release static checks pass on commit `afeada4e75c30ad40ec77afee7101803f3a244d8` (run `44987415436`).
 - PostgreSQL grammar parser passed 68 standalone migration files and 5 verification files.
 - The enhanced CI parsed 106 PL/pgSQL function and DO-block bodies, rather than treating dollar-quoted bodies as opaque strings.
 - Deno type-checking passed for all four Release Edge Functions and the preserved Production-only `google-sheets-sync` snapshot. Cloudflare `wrangler deploy --dry-run` also passed, validating the Worker package without deploying it.
 - The Edge Function baseline check passed: `send-push`, `review-member-signup`, and `create-member-login` are intentionally different from the captured Production source and require rollout after schema migration; `invite-member` is already identical.
-- Release browser QA passed 6 Chromium tests across Desktop Chrome and Pixel 7 mobile viewports (run `44987340352`), including member login, dashboard access, unauthenticated redirect, member read-only DATA matrix checks, mobile navigation, no horizontal page overflow on the DATA page, and the right-to-left notice ticker animation. The test frontend was served locally and connected to Development Supabase only.
+- Release browser QA passed 6 Chromium tests across Desktop Chrome and Pixel 7 mobile viewports (run `44987415433`), including member login, dashboard access, unauthenticated redirect, member read-only DATA matrix checks, mobile navigation, no horizontal page overflow on the DATA page, and the right-to-left notice ticker animation. The test frontend was served locally and connected to Development Supabase only.
 - The three Production-only read-only verification scripts are `supabase/verification/verify_production_portal_parity.sql`, `supabase/verification/verify_production_storage_policy_parity.sql`, and `supabase/verification/verify_production_immutable_ledger.sql`; they are intended for an isolated Production restore rehearsal after applying their respective migrations.
 - One historical file, `20261119190618_use_invoker_for_financial_summary_20261120.sql`, remains explicitly excluded because it is a non-standalone PL/pgSQL body fragment rather than executable migration SQL; it was left unchanged.
 - SQL parsing and Deno type-checking do not execute migrations or replace real Super Admin MFA/JWT tests, live push delivery with an enrolled device, and restore-rehearsal acceptance tests.
