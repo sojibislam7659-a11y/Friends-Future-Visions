@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify staged Edge Function sources match the captured live Production sources."""
+"""Check captured Production Edge Function baselines against the Release sources."""
 
 from hashlib import sha256
 from pathlib import Path
@@ -7,24 +7,40 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 SNAPSHOT = ROOT / "backup" / "production-edge-functions" / "2026-11-22"
-FUNCTIONS = ("send-push", "review-member-signup", "invite-member", "create-member-login")
+# The current live Production snapshots were captured before the pending
+# schema-dependent rollout. Only invite-member is already the same retired 410
+# implementation; the other three intentionally need deployment after DB parity.
+EXPECTED_PRODUCTION_MATCH = {
+    "send-push": False,
+    "review-member-signup": False,
+    "invite-member": True,
+    "create-member-login": False,
+}
 
 
 def main() -> int:
     failures = []
-    for name in FUNCTIONS:
-        deployed = ROOT / "supabase" / "functions" / name / "index.ts"
+    for name, expected_match in EXPECTED_PRODUCTION_MATCH.items():
+        release = ROOT / "supabase" / "functions" / name / "index.ts"
         captured = SNAPSHOT / name / "index.ts"
-        if not deployed.is_file() or not captured.is_file():
-            failures.append(f"{name}: source or Production snapshot is missing")
+        if not release.is_file() or not captured.is_file():
+            failures.append(f"{name}: Release source or captured Production baseline is missing")
             continue
-        live_source = deployed.read_bytes()
-        captured_source = captured.read_bytes()
-        if live_source != captured_source:
-            failures.append(f"{name}: Release source differs from captured Production source")
+        release_bytes = release.read_bytes()
+        captured_bytes = captured.read_bytes()
+        matches = release_bytes == captured_bytes
+        if matches != expected_match:
+            failures.append(
+                f"{name}: expected Production baseline match={expected_match}, observed {matches}"
+            )
             continue
-        digest = sha256(live_source).hexdigest()
-        print(f"{name}: exact Production source match ({digest})")
+        release_hash = sha256(release_bytes).hexdigest()
+        captured_hash = sha256(captured_bytes).hexdigest()
+        state = "already source-matched" if matches else "requires post-migration rollout"
+        print(
+            f"{name}: {state}; Release sha256={release_hash}; "
+            f"captured Production sha256={captured_hash}"
+        )
 
     google_sync = SNAPSHOT / "google-sheets-sync" / "index.ts"
     if not google_sync.is_file():
@@ -36,7 +52,7 @@ def main() -> int:
         for failure in failures:
             print("FAIL: " + failure, file=sys.stderr)
         return 1
-    print("Edge Function source parity checks passed.")
+    print("Production Edge Function baseline checks passed.")
     return 0
 
 
