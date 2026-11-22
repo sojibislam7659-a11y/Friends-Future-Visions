@@ -18,6 +18,9 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
 
   await expect(page).toHaveURL(/dashboard(?:\.html)?(?:$|[?#])/, { timeout: 30000 });
   await expect(page.locator("body")).toHaveAttribute("data-page", "dashboard");
+  if ((page.viewportSize()?.width || 9999) <= 600) {
+    await expect(page.locator(".mobile-bottom-nav")).toBeVisible();
+  }
   await expect(page.locator("#app")).toContainText("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ", { timeout: 30000 });
   await expect(page.locator("#app")).not.toContainText("প্রবেশ যাচাই করা যায়নি");
 
@@ -26,7 +29,11 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   await expect(page.locator("#publicData")).toContainText("Member Contribution Matrix", { timeout: 30000 });
   await expect(page.locator(".matrix-amount").first()).toBeDisabled();
   await expect(page.locator(".matrix-save-actions")).toHaveCount(0);
-  await page.screenshot({ path: "test-results/member-data-matrix.png", fullPage: true });
+  if ((page.viewportSize()?.width || 9999) <= 600) {
+    await expect(page.locator(".public-mobile-nav")).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+  }
+  await page.screenshot({ path: `test-results/member-data-matrix-${page.viewportSize()?.width || "unknown"}.png`, fullPage: true });
 
-  await page.screenshot({ path: "test-results/member-dashboard.png", fullPage: true });
+  await page.screenshot({ path: `test-results/member-dashboard-${page.viewportSize()?.width || "unknown"}.png`, fullPage: true });
 });
