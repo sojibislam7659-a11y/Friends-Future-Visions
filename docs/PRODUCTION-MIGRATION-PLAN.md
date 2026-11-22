@@ -1,6 +1,6 @@
 # Production Migration Plan — Friends Future Vision Forever
 
-Date: 2026-11-22
+Date: 2026-11-23
 Target: Production Supabase project only (`ugtzmtmsfaajclftfeuz`)
 Source of intended application behaviour: Development (`tvdxbyzvkjiebwslmnvj`)
 
@@ -59,7 +59,7 @@ Production also has `pg_net` installed in `public`. Moving it requires checking 
 
 Before any Production write:
 
-1. Run the staged encrypted backup workflow only after the owner updates the Apps Script receiver to version 2 and configures its GitHub Actions secrets. The workflow uses PostgreSQL 17 `pg_dump` custom format for `public`/`private`, plus supported Auth and Storage API exports.
+1. **Completed 2026-11-22:** The encrypted Production backup workflow ran successfully on `main` (GitHub run `45054000337`; backup run ID `ffv_backup_45054000337_1`). Apps Script receiver version 3 was live; all five required GitHub Actions secrets and the Production target validated. The workflow exported PostgreSQL 17 custom-format data, Auth metadata, every Storage object byte, non-secret configuration inventory, and Production Edge Function snapshots; it encrypted and verified the archive, uploaded the encrypted chunk and manifest to Drive, and cleaned its temporary runner workspace. The isolated restore rehearsal is still pending.
 2. Verify file integrity and inspect archive/SQL contents.
 3. Export Auth users and related Auth rows/configuration. Do not assume a database-only dump reproduces all hosted Auth provider settings or signing secrets.
 4. Download the bytes of every Storage object, not just `storage.objects` metadata; record bucket/object metadata and verify object checksums.
@@ -72,7 +72,12 @@ A schema-only backup, old PC dump, or Git branch is not a complete Production ba
 
 A separate MFA bootstrap branch was created from the untouched Production `main` base: `release/ffv-mfa-bootstrap-20261122` (draft PR #10). It adds only the login MFA enrollment/challenge UI and a fallback for the not-yet-added `profiles.must_change_password` column. Its CI passed (`44951016852`). It is not merged or deployed. After backup/restore passes, this login-only branch must be deployed first so the existing Production Super Admin can enroll TOTP; only then can the AAL2-gated schema migration pass.
 
-The backup receiver code and encrypted workflow are now staged, but no archive has been created or uploaded. The Apps Script deployment still reports version 1 until the owner updates it to repository version 2. The release-branch trigger watches only `backup/trigger-backup-workflow.txt`; that marker file does not exist yet, so no backup run is triggered. The first run must be `smoke_test` (no Supabase connection); only after it passes and the owner explicitly approves should the marker be changed to `production`. The monthly schedule becomes active only after the workflow is merged to the default branch, which must wait until the restore gate is passed.
+The encrypted Production backup is already stored in Google Drive. Its manifest is
+`FFV_ffv_backup_45054000337_1_manifest.json`. The deployed Apps Script receiver is version 3, and the
+successful backup run confirmed all required repository secrets are configured. The monthly backup
+workflow is on `main` and scheduled for 03:00 UTC on the first day of each month (09:00 Bangladesh
+time). The remaining Phase 0 gate is the manual isolated restore test; no Production migration or
+deployment is authorized by a successful backup alone.
 
 ## Phase 1 — Additive configuration and audit capabilities
 
@@ -256,4 +261,4 @@ These files are staged only on the release branch. None has been applied to Deve
 
 ## Current release blocker
 
-The required full backup, restore rehearsal, and owner-controlled Google Drive authorization are not available in the current session. Therefore no Production migration or deployment can be responsibly marked ready or executed yet.
+The encrypted Production backup and owner-controlled Google Drive authorization are now verified. The isolated restore rehearsal remains pending, and the Production Super Admin currently has zero verified MFA factors. Therefore no Production migration or deployment can be responsibly marked ready or executed yet.
