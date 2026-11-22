@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Parse Supabase migrations and PL/pgSQL function bodies."""
+"""Parse Supabase migrations, PL/pgSQL functions, and DO blocks."""
 
 from pathlib import Path
 import re
@@ -12,9 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS = ROOT / "supabase" / "migrations"
 VERIFICATION = ROOT / "supabase" / "verification"
 
-# Historical applied file is a body fragment rather than standalone SQL.
-DO_BLOCK = re.compile(r"(?is)^\\s*DO\\s+(\\$[A-Za-z_0-9]*\\$)([\\s\\S]*?)\\1\\s*;?\\s*$")
+DO_BLOCK = re.compile(r"(?is)^\s*DO\s+(\$[A-Za-z_0-9]*\$)([\s\S]*?)\1\s*;?\s*$")
 
+# Historical applied file is a body fragment rather than standalone SQL.
 KNOWN_NON_STANDALONE = {
     "20261119190618_use_invoker_for_financial_summary_20261120.sql",
 }
@@ -70,7 +70,7 @@ def main() -> int:
         f"PostgreSQL grammar check passed for {migration_count} standalone "
         f"migration files and {verification_count} verification files."
     )
-    print(f"PL/pgSQL body parser passed for {plpgsql_checked} function definitions.")
+    print(f"PL/pgSQL body parser passed for {plpgsql_checked} function and DO-block definitions.")
     if skipped:
         print("Explicitly skipped historical non-standalone fragments: " + ", ".join(skipped))
     return 0
