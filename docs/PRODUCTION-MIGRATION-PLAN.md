@@ -96,6 +96,17 @@ The five Production Storage buckets already match Development exactly: all remai
 
 The staged migration `supabase/migrations/20261122115000_align_storage_policy_parity.sql` changes only these two policy definitions. It checks all five bucket configurations first and does not move, overwrite, or delete any Storage objects. The two existing Production objects remain untouched. Verification is in `supabase/verification/verify_production_storage_policy_parity.sql`.
 
+## Phase 1C — Remaining public RLS policy parity
+
+The shared-public-policy comparison found four remaining groups that differ from Development: notifications, committee documents, payment methods, and payment submissions. The staged migration `supabase/migrations/20261122114500_align_public_policy_parity.sql`:
+
+- Replaces Production's broad Super Admin `ALL` policies on committee documents and payment methods with separate insert/update/delete policies.
+- Replaces the broad payment-submission policy with the Development update/delete policies; member-owned submission creation remains unchanged.
+- Adds the Super Admin read branch to notifications while requiring `private.has_portal_access()` for member reads and own-row updates.
+- Removes the old Production-only policy names and preserves all table data and existing member submission rules.
+
+The migration is policy-only and depends on the authorization helpers created in Phase 1. The full public-policy target is 59 policies, matching the current Development snapshot; the combined read-only checks are in `verify_production_portal_parity.sql`.
+
 ## Phase 2 — Push delivery runtime verification
 
 The schema migration in Phase 1 already adds the subscription constraints, five-device cap, `notification_push_deliveries` table, and service-role-only `claim_notification_push_delivery(uuid,uuid)` RPC. Read-only comparison confirms the Production and Development push cron jobs are both active, the `get_push_config()` function definitions match, and the four required Vault secret names are present in both projects.
@@ -188,8 +199,9 @@ Read-only operational comparison found all three cron jobs active in both projec
 
 1. `20261122103000_harden_production_security_definer_wrappers.sql`
 2. `20261122113000_add_production_portal_audit_and_password_parity.sql` (blocked until all Production Super Admin accounts have verified MFA)
-3. `20261122115000_align_storage_policy_parity.sql` (policy metadata only; preserve all existing Storage objects)
-4. `20261122123000_add_production_immutable_financial_ledger.sql` (blocked if any Production financial transaction or audit row appears before release)
+3. `20261122114500_align_public_policy_parity.sql` (RLS policy metadata only; preserve all existing rows)
+4. `20261122115000_align_storage_policy_parity.sql` (Storage policy metadata only; preserve all existing objects)
+5. `20261122123000_add_production_immutable_financial_ledger.sql` (blocked if any Production financial transaction or audit row appears before release)
 
 These files are staged only on the release branch. None has been applied to Development or Production.
 
