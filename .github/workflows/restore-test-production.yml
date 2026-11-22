@@ -516,8 +516,31 @@ jobs:
           SQL
           member_id=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT id FROM public.profiles WHERE role='member' ORDER BY id LIMIT 1")
           super_id=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT id FROM public.profiles WHERE role='super_admin' ORDER BY id LIMIT 1")
-          member_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$member_id','aal','aal1')::text,true); SELECT set_config('request.jwt.claim.sub','$member_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | tail -n 1)
+          member_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$member_id','aal','aal1')::text,true); SELECT set_config('request.jwt.claim.sub','$member_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | grep -E '^[0-9]+,[0-9]+
           super_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$super_id','aal','aal2')::text,true); SELECT set_config('request.jwt.claim.sub','$super_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | tail -n 1)
+          [[ "$member_counts" == "1,1" ]] || { echo "::error::Member RLS isolation failed: $member_counts"; exit 1; }
+          [[ "$super_counts" == "8,7" ]] || { echo "::error::Super Admin RLS visibility failed: $super_counts"; exit 1; }
+          echo "Post-migration RLS counts: Member=$member_counts; Super Admin=$super_counts."
+
+      - name: Remove all temporary plaintext, encrypted files and database container
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f ffv-restore-postgres >/dev/null 2>&1 || true
+          rm -rf "$RUNNER_TEMP/ffv-restore-test"
+ | tail -n 1)
+          super_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims',json_build_object('sub','$super_id','aal','aal2')::text,true); SELECT set_config('request.jwt.claim.sub','$super_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | grep -E '^[0-9]+,[0-9]+
+          [[ "$member_counts" == "1,1" ]] || { echo "::error::Member RLS isolation failed: $member_counts"; exit 1; }
+          [[ "$super_counts" == "8,7" ]] || { echo "::error::Super Admin RLS visibility failed: $super_counts"; exit 1; }
+          echo "Post-migration RLS counts: Member=$member_counts; Super Admin=$super_counts."
+
+      - name: Remove all temporary plaintext, encrypted files and database container
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f ffv-restore-postgres >/dev/null 2>&1 || true
+          rm -rf "$RUNNER_TEMP/ffv-restore-test"
+ | tail -n 1)
           [[ "$member_counts" == "1,1" ]] || { echo "::error::Member RLS isolation failed: $member_counts"; exit 1; }
           [[ "$super_counts" == "8,7" ]] || { echo "::error::Super Admin RLS visibility failed: $super_counts"; exit 1; }
           echo "Post-migration RLS counts: Member=$member_counts; Super Admin=$super_counts."
