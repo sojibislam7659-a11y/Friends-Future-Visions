@@ -210,6 +210,7 @@ Read-only operational comparison found all three cron jobs active in both projec
 6. `20261122124500_revoke_legacy_anon_table_grants.sql` (retain only anonymous committee-rules SELECT)
 7. `20261122125000_align_public_table_grants.sql` (remove non-app privileges and route rate changes through the RPC)
 8. `20261122125500_align_public_default_privileges.sql` (prevent future anon grants on public objects)
+9. `20261123100000_public_aggregate_data.sql` (expose aggregate-only public DATA summary; never member-level records)
 
 Most staged migrations remain unapplied. The anonymous portion of Phase 1D was applied directly on 2026-11-23 (all `anon` public-table/sequence grants revoked except `committee_rules SELECT`); the role allow-list helper changes and aggregate-only public summary RPC were also applied. The corresponding release migrations record these states idempotently. No portal/password parity migration, storage/public policy parity migration, immutable ledger migration, authenticated grant cleanup, or default-ACL migration has been applied.
 
