@@ -15,7 +15,7 @@ test("Login screen loads and exposes required controls", async ({ page }) => {
   await expect(page.locator("#forgotPasswordLink")).toBeVisible();
   expect(pageErrors, "Login page JavaScript errors detected").toEqual([]);
 
-  await page.screenshot({ path: "test-results/development-login.png", fullPage: true });
+  await page.screenshot({ path: `test-results/login-${page.viewportSize()?.width || "unknown"}.png`, fullPage: true });
 });
 
 test("Unauthenticated visitor cannot enter the authenticated dashboard", async ({ page }) => {
