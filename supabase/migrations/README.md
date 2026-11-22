@@ -6,9 +6,7 @@ migration history only.
 
 ## Production-specific staged migrations
 
-The following eight files were authored specifically for the Production schema. **None is applied**
-to either Supabase project as of 2026-11-23. Apply them only in this exact order after a verified
-backup and isolated restore rehearsal:
+The following nine files are staged for the Production schema. The first eight are Production-specific parity/ledger migrations; the ninth adds the privacy-safe public DATA summary. **None of these migration files has been applied** to either Supabase project as of 2026-11-23. Apply them only in this exact order after a verified backup, isolated restore rehearsal, Super Admin TOTP enrollment, and explicit owner approval:
 
 1. `20261122103000_harden_production_security_definer_wrappers.sql`
 2. `20261122113000_add_production_portal_audit_and_password_parity.sql`
@@ -18,6 +16,7 @@ backup and isolated restore rehearsal:
 6. `20261122124500_revoke_legacy_anon_table_grants.sql`
 7. `20261122125000_align_public_table_grants.sql`
 8. `20261122125500_align_public_default_privileges.sql`
+9. `20261123100000_public_aggregate_data.sql`
 
 Do not apply these files to Development. Do not batch-apply Development migrations to Production:
 the two projects have unrelated migration version histories. Migration 2 intentionally blocks until
@@ -25,9 +24,10 @@ every Production Super Admin has a verified MFA factor. Migration 4 checks all f
 bucket configurations. Migration 5 refuses to run if Production financial transactions or audit
 rows are non-zero. The remaining migrations narrow public table grants and default privileges.
 
-The Production backup was successfully uploaded to Google Drive by workflow run
-`45054000337` (backup run ID `ffv_backup_45054000337_1`). The isolated restore rehearsal is still
-pending; no Production migration has been applied.
+The latest encrypted Production backup was uploaded to Google Drive by workflow run
+`45070634542` (backup run ID `ffv_backup_45070634542_1`). The isolated PostgreSQL 17 restore rehearsal passed in workflow run `45070745560`. No Production migration file has been applied.
+
+Limited SQL hardening was applied directly on 2026-11-23 and is included in that backup/restore point: `anon` privileges were revoked from public tables/sequences except `committee_rules SELECT`; `private.has_portal_access()` and `public.get_financial_summary()` now accept only `member` and `super_admin`; and an aggregate-only `public.get_public_financial_summary()` RPC was installed. These direct changes did not modify member/financial rows. The ninth migration records the intended post-ledger implementation and private helper.
 
 ## Development migration workflow
 
