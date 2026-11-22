@@ -1,15 +1,15 @@
-# Production Edge Function inventory — 2026-11-22
+# Production Edge Function inventory — 2026-11-23
 
 Read-only inventory of the live Production Supabase project `ugtzmtmsfaajclftfeuz`.
 No function was deployed or modified during this inventory.
 
 | Function | Live version | JWT verification | Release source |
 |---|---:|---|---|
-| `send-push` | 3 | Off; function performs its own request checks | Development source staged; rollout waits for schema/secret gate |
-| `review-member-signup` | 4 | On | Development source staged |
-| `invite-member` | 5 | On | Development source staged; Development implementation is a retired 410 response |
-| `create-member-login` | 3 | On | Development source staged |
-| `google-sheets-sync` | 3 | Off; checks `x-oikko-secret` | Production-only source snapshot preserved at `supabase/functions/google-sheets-sync/index.ts` |
+| `send-push` | 4 | Off; checks the private cron token before processing | Release source staged; rollout waits for schema/secret gate |
+| `review-member-signup` | 5 | On | Release source staged; rollout waits for MFA/password schema parity |
+| `invite-member` | 6 | On | Production-only legacy endpoint; keep unchanged unless separately approved |
+| `create-member-login` | 4 | On | Release source staged; rollout waits for MFA/password schema parity |
+| `google-sheets-sync` | 4 | Off; checks `x-oikko-secret` | Production-only source; preserve and do not replace with the retired Development handler |
 
 ## Required secret names (values are not exported)
 
