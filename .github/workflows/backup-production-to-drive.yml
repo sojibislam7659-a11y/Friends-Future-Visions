@@ -48,7 +48,7 @@ jobs:
           [[ -n "$FFV_PROD_DATABASE_URL" ]] || missing+=("FFV_PROD_DATABASE_URL")
           [[ -n "$FFV_PROD_SERVICE_ROLE_KEY" ]] || missing+=("FFV_PROD_SERVICE_ROLE_KEY")
           if (( ${#missing[@]} )); then
-            printf '::error::Missing repository secrets: %s\\n' "${missing[*]}"
+            printf '::error::Missing repository secrets: %s\n' "${missing[*]}"
             exit 1
           fi
           [[ "$FFV_DRIVE_RECEIVER_URL" == https://script.google.com/macros/s/*/exec ]] || {
@@ -79,7 +79,7 @@ jobs:
               -e DATABASE_URL="$FFV_PROD_DATABASE_URL" \
               -v "$GITHUB_WORKSPACE/backup-output/project:/backup" \
               postgres:17-alpine \
-              sh -ceu 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --schema=public --schema=private --file=/backup/production-public-private.dump' \
+              sh -ceu 'pg_dump "$DATABASE_URL" --format=custom --no-owner --schema=public --schema=private --file=/backup/production-public-private.dump' \
               && docker run --rm -v "$GITHUB_WORKSPACE/backup-output/project:/backup" postgres:17-alpine \
               pg_restore --list /backup/production-public-private.dump > backup-output/project/database-toc.txt \
               && test -s backup-output/project/production-public-private.dump \
@@ -106,7 +106,7 @@ jobs:
           done
           [[ "$success" == 1 ]] || { echo "::error::Supabase metadata/Storage export failed after three attempts."; exit 1; }
 
-      - name: Export non-secret database configuration inventory
+      - name: Export non-secret database configuration and Storage security inventory
         shell: bash
         run: |
           set -euo pipefail
@@ -119,12 +119,26 @@ jobs:
             'migration_versions', (select coalesce(jsonb_agg(version order by version),'[]'::jsonb) from supabase_migrations.schema_migrations),
             'extensions', (select coalesce(jsonb_agg(jsonb_build_object(
               'name',extname,'version',extversion
-            ) order by extname),'[]'::jsonb) from pg_extension)
+            ) order by extname),'[]'::jsonb) from pg_extension),
+            'schema_inventory', (select coalesce(jsonb_agg(nspname order by nspname),'[]'::jsonb)
+              from pg_namespace
+              where nspname not in ('pg_catalog','information_schema','pg_toast')
+                and nspname not like 'pg_temp_%' and nspname not like 'pg_toast_temp_%'),
+            'storage_policies', (select coalesce(jsonb_agg(jsonb_build_object(
+              'table',tablename,'policy',policyname,'permissive',permissive,
+              'roles',roles,'command',cmd,'using',qual,'with_check',with_check
+            ) order by tablename,policyname),'[]'::jsonb)
+              from pg_policies where schemaname='storage'),
+            'storage_table_grants', (select coalesce(jsonb_agg(jsonb_build_object(
+              'grantee',grantee,'table',table_name,'privilege',privilege_type,
+              'grantable',is_grantable
+            ) order by table_name,grantee,privilege_type),'[]'::jsonb)
+              from information_schema.role_table_grants where table_schema='storage')
           );
           SQL
           docker run --rm -e DATABASE_URL="$FFV_PROD_DATABASE_URL" \
             -v "$GITHUB_WORKSPACE/backup-output/project:/backup" postgres:17-alpine \
-            sh -ceu 'psql "$DATABASE_URL" -X -A -t -f /backup/config-inventory.sql > /backup/config-inventory.json'
+            sh -ceu 'psql "$DATABASE_URL" -X -A -t -v ON_ERROR_STOP=1 -f /backup/config-inventory.sql > /backup/config-inventory.json'
           rm -f backup-output/project/config-inventory.sql
           test -s backup-output/project/config-inventory.json
 
