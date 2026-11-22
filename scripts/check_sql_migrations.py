@@ -5,19 +5,12 @@ from pathlib import Path
 import re
 import sys
 
-from pglast import parse_plpgsql, parse_sql
+from pglast import parse_plpgsql, parse_sql, split
 
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATIONS = ROOT / "supabase" / "migrations"
 VERIFICATION = ROOT / "supabase" / "verification"
-
-# Match complete PL/pgSQL CREATE FUNCTION statements so the procedural body
-# is parsed separately; parse_sql() treats dollar-quoted bodies as opaque text.
-PLPGSQL_FUNCTION = re.compile(
-    r"(?is)\bCREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\b.*?"
-    r"\bLANGUAGE\s+plpgsql\b.*?AS\s+\$function\$.*?\$function\$;"
-)
 
 # Historical applied file is a body fragment rather than standalone SQL.
 KNOWN_NON_STANDALONE = {
@@ -44,16 +37,13 @@ def main() -> int:
         try:
             source = path.read_text(encoding="utf-8")
             parse_sql(source)
-            matches = list(PLPGSQL_FUNCTION.finditer(source))
-            declared = len(re.findall(r"(?is)\bLANGUAGE\s+plpgsql\b", source))
-            if declared != len(matches):
-                raise ValueError(
-                    f"Found {declared} PL/pgSQL declarations but extracted "
-                    f"{len(matches)} complete function definitions"
-                )
-            for match in matches:
-                parse_plpgsql(match.group(0))
-                plpgsql_checked += 1
+            for statement in split(source):
+                if (
+                    re.search(r"(?is)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\b", statement)
+                    and re.search(r"(?is)\bLANGUAGE\s+plpgsql\b", statement)
+                ):
+                    parse_plpgsql(statement)
+                    plpgsql_checked += 1
         except Exception as exc:
             failed.append((path.relative_to(ROOT), str(exc)))
 
