@@ -134,7 +134,7 @@ begin
   ) then
     raise exception 'Push provider constraint does not match the Development Mozilla endpoint';
   end if;
-end
+end;
 $verify$;
 
 select 'portal, audit, password rotation, push delivery and MFA parity verified' as verification_result;
