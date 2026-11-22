@@ -155,12 +155,22 @@ document.getElementById("resetForm").addEventListener("submit",async event=>{
  setTimeout(()=>location.replace("login.html"),1200);
 });
 
+async function getLoginProfile(userId){
+ const full=await supabase.from("profiles").select("role,must_change_password").eq("id",userId).maybeSingle();
+ if(!full.error)return full;
+ // Bootstrap compatibility: Production adds must_change_password only after the
+ // Super Admin has enrolled MFA. Until that additive migration, read the role alone.
+ const fallback=await supabase.from("profiles").select("role").eq("id",userId).maybeSingle();
+ if(!fallback.error)return {data:{...fallback.data,must_change_password:false},error:null};
+ return full;
+}
+
 const isPasswordRecovery=location.hash.includes('type=recovery');
 if(!supabaseReady)showKey("service");
 else{
  const {data}=await supabase.auth.getSession();
  if(data.session){
-  const {data:profile}=await supabase.from("profiles").select("role,must_change_password").eq("id",data.session.user.id).maybeSingle();
+  const {data:profile}=await getLoginProfile(data.session.user.id);
   if(isPasswordRecovery){ /* Keep the recovery session active for updateUser(). */ }
   else if(profile?.role==="super_admin")await startSuperAdminMfa();
   else if(profile?.role==="member"&&profile.must_change_password)showMandatoryPasswordChange();
@@ -217,7 +227,7 @@ form.addEventListener("submit",async e=>{
   else showKey("loginError");
  }
  else{
-  const {data:p,error:pe}=await supabase.from("profiles").select("role,must_change_password").eq("id",data.user.id).maybeSingle();
+  const {data:p,error:pe}=await getLoginProfile(data.user.id);
   if(!pe&&p?.role==="super_admin"){await startSuperAdminMfa();return}
   if(!pe&&p?.role==="member"&&p.must_change_password){showMandatoryPasswordChange();return}
   if(!pe&&p?.role==="pending"){await supabase.auth.signOut();showKey("pendingVerified")}
