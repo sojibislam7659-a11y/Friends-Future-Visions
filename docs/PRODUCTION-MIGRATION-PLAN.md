@@ -187,13 +187,15 @@ These files are staged only on the release branch. None has been applied to Deve
 
 ## Current validation status
 
-- GitHub Actions Release static checks pass on commit `5ee2af47f1b826d015862cb0af2f0c83c7251cff` (run `44986204157`).
+- GitHub Actions Release static checks pass on commit `064a2885411b94baa7fd6b9a14e7cde99f182162` (run `44986592226`).
 - PostgreSQL grammar parser passed 63 standalone migration files and 4 verification files.
-- The enhanced CI also parses 90 PL/pgSQL function bodies, rather than treating dollar-quoted bodies as opaque strings.
+- The enhanced CI parses 90 PL/pgSQL function bodies, rather than treating dollar-quoted bodies as opaque strings.
+- Deno type-checking passed for all four Release Edge Functions and the preserved Production-only `google-sheets-sync` snapshot.
+- The Edge Function baseline check passed: `send-push`, `review-member-signup`, and `create-member-login` are intentionally different from the captured Production source and require rollout after schema migration; `invite-member` is already identical.
+- Release browser QA passed 6 Chromium tests across Desktop Chrome and Pixel 7 mobile viewports (run `44986442718`), including member login, dashboard access, unauthenticated redirect, and member read-only DATA matrix checks. The test frontend was served locally and connected to Development Supabase only.
 - The two Production-only read-only verification scripts are `supabase/verification/verify_production_portal_parity.sql` and `supabase/verification/verify_production_immutable_ledger.sql`; they are intended for an isolated Production restore rehearsal after applying their respective migrations.
 - One historical file, `20261119190618_use_invoker_for_financial_summary_20261120.sql`, remains explicitly excluded because it is a non-standalone PL/pgSQL body fragment rather than executable migration SQL; it was left unchanged.
-- A release browser QA workflow is staged to run the Release frontend locally against the Development Supabase project and the existing Development test account. It does not connect to Production.
-- SQL parsing does not execute function bodies against a live database or replace real member/Super Admin JWT tests and restore-rehearsal acceptance tests.
+- SQL parsing and Deno type-checking do not execute migrations or replace real Super Admin MFA/JWT tests, live push delivery with an enrolled device, and restore-rehearsal acceptance tests.
 
 ## Required acceptance tests
 
