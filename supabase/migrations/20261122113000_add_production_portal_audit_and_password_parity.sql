@@ -60,7 +60,7 @@ begin
   if not exists (select 1 from pg_proc where oid=to_regprocedure('private.has_portal_access()')) then
     raise exception 'Preflight failed: private.has_portal_access() is missing';
   end if;
-end
+end;
 $preflight$;
 
 -- Match Development's future-member default without rewriting existing rows.
@@ -527,7 +527,7 @@ begin
   ) then
     raise exception 'Preflight failed: Production contains invalid push subscription rows';
   end if;
-end
+end;
 $push_preflight$;
 
 alter table public.push_subscriptions
