@@ -6,7 +6,7 @@ Source of intended application behaviour: Development (`tvdxbyzvkjiebwslmnvj`)
 
 ## Release status
 
-**BACKUP AND RESTORE GATE PASSED — FULL PRODUCTION RELEASE STILL BLOCKED ON SUPER ADMIN MFA ENROLLMENT AND FINAL OWNER ACCEPTANCE.**
+**BACKUP, RESTORE, AND ALL-NINE-MIGRATION REHEARSAL PASSED — FULL PRODUCTION RELEASE STILL BLOCKED ON SUPER ADMIN MFA ENROLLMENT AND FINAL OWNER ACCEPTANCE.**
 
 A fresh encrypted Production backup was uploaded to Google Drive and successfully restored into an isolated temporary PostgreSQL 17 instance. The release login bootstrap PR #10 has been merged to `main`; Cloudflare Worker deployment is not independently confirmed through the available control connection. The Super Admin still has zero verified TOTP factors.
 
@@ -15,7 +15,7 @@ Limited, reversible Production security hardening was applied on 2026-11-23 and 
 - `private.has_portal_access()` and `public.get_financial_summary()` now allow only `member` and `super_admin`, removing the legacy `admin` role.
 - An aggregate-only, read-only `public.get_public_financial_summary()` RPC was added for the public DATA page. It exposes no member identifiers, personal dues, or individual contribution rows.
 
-No member rows, financial transaction rows, Auth users, Storage objects, or passwords were changed. The full portal/ledger migrations, Edge Function rollout, and full application release remain staged and must not be executed until the Super Admin enrolls TOTP and the owner confirms the production release window.
+No member rows, financial transaction rows, Auth users, Storage objects, or passwords were changed. The nine staged Production migrations were subsequently applied in order to a second isolated restore rehearsal (run `45072671436`) and all final schema, ACL, RLS, Storage-policy, and public aggregate checks passed. A synthetic verified TOTP factor and AAL2 JWT were used only inside that temporary database to exercise the Super Admin migration gates; no Production MFA factor was created. The full portal/ledger migrations, Edge Function rollout, and full application release remain staged and must not be executed in Production until the real Super Admin enrolls TOTP and the owner confirms the production release window.
 
 ## Latest Production preflight observations
 
@@ -168,7 +168,7 @@ The 2026-11-23 limited pre-release hardening updated:
 
 Both functions still use SECURITY DEFINER in Production. The four original wrappers remain SECURITY DEFINER until the staged migration is applied and verified. The new `public.get_public_financial_summary()` is a separate, intentionally anonymous-callable SECURITY DEFINER wrapper with an empty search_path; it returns aggregate-only fields and delegates to a private helper. Its advisor warning is expected and must be documented, not blindly revoked.
 
-The staged migration still requires SQL parser/runtime validation plus real member/Super Admin JWT tests after the MFA and backup gates. Test member, Super Admin, unauthenticated, and anon contexts; confirm private helper grants and PostgREST resolution.
+The staged migration passed SQL runtime rehearsal against the restored Production snapshot. The temporary test seeded one synthetic verified TOTP factor for the Super Admin and tested AAL2 claims; this does not replace the real Production enrollment. The remaining live tests must use real member/Super Admin JWTs after MFA enrollment. Test member, Super Admin, unauthenticated, and anon contexts; confirm private helper grants and PostgREST resolution.
 
 ## Phase 5 — Edge Functions and application release
 
@@ -218,6 +218,7 @@ Most staged migrations remain unapplied. The anonymous portion of Phase 1D was a
 
 - Fresh encrypted Drive backup run `45070634542` succeeded; manifest ID is `ffv_backup_45070634542_1`.
 - Isolated restore rehearsal run `45070745560` succeeded, including PostgreSQL 17 restore and catalog integrity checks.
+- All nine staged Production migrations applied in order on a second isolated restored snapshot and final verification passed in run `45072671436`. Temporary-only synthetic MFA/AAL2 fixtures were used; no Production MFA or migration changes were made.
 - Production anonymous ACL hardening was applied and verified: only `committee_rules SELECT` remains for `anon` in schema `public`.
 - Production role helper allow-list now contains only `member` and `super_admin`; the full SECURITY DEFINER migration remains pending.
 - Development browser QA passed after the public DATA change (run `45070818077`).
@@ -254,6 +255,6 @@ The encrypted Drive backup and isolated PostgreSQL 17 restore rehearsal are comp
 1. Verify that the merged MFA bootstrap is live on the Production Worker, then have the existing Super Admin enroll and verify a TOTP factor. Current Production verified-factor count is zero.
 2. Obtain explicit owner acceptance before the coordinated Production schema/Edge Function/full Worker release.
 3. Complete member onboarding and finance setup: Production has 7 member rows (target 12), no financial transaction rows, no contribution-rate history, and no configured due rows. Five member records and the exact member contribution rates must be supplied/confirmed by the owner; do not assume all rates.
-4. Complete the ordered Production migrations, Edge Function rollout, and full release only after the above gates and post-migration acceptance tests pass.
+4. The nine-migration sequence has passed isolated rehearsal. Complete the ordered Production migrations, Edge Function rollout, and full release only after the real MFA factor is verified and post-migration live acceptance tests pass.
 
 The public Data experience is implemented as aggregate-only for anonymous visitors; the member-level contribution matrix remains behind authenticated access. No individual contribution or personal due data is exposed publicly.
