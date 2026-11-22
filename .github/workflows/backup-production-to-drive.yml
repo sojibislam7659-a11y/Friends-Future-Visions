@@ -1,6 +1,8 @@
 name: Monthly Encrypted Production Backup to Google Drive
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
     inputs:
       confirm_production_backup:
@@ -18,6 +20,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    name: Validate workflow and backup tooling
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout proposed workflow
+        uses: actions/checkout@v4
+      - name: Parse workflow YAML
+        run: ruby -e 'require "yaml"; YAML.parse_file(".github/workflows/backup-production-to-drive.yml")'
+      - name: Checkout audited Release backup source
+        uses: actions/checkout@v4
+        with:
+          ref: release/ffv-prod-parity-20261122
+          path: release-source
+      - name: Validate JavaScript, Python and Apps Script syntax
+        run: |
+          set -euo pipefail
+          node --check release-source/scripts/export_supabase_backup.mjs
+          python -m py_compile release-source/scripts/upload_encrypted_backup.py
+          cp release-source/backup/google-drive-receiver/Code.gs /tmp/ffv-drive-receiver.js
+          node --check /tmp/ffv-drive-receiver.js
+
   backup:
     name: Export, encrypt, verify and upload
     if: github.event_name == 'schedule' || inputs.confirm_production_backup == 'BACKUP'
