@@ -2,8 +2,8 @@ import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
 
 const baseURL = "https://development-friends-future-visions-dev.sojibislam7659.workers.dev";
-const localPublicData = readFileSync(new URL("../public/public-data.js", import.meta.url), "utf8");
-const localPublicNav = readFileSync(new URL("../public/public-nav.js", import.meta.url), "utf8");
+const localPublicData = readFileSync("public/public-data.js", "utf8");
+const localPublicNav = readFileSync("public/public-nav.js", "utf8");
 
 test("Development login screen loads and exposes required controls", async ({ page }) => {
   const pageErrors = [];
