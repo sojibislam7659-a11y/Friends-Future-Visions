@@ -47,6 +47,7 @@ jobs:
           for file in supabase/functions/*/index.ts; do
             deno check "$file"
           done
+          deno check backup/production-edge-functions/2026-11-22/google-sheets-sync/index.ts
       - name: Validate lightweight SVG brand asset
         run: |
           python -c "import xml.etree.ElementTree as ET; ET.parse('public/friends-future-vision-logo.svg')"
