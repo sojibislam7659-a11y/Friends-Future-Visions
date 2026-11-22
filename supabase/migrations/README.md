@@ -6,19 +6,28 @@ migration history only.
 
 ## Production-specific staged migrations
 
-The following three files were created for the Production schema and are **not applied** to either
-Supabase project:
+The following eight files were authored specifically for the Production schema. **None is applied**
+to either Supabase project as of 2026-11-23. Apply them only in this exact order after a verified
+backup and isolated restore rehearsal:
 
 1. `20261122103000_harden_production_security_definer_wrappers.sql`
 2. `20261122113000_add_production_portal_audit_and_password_parity.sql`
-3. `20261122123000_add_production_immutable_financial_ledger.sql`
+3. `20261122114500_align_public_policy_parity.sql`
+4. `20261122115000_align_storage_policy_parity.sql`
+5. `20261122123000_add_production_immutable_financial_ledger.sql`
+6. `20261122124500_revoke_legacy_anon_table_grants.sql`
+7. `20261122125000_align_public_table_grants.sql`
+8. `20261122125500_align_public_default_privileges.sql`
 
 Do not apply these files to Development. Do not batch-apply Development migrations to Production:
-the two projects have unrelated migration version histories. The three Production migrations must
-be reviewed and rehearsed, in order, against an isolated restore of Production after a verified
-full backup. The second migration intentionally blocks until all Production Super Admins have
-verified MFA. The third migration blocks if Production financial transactions or audit rows are
-non-zero.
+the two projects have unrelated migration version histories. Migration 2 intentionally blocks until
+every Production Super Admin has a verified MFA factor. Migration 4 checks all five private Storage
+bucket configurations. Migration 5 refuses to run if Production financial transactions or audit
+rows are non-zero. The remaining migrations narrow public table grants and default privileges.
+
+The Production backup was successfully uploaded to Google Drive by workflow run
+`45054000337` (backup run ID `ffv_backup_45054000337_1`). The isolated restore rehearsal is still
+pending; no Production migration has been applied.
 
 ## Development migration workflow
 
