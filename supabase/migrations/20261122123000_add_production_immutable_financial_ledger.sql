@@ -598,42 +598,7 @@ BEGIN
       CASE
         WHEN t.transaction_type='contribution'
           AND split_part(coalesce(t.reference_no,''),'|',1)='FFV_MATRIX'
-          AND split_part(coalesce(t.reference_no,''),'|',2) ~ '^[0-9]{4}-[0-9]{2}
-before update or delete on public.financial_transactions
-for each row execute function private.prevent_ledger_mutation();
-create trigger prevent_financial_posting_mutation
-before update or delete on public.financial_postings
-for each row execute function private.prevent_ledger_mutation();
-create constraint trigger validate_financial_transfer_group
-after insert on public.financial_transactions
-deferrable initially deferred
-for each row execute function private.validate_transfer_group();
-
-
-revoke all on function private.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) from public,anon;
-revoke all on function private.reverse_financial_posting(uuid,uuid,text) from public,anon;
-revoke all on function private.correct_financial_transactions(uuid,jsonb) from public,anon;
-revoke all on function private.review_payment_submission(uuid,boolean,text,text) from public,anon;
-grant execute on function private.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) to authenticated,service_role;
-grant execute on function private.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
-grant execute on function private.correct_financial_transactions(uuid,jsonb) to authenticated;
-grant execute on function private.review_payment_submission(uuid,boolean,text,text) to authenticated,service_role;
-
-revoke all on function public.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) from public,anon;
-revoke all on function public.reverse_financial_posting(uuid,uuid,text) from public,anon;
-revoke all on function public.correct_financial_transactions(uuid,jsonb) from public,anon;
-grant execute on function public.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) to authenticated,service_role;
-grant execute on function public.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
-grant execute on function public.correct_financial_transactions(uuid,jsonb) to authenticated;
-
--- Production-only legacy edit RPC bypasses the immutable posting workflow.
--- Keep its definition for rollback history, but remove all API execution grants.
-revoke all on function public.save_financial_transaction_edits(jsonb) from public,anon,authenticated,service_role;
-
-revoke all on function private.prevent_ledger_mutation() from public,anon,authenticated;
-revoke all on function private.validate_transfer_group() from public,anon,authenticated;
-commit;
-
+          AND split_part(coalesce(t.reference_no,''),'|',2) ~ '^[0-9]{4}-[0-9]{2}$'
         THEN to_date(split_part(t.reference_no,'|',2)||'-01','YYYY-MM-DD')
         ELSE date_trunc('month',t.transaction_date)::date
       END AS report_month
@@ -688,7 +653,8 @@ commit;
   )
   FROM totals t);
 END;
-$function$;
+$function$
+
 
 revoke all on function private.get_financial_summary_unchecked() from public,anon,authenticated,service_role;
 revoke all on function private.get_financial_summary() from public,anon,service_role;
@@ -909,38 +875,7 @@ BEGIN
   attributed AS (
     SELECT t.*,
       CASE
-        WHEN split_part(t.reference_no,'|',1)='FFV_MATRIX' AND split_part(t.reference_no,'|',2) ~ '^[0-9]{4}-[0-9]{2}
-before update or delete on public.financial_transactions
-for each row execute function private.prevent_ledger_mutation();
-create trigger prevent_financial_posting_mutation
-before update or delete on public.financial_postings
-for each row execute function private.prevent_ledger_mutation();
-create constraint trigger validate_financial_transfer_group
-after insert on public.financial_transactions
-deferrable initially deferred
-for each row execute function private.validate_transfer_group();
-
-
-revoke all on function private.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) from public,anon;
-revoke all on function private.reverse_financial_posting(uuid,uuid,text) from public,anon;
-revoke all on function private.correct_financial_transactions(uuid,jsonb) from public,anon;
-revoke all on function private.review_payment_submission(uuid,boolean,text,text) from public,anon;
-grant execute on function private.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) to authenticated,service_role;
-grant execute on function private.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
-grant execute on function private.correct_financial_transactions(uuid,jsonb) to authenticated;
-grant execute on function private.review_payment_submission(uuid,boolean,text,text) to authenticated,service_role;
-
-revoke all on function public.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) from public,anon;
-revoke all on function public.reverse_financial_posting(uuid,uuid,text) from public,anon;
-revoke all on function public.correct_financial_transactions(uuid,jsonb) from public,anon;
-grant execute on function public.post_financial_transaction(uuid,text,numeric,date,text,text,uuid,text,text,text,text,text) to authenticated,service_role;
-grant execute on function public.reverse_financial_posting(uuid,uuid,text) to authenticated,service_role;
-grant execute on function public.correct_financial_transactions(uuid,jsonb) to authenticated;
-
-revoke all on function private.prevent_ledger_mutation() from public,anon,authenticated;
-revoke all on function private.validate_transfer_group() from public,anon,authenticated;
-commit;
-
+        WHEN split_part(t.reference_no,'|',1)='FFV_MATRIX' AND split_part(t.reference_no,'|',2) ~ '^[0-9]{4}-[0-9]{2}$'
         THEN to_date(split_part(t.reference_no,'|',2)||'-01','YYYY-MM-DD')
         ELSE date_trunc('month',t.transaction_date)::date
       END AS contribution_month_key
@@ -1003,7 +938,9 @@ commit;
   LEFT JOIN configured cfg ON cfg.member_id=mg.id
   ORDER BY mg.member_no,mg.month_start;
 END;
-$function$;
+$function$
+
+
 CREATE OR REPLACE FUNCTION public.get_member_shared_financial_data_v2()
  RETURNS TABLE(member_id uuid, member_no text, full_name text, full_name_bn text, contribution_month date, amount numeric, paid_day integer, last_paid_at timestamp with time zone, total_paid numeric, total_due numeric, due_configured boolean, has_manual boolean, matrix_count integer, paid_date date)
  LANGUAGE sql
