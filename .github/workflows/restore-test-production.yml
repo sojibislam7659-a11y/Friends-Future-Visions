@@ -229,8 +229,10 @@ jobs:
             id uuid PRIMARY KEY, bucket_id text, name text, owner_id uuid,
             metadata jsonb, created_at timestamptz, updated_at timestamptz, last_accessed_at timestamptz
           );
+          ALTER TABLE storage.buckets ENABLE ROW LEVEL SECURITY;
+          ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
           CREATE FUNCTION storage.foldername(text) RETURNS text[]
-            LANGUAGE sql IMMUTABLE AS $$ SELECT string_to_array(trim(both '/' from $1), '/') $$;
+            LANGUAGE sql IMMUTABLE AS $folder$ SELECT string_to_array(trim(both '/' from $1), '/') $folder$;
           CREATE FUNCTION storage.filename(text) RETURNS text
             LANGUAGE sql IMMUTABLE AS $$ SELECT regexp_replace($1, '^.*/', '') $$;
           CREATE FUNCTION storage.extension(text) RETURNS text
@@ -432,7 +434,7 @@ jobs:
           set -euo pipefail
           docker exec -i -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres \
             psql -h 127.0.0.1 -U postgres -d ffv_restore_test -X -v ON_ERROR_STOP=1 <<'SQL'
-          DO $
+          DO $verify$
           DECLARE
             v_member uuid;
             v_super uuid;
@@ -494,12 +496,19 @@ jobs:
             IF NOT private.has_portal_access() OR NOT private.is_super_admin() THEN
               RAISE EXCEPTION 'Super Admin helper rejected the Super Admin';
             END IF;
-          END $;
+          END $verify$;
           SELECT 'migration_rehearsal' AS check_name, 'PASS' AS result;
           SELECT 'verified_mfa_fixtures_temporary_only' AS check_name, count(*) AS result FROM auth.mfa_factors WHERE status='verified';
           SELECT 'financial_postings' AS check_name, count(*) AS result FROM public.financial_postings;
           SELECT 'public_rls_tables' AS check_name, count(*) AS result FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind IN ('r','p') AND c.relrowsecurity;
           SQL
+          member_id=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT id FROM public.profiles WHERE role='member' ORDER BY id LIMIT 1")
+          super_id=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -Atc "SELECT id FROM public.profiles WHERE role='super_admin' ORDER BY id LIMIT 1")
+          member_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','$member_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | tail -n 1)
+          super_counts=$(docker exec -e PGPASSWORD="$FFV_RESTORE_PG_PASSWORD" ffv-restore-postgres psql -h 127.0.0.1 -U postgres -d ffv_restore_test -At -F ',' -c "BEGIN; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claim.sub','$super_id',true); SELECT (SELECT count(*) FROM public.profiles),(SELECT count(*) FROM public.members); ROLLBACK;" | tail -n 1)
+          [[ "$member_counts" == "1,1" ]] || { echo "::error::Member RLS isolation failed: $member_counts"; exit 1; }
+          [[ "$super_counts" == "8,7" ]] || { echo "::error::Super Admin RLS visibility failed: $super_counts"; exit 1; }
+          echo "Post-migration RLS counts: Member=$member_counts; Super Admin=$super_counts."
 
       - name: Remove all temporary plaintext, encrypted files and database container
         if: always()
