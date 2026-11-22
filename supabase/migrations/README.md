@@ -25,7 +25,7 @@ bucket configurations. Migration 5 refuses to run if Production financial transa
 rows are non-zero. The remaining migrations narrow public table grants and default privileges.
 
 The latest encrypted Production backup was uploaded to Google Drive by workflow run
-`45070634542` (backup run ID `ffv_backup_45070634542_1`). The isolated PostgreSQL 17 restore rehearsal passed in workflow run `45070745560`. No Production migration file has been applied.
+`45070634542` (backup run ID `ffv_backup_45070634542_1`). The isolated PostgreSQL 17 restore rehearsal passed in workflow run `45070745560`. All nine staged migrations then applied in exact order and passed final schema/ACL/RLS/Storage/public-summary verification against a second isolated restore in run `45072671436`. The migration rehearsal used a synthetic verified TOTP factor and AAL2 claim only in the temporary database. No Production migration file has been applied.
 
 Limited SQL hardening was applied directly on 2026-11-23 and is included in that backup/restore point: `anon` privileges were revoked from public tables/sequences except `committee_rules SELECT`; `private.has_portal_access()` and `public.get_financial_summary()` now accept only `member` and `super_admin`; and an aggregate-only `public.get_public_financial_summary()` RPC was installed. These direct changes did not modify member/financial rows. The ninth migration records the intended post-ledger implementation and private helper.
 
