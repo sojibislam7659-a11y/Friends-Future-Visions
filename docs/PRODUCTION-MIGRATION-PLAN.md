@@ -19,11 +19,11 @@ No member rows, financial transaction rows, Auth users, Storage objects, or pass
 
 ## Latest Production preflight observations
 
-Read-only checks on 2026-11-22:
+Read-only checks refreshed on 2026-11-23:
 
 - 7 member rows and 8 profile rows.
 - 4 notifications.
-- 0 financial transaction rows and 0 financial transaction audit rows.
+- 0 financial transaction rows, 0 financial transaction audit rows, and 0 member contribution-rate history rows.
 - 0 push subscription rows.
 - 8 Production Auth users / profiles; 7 profiles are linked to active members.
 - Production has 1 Super Admin profile and 0 verified MFA factors. The schema parity migration intentionally blocks until that account enrolls and verifies MFA.
@@ -36,7 +36,7 @@ Read-only checks on 2026-11-22:
 - Production anonymous grants were reduced on 2026-11-23: `anon` now has only SELECT on `committee_rules` in the public schema and no public sequence privileges. Authenticated privilege cleanup and future-object default ACL hardening remain pending; do not infer those phases are complete.
 - Existing Production profile update and financial transaction policies are not identical to Development.
 
-These counts and checks are snapshots, not guarantees about future state. The latest read-only recheck still shows 53 Production migrations, 8 Auth users, 7 members, 8 profiles, 0 financial transactions, 0 financial audit rows, 2 Storage objects, 50 public RLS policies and 18 Storage object policies. Development has 59 public RLS policies and the same 18 Storage object policies.
+These counts and checks are snapshots, not guarantees about future state. The latest read-only recheck still shows 53 Production migrations, 8 Auth users, 7 members, 8 profiles, 0 financial transactions, 0 financial audit rows, 0 contribution-rate rows, 2 Storage objects, 50 public RLS policies and 18 Storage object policies. The shared financial matrix returns 420 member-month rows, but every row is marked due-unconfigured. Development has 59 public RLS policies and the same 18 Storage object policies.
 
 ## Latest advisor snapshot
 
@@ -56,7 +56,7 @@ The Production release must use a newly authored, Production-specific migration 
 
 ## Production security finding detail
 
-The current Production Security Advisor reports four exposed SECURITY DEFINER RPCs: `get_financial_summary()`, `review_payment_submission(...)`, `review_private_document(...)`, and `set_current_committee_document(...)`. Source review confirmed all four use an empty search_path. The private helper functions for payment and committee-document changes explicitly check Super Admin authorization and are not executable by authenticated clients directly. Nevertheless, public wrappers should become SECURITY INVOKER after confirming their RLS and helper grants. The financial summary wrapper currently accepts the legacy `admin` role; replace this with the intended two-role allow-list during the coordinated migration.
+The four original Production SECURITY DEFINER RPCs remain: `get_financial_summary()`, `review_payment_submission(...)`, `review_private_document(...)`, and `set_current_committee_document(...)`. A fifth intentional SECURITY DEFINER RPC, `get_public_financial_summary()`, now returns only aggregate committee figures to anonymous visitors. All use an empty search_path. The payment/document private helpers explicitly check Super Admin authorization and are not executable by authenticated clients directly. The role allow-list in `private.has_portal_access()` and `public.get_financial_summary()` was already changed on 2026-11-23 to accept only `member` and `super_admin`; the wrappers still need the coordinated SECURITY INVOKER migration after confirming RLS/helper grants.
 
 Production also has `pg_net` installed in `public`. Moving it requires checking existing cron/HTTP call dependencies and extension support before any change.
 
@@ -211,7 +211,7 @@ Read-only operational comparison found all three cron jobs active in both projec
 7. `20261122125000_align_public_table_grants.sql` (remove non-app privileges and route rate changes through the RPC)
 8. `20261122125500_align_public_default_privileges.sql` (prevent future anon grants on public objects)
 
-These files are staged only on the release branch. None has been applied to Development or Production.
+Most staged migrations remain unapplied. The anonymous portion of Phase 1D was applied directly on 2026-11-23 (all `anon` public-table/sequence grants revoked except `committee_rules SELECT`); the role allow-list helper changes and aggregate-only public summary RPC were also applied. The corresponding release migrations record these states idempotently. No portal/password parity migration, storage/public policy parity migration, immutable ledger migration, authenticated grant cleanup, or default-ACL migration has been applied.
 
 ## Current validation status
 
