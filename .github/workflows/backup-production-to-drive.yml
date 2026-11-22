@@ -1,6 +1,8 @@
 name: Monthly Encrypted Production Backup to Google Drive
 
 on:
+  push:
+    branches: [run/manual-production-backup-20261123]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -44,7 +46,7 @@ jobs:
 
   backup:
     name: Export, encrypt, verify and upload
-    if: github.event_name == 'schedule' || inputs.confirm_production_backup == 'BACKUP'
+    if: github.event_name == 'schedule' || github.event_name == 'push' || inputs.confirm_production_backup == 'BACKUP'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
