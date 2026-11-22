@@ -13,6 +13,8 @@ MIGRATIONS = ROOT / "supabase" / "migrations"
 VERIFICATION = ROOT / "supabase" / "verification"
 
 # Historical applied file is a body fragment rather than standalone SQL.
+DO_BLOCK = re.compile(r"(?is)^\\s*DO\\s+(\\$[A-Za-z_0-9]*\\$)([\\s\\S]*?)\\1\\s*;?\\s*$")
+
 KNOWN_NON_STANDALONE = {
     "20261119190618_use_invoker_for_financial_summary_20261120.sql",
 }
@@ -37,12 +39,22 @@ def main() -> int:
         try:
             source = path.read_text(encoding="utf-8")
             parse_sql(source)
-            for statement in split(source):
+            for statement_number, statement in enumerate(split(source)):
                 if (
                     re.search(r"(?is)^\s*CREATE\s+(?:OR\s+REPLACE\s+)?FUNCTION\b", statement)
                     and re.search(r"(?is)\bLANGUAGE\s+plpgsql\b", statement)
                 ):
                     parse_plpgsql(statement)
+                    plpgsql_checked += 1
+                    continue
+                do_match = DO_BLOCK.match(statement)
+                if do_match:
+                    tag, body = do_match.groups()
+                    synthetic_function = (
+                        f"CREATE FUNCTION __ffv_do_block_{statement_number}() "
+                        f"RETURNS void LANGUAGE plpgsql AS {tag}{body}{tag};"
+                    )
+                    parse_plpgsql(synthetic_function)
                     plpgsql_checked += 1
         except Exception as exc:
             failed.append((path.relative_to(ROOT), str(exc)))
