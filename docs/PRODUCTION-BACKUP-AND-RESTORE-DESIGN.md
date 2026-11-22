@@ -1,6 +1,6 @@
 # Production Backup and Restore Design
 
-**Status: AUTOMATION STAGED; NOT YET RUN. No backup archive exists and no restore has passed.**
+**Status: Encrypted Production backup successfully uploaded to Google Drive and verified by the backup workflow. Isolated restore test is still pending.**
 
 ## 1. Objective
 
@@ -23,15 +23,10 @@ The owner has already:
 - Added Script Properties `FFV_BACKUP_FOLDER_ID` and `FFV_BACKUP_TOKEN`.
 - Deployed a Web App as **Execute as Me / Anyone** and authorized it.
 
-The current deployed Web App is still the earlier version 1. The latest hardened receiver code is in `backup/google-drive-receiver/Code.gs` and reports version 2. The owner must replace the Apps Script code and update the existing deployment:
-
-1. Open Apps Script → `FFV Encrypted Backup Receiver`.
-2. Replace `Code.gs` with the complete repository version.
-3. Save.
-4. Open Deploy → Manage deployments → Edit (pencil) → select **New version** → Deploy.
-5. Open the existing `/exec` URL with GET. It must report `"version":2`.
-
-Keep the existing Script Properties. Do not paste the folder ID or token into ChatGPT.
+The deployed Apps Script Web App is now version 3. Its GET endpoint was verified and returned
+`{"ok":true,"service":"FFV encrypted backup receiver","version":3}`. The existing Script Properties
+`FFV_BACKUP_TOKEN` and `FFV_BACKUP_FOLDER_ID` were preserved. No credential values should be
+pasted into ChatGPT or committed to Git.
 
 ## 3. Automation now staged
 
@@ -41,10 +36,12 @@ Files on `release/ffv-prod-parity-20261122`:
 - `scripts/export_supabase_backup.mjs` — exports Auth user metadata and downloads Storage object bytes.
 - `scripts/upload_encrypted_backup.py` — splits an encrypted archive into 8 MiB chunks, uploads each chunk, then submits a manifest with per-part and whole-archive SHA-256 values.
 - `scripts/verify_backup_parts.py` — reassembles manually downloaded Drive chunks and refuses to produce an archive unless every part and the complete encrypted archive match the manifest SHA-256.
-- `backup/google-drive-receiver/Code.gs` — Apps Script receiver. It accepts authenticated POSTs only, validates chunk sizes and hashes, rejects conflicting duplicates, and stores files in the configured Drive folder. It has no read/list/download/delete endpoint.
+- `backup/google-drive-receiver/Code.gs` — Apps Script receiver. It accepts authenticated encrypted chunks, validates sizes and SHA-256 hashes, rejects conflicting duplicates, and publishes a manifest only after every part is verified. Version 3 also exposes token-authenticated `download_manifest` and `download_chunk` recovery actions for one exact run ID; it does not expose generic Drive folder listing or browsing.
 - `backup/production-edge-functions/2026-11-22/` — exact source snapshots of all five live Production Edge Functions. Each saved `index.ts` was independently fetched again and compared byte-for-byte with the live source.
 
-The workflow has not been run. GitHub Actions repository secrets have not been configured. No encrypted archive has been uploaded. The first run is designed to be a harmless smoke test that does not connect to Supabase; only after it succeeds should the owner approve Production mode and add the database/service-role secrets.
+The Production backup workflow completed successfully on `main` in GitHub Actions run `45054000337`. Backup run ID: `ffv_backup_45054000337_1`. Manifest: `FFV_ffv_backup_45054000337_1_manifest.json`.
+
+The successful run validated all five required GitHub Actions secrets and the Production target, created the PostgreSQL 17 custom-format dump, exported Auth metadata and every Storage object byte, cross-checked Storage bucket/object counts against the database, included the preserved Production Edge Function snapshots, created and locally verified the AES-256 encrypted archive, uploaded the encrypted chunk and manifest to Drive, and removed the temporary runner workspace. The restore test has **not** yet run. The successful backup proves the required Drive and encryption secrets are present; their values remain unreadable to this workflow and must never be pasted into ChatGPT.
 
 **Scheduling limitation:** GitHub scheduled workflows run only from the repository's default branch. Manual dispatch can select the release branch now. The monthly schedule will not activate until this workflow is merged to `main` after the restore gate and explicit owner approval. Do not merge solely to activate the schedule.
 
@@ -97,22 +94,23 @@ The workflow checks that the database URL points to the Production project and t
 - Each part is SHA-256 checked by the receiver.
 - The manifest declares ordered part numbers, byte sizes, part hashes, total bytes and encrypted archive SHA-256.
 - Duplicate retries are idempotent; conflicting duplicate chunks are rejected.
-- The receiver intentionally cannot read, list or delete Drive files. For recovery, the owner downloads all chunk files and the manifest from the Drive folder, then runs `python scripts/verify_backup_parts.py --manifest FFV_<runId>_manifest.json --parts-dir <download-folder> --output restored.gpg`. The verifier reassembles parts in order and checks each size/hash plus the whole encrypted archive SHA-256. Only then decrypt with the passphrase and validate the PostgreSQL dump.
+- The version 3 receiver permits only token-authenticated recovery for an exact run ID through `download_manifest` and `download_chunk`; it does not provide a general Drive listing endpoint. The restore workflow downloads encrypted chunks to an ephemeral GitHub Actions runner, verifies every chunk and the complete archive SHA-256 against the manifest, decrypts the archive, and restores the database dump into a temporary PostgreSQL 17 container. It does not copy the archive to the owner's phone or PC. The workflow verifies Storage object bytes and hashes but does not recreate a live Supabase Storage service or its buckets/objects; that limitation must remain explicit in the restore result.
 - Automated 12-month Drive retention is not implemented; the receiver cannot delete files. Manage Drive retention manually until a separately reviewed retention mechanism exists.
 
 A successful upload is not a restore test. Restore rehearsal must use an isolated, owner-approved target and must never overwrite Production.
 
 ## 8. Remaining gates
 
-1. Owner updates the Apps Script deployment to version 2 and verifies its GET response.
-2. Owner configures the five GitHub Actions secrets.
-3. Run the workflow manually from the release branch.
-4. Confirm all encrypted chunks and the manifest appear in the Drive folder.
-5. Download the chunks, reassemble and verify the archive checksum.
-6. Decrypt and inspect the PostgreSQL dump; restore into an isolated Supabase project or local PostgreSQL rehearsal environment.
-7. Verify Auth metadata, Storage object hashes, Edge Function source and required secrets/configuration.
-8. Only after a successful restore rehearsal, merge/deploy the login-only MFA bootstrap draft PR #10, then have the Production Super Admin enroll and verify TOTP. Apply the ordered Production migrations only after the verified factor exists. The full parity branch and Edge Function rollout remain separate approvals.
-
+1. **DONE:** Apps Script receiver version 3 is deployed; GET reports version 3.
+2. **DONE:** All five backup workflow secrets were validated by the successful Production backup run.
+3. **DONE:** Encrypted archive and SHA-256 manifest were accepted by the configured Google Drive folder; temporary runner workspace was removed.
+4. **PENDING:** Manually dispatch the `Manual Encrypted Production Backup Restore Test` workflow from `main` with:
+   - `backup_run_id`: `ffv_backup_45054000337_1`
+   - `confirm_restore`: `RESTORE_TEST`
+5. **PENDING:** Confirm the isolated PostgreSQL restore, Auth metadata checks, database integrity checks, Storage byte/hash verification, and Edge Function snapshot checks all pass. This workflow does not recreate a live Supabase Storage service.
+6. **PENDING:** After restore passes, obtain explicit owner approval for the Production MFA bootstrap. The existing Super Admin must enroll and verify a TOTP factor using an authenticator app; the live Production project currently has zero verified MFA factors.
+7. **PENDING:** Rehearse all eight Production-specific migrations in the exact order listed in `supabase/migrations/README.md` against the isolated restore. Do not apply them to Production before the rehearsal passes.
+8. **PENDING:** After migration approval, deploy schema-dependent Edge Functions one at a time, preserve Production-only `google-sheets-sync`, and run live Member/Super Admin acceptance tests before the final Worker release.
 ## 9. Website “Backup Now” button
 
 A direct website button is not implemented. It would require a separate authenticated Cloudflare Worker endpoint that:
