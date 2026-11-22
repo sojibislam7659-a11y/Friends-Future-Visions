@@ -43,5 +43,24 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   }
   await page.screenshot({ path: `test-results/member-data-matrix-${page.viewportSize()?.width || "unknown"}.png`, fullPage: true });
 
+  // Member detail and personal pages must stay within the authenticated member scope.
+  await page.goto(`${baseURL}/member-profile.html`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#memberProfileContent")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator("#toggleMemberEditor")).toHaveCount(0);
+  await expect(page.locator("#memberFieldEditor")).toHaveCount(0);
+
+  await page.goto(`${baseURL}/personal-due.html`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("body")).toHaveAttribute("data-page", "personal-due");
+  await expect(page.locator("#app")).not.toContainText("প্রবেশ যাচাই করা যায়নি", { timeout: 30000 });
+
+  await page.goto(`${baseURL}/proof.html`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("body")).toHaveAttribute("data-page", "proof");
+  await expect(page.locator("#proofUploadForm")).toHaveCount(0);
+  await expect(page.locator("#proofMetaForm")).toHaveCount(0);
+
+  await page.goto(`${baseURL}/payment.html`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("body")).toHaveAttribute("data-page", "payment");
+  await expect(page.locator("#app")).not.toContainText("প্রবেশ যাচাই করা যায়নি", { timeout: 30000 });
+
   await page.screenshot({ path: `test-results/member-dashboard-${page.viewportSize()?.width || "unknown"}.png`, fullPage: true });
 });
