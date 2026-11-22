@@ -1,0 +1,171 @@
+name: Monthly Encrypted Production Backup to Google Drive
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_production_backup:
+        description: "Type BACKUP to confirm a manual Production backup."
+        required: true
+        type: string
+  schedule:
+    - cron: "0 3 1 * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ffv-production-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Export, encrypt, verify and upload
+    if: github.event_name == 'schedule' || inputs.confirm_production_backup == 'BACKUP'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      FFV_PROD_DATABASE_URL: ${{ secrets.FFV_PROD_DATABASE_URL }}
+      FFV_PROD_SUPABASE_URL: https://ugtzmtmsfaajclftfeuz.supabase.co
+      FFV_PROD_SERVICE_ROLE_KEY: ${{ secrets.FFV_PROD_SERVICE_ROLE_KEY }}
+      FFV_DRIVE_RECEIVER_URL: ${{ secrets.FFV_DRIVE_RECEIVER_URL }}
+      FFV_BACKUP_TOKEN: ${{ secrets.FFV_BACKUP_TOKEN }}
+      BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+      FFV_BACKUP_RUN_ID: ffv_backup_${{ github.run_id }}_${{ github.run_attempt }}
+    steps:
+      - name: Checkout audited Release source
+        uses: actions/checkout@v4
+        with:
+          ref: release/ffv-prod-parity-20261122
+
+      - name: Validate required secrets and Production target
+        shell: bash
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "$FFV_DRIVE_RECEIVER_URL" ]] || missing+=("FFV_DRIVE_RECEIVER_URL")
+          [[ -n "$FFV_BACKUP_TOKEN" ]] || missing+=("FFV_BACKUP_TOKEN")
+          [[ -n "$BACKUP_ENCRYPTION_PASSPHRASE" ]] || missing+=("BACKUP_ENCRYPTION_PASSPHRASE")
+          [[ -n "$FFV_PROD_DATABASE_URL" ]] || missing+=("FFV_PROD_DATABASE_URL")
+          [[ -n "$FFV_PROD_SERVICE_ROLE_KEY" ]] || missing+=("FFV_PROD_SERVICE_ROLE_KEY")
+          if (( ${#missing[@]} )); then
+            printf '::error::Missing repository secrets: %s\\n' "${missing[*]}"
+            exit 1
+          fi
+          [[ "$FFV_DRIVE_RECEIVER_URL" == https://script.google.com/macros/s/*/exec ]] || {
+            echo "::error::Drive receiver URL is not an Apps Script /exec URL."; exit 1;
+          }
+          [[ ${#FFV_BACKUP_TOKEN} -ge 40 ]] || {
+            echo "::error::Drive receiver token is too short."; exit 1;
+          }
+          case "$FFV_PROD_DATABASE_URL" in
+            *ugtzmtmsfaajclftfeuz*) ;;
+            *) echo "::error::Database URL does not identify the Production project."; exit 1 ;;
+          esac
+          echo "Production target validated."
+
+      - name: Create private working directories
+        run: |
+          umask 077
+          mkdir -p backup-output/project
+          chmod 700 backup-output backup-output/project
+
+      - name: Dump Production public and private database schemas and data
+        shell: bash
+        run: |
+          set -euo pipefail
+          success=0
+          for attempt in 1 2 3; do
+            if docker run --rm \
+              -e DATABASE_URL="$FFV_PROD_DATABASE_URL" \
+              -v "$GITHUB_WORKSPACE/backup-output/project:/backup" \
+              postgres:17-alpine \
+              sh -ceu 'pg_dump "$DATABASE_URL" --format=custom --no-owner --no-privileges --schema=public --schema=private --file=/backup/production-public-private.dump' \
+              && docker run --rm -v "$GITHUB_WORKSPACE/backup-output/project:/backup" postgres:17-alpine \
+              pg_restore --list /backup/production-public-private.dump > backup-output/project/database-toc.txt \
+              && test -s backup-output/project/production-public-private.dump \
+              && test -s backup-output/project/database-toc.txt; then
+              success=1
+              break
+            fi
+            rm -f backup-output/project/production-public-private.dump backup-output/project/database-toc.txt
+            sleep $((attempt * 20))
+          done
+          [[ "$success" == 1 ]] || { echo "::error::Database dump failed after three attempts."; exit 1; }
+
+      - name: Export Auth metadata and every Storage object
+        shell: bash
+        run: |
+          set -euo pipefail
+          success=0
+          for attempt in 1 2 3; do
+            if node scripts/export_supabase_backup.mjs backup-output/project; then
+              success=1
+              break
+            fi
+            sleep $((attempt * 20))
+          done
+          [[ "$success" == 1 ]] || { echo "::error::Supabase metadata/Storage export failed after three attempts."; exit 1; }
+
+      - name: Export non-secret database configuration inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > backup-output/project/config-inventory.sql <<'SQL'
+          select jsonb_build_object(
+            'cron_jobs', (select coalesce(jsonb_agg(jsonb_build_object(
+              'jobname',jobname,'schedule',schedule,'active',active,'username',username
+            ) order by jobname),'[]'::jsonb) from cron.job),
+            'vault_secret_names', (select coalesce(jsonb_agg(name order by name),'[]'::jsonb) from vault.secrets),
+            'migration_versions', (select coalesce(jsonb_agg(version order by version),'[]'::jsonb) from supabase_migrations.schema_migrations),
+            'extensions', (select coalesce(jsonb_agg(jsonb_build_object(
+              'name',extname,'version',extversion
+            ) order by extname),'[]'::jsonb) from pg_extension)
+          );
+          SQL
+          docker run --rm -e DATABASE_URL="$FFV_PROD_DATABASE_URL" \
+            -v "$GITHUB_WORKSPACE/backup-output/project:/backup" postgres:17-alpine \
+            sh -ceu 'psql "$DATABASE_URL" -X -A -t -f /backup/config-inventory.sql > /backup/config-inventory.json'
+          rm -f backup-output/project/config-inventory.sql
+          test -s backup-output/project/config-inventory.json
+
+      - name: Include preserved Production Edge Function source snapshot
+        run: |
+          set -euo pipefail
+          mkdir -p backup-output/project/edge-functions-source
+          cp -R backup/production-edge-functions/2026-11-22/. backup-output/project/edge-functions-source/
+          cp docs/PRODUCTION-EDGE-FUNCTION-INVENTORY.md backup-output/project/
+          cp docs/PRODUCTION-MIGRATION-PLAN.md backup-output/project/
+
+      - name: Create AES-256 encrypted archive and verify decryption
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          archive="backup-output/ffv-production-${GITHUB_RUN_ID}.tar.gz"
+          encrypted="${archive}.gpg"
+          verified="backup-output/verified-restore-test.tar.gz"
+          tar -czf "$archive" -C backup-output/project .
+          printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" > "$RUNNER_TEMP/ffv-backup-passphrase"
+          chmod 600 "$RUNNER_TEMP/ffv-backup-passphrase"
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-file "$RUNNER_TEMP/ffv-backup-passphrase" \
+            --symmetric --cipher-algo AES256 --s2k-digest-algo SHA512 \
+            --output "$encrypted" "$archive"
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-file "$RUNNER_TEMP/ffv-backup-passphrase" \
+            --output "$verified" --decrypt "$encrypted"
+          cmp "$archive" "$verified"
+          tar -tzf "$verified" > backup-output/archive-file-list.txt
+          test -s backup-output/archive-file-list.txt
+          rm -f "$archive" "$verified" "$RUNNER_TEMP/ffv-backup-passphrase"
+          test -s "$encrypted"
+          echo "ENCRYPTED_BACKUP=$encrypted" >> "$GITHUB_ENV"
+
+      - name: Upload encrypted chunks and checksum manifest to Drive
+        run: python scripts/upload_encrypted_backup.py --file "$ENCRYPTED_BACKUP"
+
+      - name: Remove temporary backup workspace
+        if: always()
+        run: |
+          rm -rf backup-output
+          rm -f "$RUNNER_TEMP/ffv-backup-passphrase"
