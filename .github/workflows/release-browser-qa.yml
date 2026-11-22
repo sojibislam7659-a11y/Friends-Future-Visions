@@ -1,0 +1,59 @@
+name: Release browser QA
+
+on:
+  push:
+    branches:
+      - release/ffv-prod-parity-20261122
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-browser-qa:
+    name: Release frontend against Development Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Playwright test runner
+        run: |
+          npm init -y
+          npm install --no-save --no-audit --no-fund @playwright/test
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Point the test build at Development Supabase
+        run: |
+          git fetch origin development
+          git show origin/development:public/supabase-client.js > public/supabase-client.js
+          grep -q 'tvdxbyzvkjiebwslmnvj.supabase.co' public/supabase-client.js
+
+      - name: Run release browser QA
+        env:
+          CI: "true"
+          DEV_TEST_EMAIL: ${{ secrets.DEV_TEST_EMAIL }}
+          DEV_TEST_PASSWORD: ${{ secrets.DEV_TEST_PASSWORD }}
+          FFV_QA_BASE_URL: http://127.0.0.1:4173
+        run: npx playwright test --config=playwright.release.config.js
+
+      - name: Upload release browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-browser-qa
+          path: |
+            playwright-release-results/
+            playwright-release-report/
+          if-no-files-found: ignore
+          retention-days: 7
