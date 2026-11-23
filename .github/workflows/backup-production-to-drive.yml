@@ -1,6 +1,10 @@
 name: Monthly Encrypted Production Backup to Google Drive
 
 on:
+  push:
+    branches: [release/ffv-prod-parity-20261122]
+    paths:
+      - ".github/workflows/backup-production-to-drive.yml"
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -44,7 +48,7 @@ jobs:
 
   backup:
     name: Export, encrypt, verify and upload
-    if: github.event_name == 'schedule' || inputs.confirm_production_backup == 'BACKUP'
+    if: github.event_name == 'schedule' || inputs.confirm_production_backup == 'BACKUP' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[FFV-ONESHOT-BACKUP]'))
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
