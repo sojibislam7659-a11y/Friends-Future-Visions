@@ -6,7 +6,7 @@ migration history only.
 
 ## Production-specific staged migrations
 
-The following nine files are staged for the Production schema. The first eight are Production-specific parity/ledger migrations; the ninth adds the privacy-safe public DATA summary. **None of these migration files has been applied** to either Supabase project as of 2026-11-23. Apply them only in this exact order after a verified backup, isolated restore rehearsal, Super Admin TOTP enrollment, and explicit owner approval:
+The following nine files are staged for the Production schema. The first eight are Production-specific parity/ledger migrations; the ninth adds the privacy-safe public DATA summary. **All nine migrations have now been applied successfully to Production** in the exact order below on 2026-11-23, after a verified encrypted Drive backup, isolated PostgreSQL 17 restore rehearsal, verified Super Admin TOTP enrollment, and the coordinated production change. The same sequence also passed a separate isolated restore rehearsal. Do not replay these migrations or apply them to Development:
 
 1. `20261122103000_harden_production_security_definer_wrappers.sql`
 2. `20261122113000_add_production_portal_audit_and_password_parity.sql`
@@ -24,8 +24,8 @@ every Production Super Admin has a verified MFA factor. Migration 4 checks all f
 bucket configurations. Migration 5 refuses to run if Production financial transactions or audit
 rows are non-zero. The remaining migrations narrow public table grants and default privileges.
 
-The latest encrypted Production backup was uploaded to Google Drive by workflow run
-`45070634542` (backup run ID `ffv_backup_45070634542_1`). The isolated PostgreSQL 17 restore rehearsal passed in workflow run `45070745560`. All nine staged migrations then applied in exact order and passed final schema/ACL/RLS/Storage/public-summary verification against a second isolated restore in run `45072671436`. The migration rehearsal used a synthetic verified TOTP factor and AAL2 claim only in the temporary database. No Production migration file has been applied.
+The latest post-migration encrypted Production backup was uploaded to Google Drive by workflow run
+`45123841066` (manifest `FFV_ffv_backup_45123841066_1_manifest.json`). The post-migration PostgreSQL 17 restore rehearsal passed in workflow run `45124595947`: the Drive archive hash, Auth metadata, Storage inventory/bytes, five Edge Function snapshots, database restore, RLS, constraints, indexes, triggers, foreign keys, and Auth references were verified. The nine migrations were first rehearsed against an isolated restore and then applied to Production; live schema/ACL/RLS/Storage checks passed. Production currently has one verified Super Admin TOTP factor. Never replay these migrations against Production.
 
 Limited SQL hardening was applied directly on 2026-11-23 and is included in that backup/restore point: `anon` privileges were revoked from public tables/sequences except `committee_rules SELECT`; `private.has_portal_access()` and `public.get_financial_summary()` now accept only `member` and `super_admin`; and an aggregate-only `public.get_public_financial_summary()` RPC was installed. These direct changes did not modify member/financial rows. The ninth migration records the intended post-ledger implementation and private helper.
 
