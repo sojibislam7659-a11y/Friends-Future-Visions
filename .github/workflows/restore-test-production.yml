@@ -1,10 +1,6 @@
 name: Manual Encrypted Production Backup Restore Test
 
 on:
-  push:
-    branches: [release/ffv-prod-parity-20261122]
-    paths:
-      - ".github/workflows/restore-test-production.yml"
   pull_request:
     branches: [main]
     paths:
@@ -53,13 +49,13 @@ jobs:
 
   guard:
     name: Validate explicit restore authorization
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[FFV-ONESHOT-RESTORE]'))
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Validate confirmation, backup ID and required Drive secrets
         env:
-          CONFIRM_RESTORE: RESTORE_TEST
-          BACKUP_RUN_ID: ffv_backup_45123841066_1
+          CONFIRM_RESTORE: ${{ inputs.confirm_restore }}
+          BACKUP_RUN_ID: ${{ inputs.backup_run_id }}
           FFV_DRIVE_RECEIVER_URL: ${{ secrets.FFV_DRIVE_RECEIVER_URL }}
           FFV_BACKUP_TOKEN: ${{ secrets.FFV_BACKUP_TOKEN }}
           BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
@@ -74,7 +70,7 @@ jobs:
 
   restore_test:
     name: Download, decrypt, verify and restore in temporary PostgreSQL
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[FFV-ONESHOT-RESTORE]'))
+    if: github.event_name == 'workflow_dispatch'
     needs: guard
     runs-on: ubuntu-latest
     timeout-minutes: 90
