@@ -1,0 +1,12 @@
+{
+  "name": "send-push",
+  "slug": "send-push",
+  "status": "ACTIVE",
+  "version": 5,
+  "verify_jwt": false,
+  "entrypoint_path": "/tmp/user_fn_ugtzmtmsfaajclftfeuz_68909989-2e2b-4d58-8970-56a5fe1ca06f_5/source/index.ts",
+  "sha256": "f7c3b2667d7682784680fcbc199d8438ef2d4be6fc24c8bee0849a49a03fc6f2",
+  "exported_at": "2026-11-23",
+  "source_project": "ugtzmtmsfaajclftfeuz",
+  "secrets_not_included": true
+}

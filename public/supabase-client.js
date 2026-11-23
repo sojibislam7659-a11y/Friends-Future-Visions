@@ -1,5 +1,5 @@
 /*
- * OIKKO — Supabase browser client
+ * Friends Future Vision Forever — Supabase browser client
  * Only the public anon/publishable key belongs here.
  * NEVER add service_role, secret keys, or database passwords.
  */

@@ -3,10 +3,14 @@ name: Release static checks
 on:
   push:
     branches:
+      - development
       - release/production-updates-20261117
+      - release/ffv-prod-parity-20261122
   pull_request:
     branches:
+      - development
       - main
+      - release/ffv-prod-parity-20261122
 
 jobs:
   javascript-syntax:
@@ -24,5 +28,38 @@ jobs:
         run: |
           set -e
           find public -type f -name '*.js' -print0 | xargs -0 -n1 node --check
+          cp backup/google-drive-receiver/Code.gs /tmp/ffv-drive-receiver.js
+          node --check /tmp/ffv-drive-receiver.js
+      - name: Validate backup tooling syntax and uploader tests
+        run: |
+          node --check scripts/export_supabase_backup.mjs
+          python -m py_compile scripts/upload_encrypted_backup.py scripts/test_upload_encrypted_backup.py scripts/verify_backup_parts.py scripts/test_verify_backup_parts.py
+          python scripts/test_upload_encrypted_backup.py
+          python scripts/test_verify_backup_parts.py
+          ruby -e 'require "yaml"; YAML.load_file(".github/workflows/backup-production-to-drive.yml")'
+      - name: Set up Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Type-check Supabase Edge Functions
+        run: |
+          set -e
+          for file in supabase/functions/*/index.ts; do
+            deno check "$file"
+          done
+          deno check backup/production-edge-functions/2026-11-22/google-sheets-sync/index.ts
+      - name: Verify Production Edge Function source parity
+        run: python scripts/check_edge_function_snapshots.py
+      - name: Validate Cloudflare Worker package without deploying
+        run: npx --yes wrangler@4 deploy --dry-run
+      - name: Validate lightweight SVG brand asset
+        run: |
+          python -c "import xml.etree.ElementTree as ET; ET.parse('public/friends-future-vision-logo.svg')"
+          test "$(wc -c < public/friends-future-vision-logo.svg)" -lt 5000
+      # pglast validates standalone SQL grammar; PL/pgSQL/runtime behavior still requires restore rehearsal.
+      - name: Parse PostgreSQL migrations
+        run: |
+          python -m pip install --disable-pip-version-check pglast
+          python scripts/check_sql_migrations.py
       - name: Check committed diff whitespace
         run: git diff --check origin/main...HEAD

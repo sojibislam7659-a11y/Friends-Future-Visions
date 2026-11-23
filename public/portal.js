@@ -2,6 +2,8 @@ import "./password-visibility.js";
 import { supabase } from "./supabase-client.js";
 import { requireRole } from "./auth-guard.js";
 import { enablePush } from "./push.js";
+import { installPwa } from "./pwa.js";
+import { BRAND_LOGO_SVG } from "./brand-logo.js";
 
 const root=document.getElementById("app");
 const page=document.body.dataset.page||"dashboard";
@@ -9,15 +11,68 @@ const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{minimumFractionDigits:
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const dateText=v=>v?new Date(v+"T00:00:00").toLocaleDateString("en-GB"):"—";
 const monthText=v=>v?new Date(v+"-01T00:00:00").toLocaleDateString("bn-BD",{month:"long",year:"numeric"}):"—";
+function contributionLedgerTotal(rows, activeMemberIds){
+ const reversedIds=new Set(rows.map(row=>row.reversal_of_id).filter(Boolean));
+ return rows.reduce((sum,row)=>{
+  if(!activeMemberIds.has(row.member_id)||row.transaction_type!=="contribution"||row.direction!=="in"||reversedIds.has(row.id))return sum;
+  const parts=String(row.reference_no||"").split("|");
+  const month=parts[0]==="FFV_MATRIX"&&/^\d{4}-\d{2}$/.test(parts[1]||"")?parts[1]:String(row.transaction_date||"").slice(0,7);
+  return month>="2027-01"&&month<"2032-01"?sum+Number(row.amount||0):sum;
+ },0);
+}
 const localDate=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const today=()=>localDate(new Date());
-let access=null,lang="bn";
+let access=null,lang="bn";try{lang=localStorage.getItem("ffv-lang")==="en"?"en":"bn"}catch{}
 const t=(bn,en)=>lang==="bn"?bn:en;
 function toast(message){let n=document.createElement("div");n.className="toast";n.textContent=message;document.body.append(n);setTimeout(()=>n.remove(),4200)}
+document.addEventListener("click",async event=>{
+ const button=event.target.closest("[data-copy-payment-number]");
+ if(!button)return;
+ try{await navigator.clipboard.writeText(button.dataset.copyPaymentNumber||"");toast("Payment number কপি হয়েছে।")}
+ catch{toast("Copy করা যায়নি। নম্বরটি হাতে কপি করুন।",true)}
+});
+async function optimizeImageFile(file,purpose="photo"){
+ if(!file?.type?.startsWith("image/"))return file;
+ if(file.size>20*1024*1024)throw new Error("Original image exceeds the 20MB upload-processing limit.");
+ const maxEdge=purpose==="document"?2600:purpose==="qr"?1800:1400;
+ const targetBytes=purpose==="document"?1500*1024:purpose==="qr"?1500*1024:650*1024;
+ let source=null,cleanup=()=>{};
+ try{
+  if(typeof createImageBitmap==="function"){
+   source=await createImageBitmap(file);
+   cleanup=()=>source?.close?.();
+  }else{
+   const url=URL.createObjectURL(file),image=new Image();
+   image.src=url;await image.decode();source=image;cleanup=()=>URL.revokeObjectURL(url);
+  }
+  const scale=Math.min(1,maxEdge/Math.max(source.width,source.height));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.max(1,Math.round(source.width*scale));
+  canvas.height=Math.max(1,Math.round(source.height*scale));
+  const context=canvas.getContext("2d",{alpha:false});
+  if(!context)throw new Error("Image processing canvas unavailable");
+  context.fillStyle="#fff";context.fillRect(0,0,canvas.width,canvas.height);
+  context.drawImage(source,0,0,canvas.width,canvas.height);
+  const outputType=purpose==="qr"?"image/png":"image/webp";
+  const encode=quality=>new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Image encoding failed")),outputType,quality));
+  let blob;
+  if(purpose==="qr")blob=await encode();
+  else{
+   for(const quality of [.92,.88,.84,.80,.76,.72]){
+    const candidate=await encode(quality);blob=candidate;
+    if(candidate.size<=targetBytes)break;
+   }
+  }
+  if(!blob||blob.size>=file.size)return file;
+  const extension=blob.type==="image/png"?"png":"webp";
+  const base=file.name.replace(/\.[^.]+$/,"")||"upload";
+  return new File([blob],base+"-optimized."+extension,{type:blob.type,lastModified:file.lastModified});
+ }finally{cleanup()}
+}
 async function refreshUnreadCount(){
- const badge=document.getElementById("unreadCount");
+ const badges=[...document.querySelectorAll("#unreadCount,#mobileUnreadCount")];
  const userId=access?.session?.user?.id;
- if(!badge||!userId||!supabase)return;
+ if(!badges.length||!userId||!supabase)return;
  try{
   const {count,error}=await supabase.from("notifications")
    .select("id",{count:"exact",head:true})
@@ -25,38 +80,111 @@ async function refreshUnreadCount(){
    .is("read_at",null);
   if(error)throw error;
   const total=Number(count||0);
-  badge.textContent=total>99?"99+":String(total);
-  badge.hidden=total<1;
+  badges.forEach(badge=>{badge.textContent=total>99?"99+":String(total);badge.hidden=total<1});
  }catch(error){
   console.warn("Unread notification count unavailable",error);
-  badge.hidden=true;
+  badges.forEach(badge=>badge.hidden=true);
  }
 }
 function setPage(html){document.getElementById("pageContent").innerHTML=html}
 function card(label,value,sub=""){return '<article class="card"><div class="label">'+esc(label)+'</div><div class="value">'+esc(value)+'</div><small>'+esc(sub)+'</small></article>'}
 function empty(msg){return '<div class="empty">'+esc(msg)+'</div>'}
 function icon(name){
- const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M23 11h-6"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5M10 14l2 2 4-4"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6zM9 12l2 2 4-4"/>'};
+ const paths={home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>',bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M23 11h-6"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5M10 14l2 2 4-4"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',profile:'<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6zM9 12l2 2 4-4"/>'};
  return '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.data)+'</svg>';
 }
 function navItem(href,label,iconName){return '<a href="'+href+'" '+(page===href.replace(".html","")?'class="active"':'')+'>'+icon(iconName)+'<span>'+label+'</span></a>'}
+function mobileNavItem(href,label,iconName){return '<a href="'+href+'" '+(page===href.replace(".html","")?'class="active"':'')+' aria-label="'+label+'">'+icon(iconName)+'<span>'+label+'</span></a>'}
+function applyTheme(theme){
+ const dark=theme==="dark";
+ document.body.classList.toggle("dark-theme",dark);
+ const button=document.getElementById("themeToggle");
+ if(button){button.textContent=dark?"☀ Light":"☾ Dark";button.setAttribute("aria-pressed",String(dark));button.title=dark?"Switch to light mode":"Switch to dark mode"}
+}
 function shell(){
  const isSuper=access.role==="super_admin",isPublic=access.role==="public";
  const roleLabel=isSuper?"Super Admin":"Member";
- const nav=navItem("dashboard.html",t("হোম","Home"),"home")+navItem("rules.html","RULES","rules")+navItem("member-info.html","MEMBER INFO","members")+navItem("data.html","DATA","data")+(isPublic?"":navItem("personal-due.html","PERSONAL DUE","due")+navItem("proof.html","PROOF","proof")+navItem("payment.html","PAYMENT","payment")+(isSuper?navItem("admin.html","SUPER ADMIN","admin"):"")+(access.role==="member"?navItem("member.html","MY PROFILE","profile"):""));
- root.innerHTML='<div class="shell"><header class="topbar"><button class="icon-button menu-button" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebarPanel">'+icon("menu")+'</button><div class="brand topbar-brand"><img src="friends-future-vision-logo.svg" alt=""><div><strong>Friends Future Vision Forever</strong><small>Secure member portal</small></div></div><div class="actions">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<span class="role topbar-role">'+roleLabel+'</span><button class="icon-button notification-trigger" id="notificationBtn" aria-label="Notifications" title="Notifications">'+icon("bell")+'<span class="unread-count" id="unreadCount" hidden></span></button>')+'</div></header><div class="drawer-backdrop" id="drawerBackdrop" hidden></div><aside class="sidebar-panel" id="sidebarPanel" aria-label="Main navigation" hidden><div class="sidebar-head"><a class="sidebar-brand" href="dashboard.html"><img src="friends-future-vision-logo.svg" alt="Friends Future Vision Forever"><span><strong>Friends Future Vision</strong><small>Forever</small></span></a><button class="icon-button drawer-close" id="closeSidebar" aria-label="Close menu">×</button></div><nav class="nav sidebar-nav" id="mainNav">'+nav+'</nav><div class="sidebar-footer">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<div class="sidebar-account"><span class="account-role">'+roleLabel+'</span><span class="account-email">'+esc(access.session.user.email||"")+'</span></div><button class="secondary" id="languageBtn">'+(lang==="bn"?"English":"বাংলা")+'</button><button class="secondary" id="logoutBtn">লগআউট</button>')+'</div></aside><aside class="notification-panel" id="notificationPanel" aria-label="Notifications" hidden><div class="notification-head"><strong>'+t("নোটিফিকেশন","Notifications")+'</strong><button class="icon-button" id="closeNotifications" aria-label="Close notifications">×</button></div><div class="notification-list" id="notificationList">'+empty(t("লোড হচ্ছে…","Loading…"))+'</div></aside><main class="page" id="pageContent"><div class="empty">তথ্য লোড হচ্ছে…</div></main><footer class="footer">Friends Future Vision Forever · Secure member portal</footer></div>';
+ const nav=navItem("dashboard.html",t("হোম","Home"),"home")+navItem("rules.html","RULES","rules")+navItem("member-info.html","MEMBER INFO","members")+navItem("data.html","DATA","data")+(isPublic?"":navItem("personal-due.html","PERSONAL DUE","due")+navItem("proof.html","PROOF","proof")+navItem("payment.html","PAYMENT","payment")+(isSuper?navItem("admin.html","SUPER ADMIN","admin"):"")+(access.role==="member"?navItem("statement.html","MY STATEMENT","data")+navItem("member.html","MY PROFILE","profile"):""));
+ const sidebarNav=isPublic?navItem("login.html","LOGIN","profile"):navItem("personal-due.html","PERSONAL DUE","due")+navItem("proof.html","PROOF","proof")+navItem("payment.html","PAYMENT","payment")+(isSuper?navItem("admin.html","SUPER ADMIN","admin"):"")+(access.role==="member"?navItem("statement.html","MY STATEMENT","data")+navItem("member.html","MY PROFILE","profile"):"");
+ const exportMenu="";
+ const sidebarTools=(isSuper?'<details class="export-menu sidebar-export-menu"><summary>EXPORT DATA</summary><div class="export-menu-panel"><button type="button" data-export-action="full-xlsx">সম্পূর্ণ Website · Excel</button><button type="button" data-export-action="full-docx">সম্পূর্ণ Website · Word</button></div></details>':"")+(access.role==="member"?'<a class="secondary sidebar-statement-button" href="statement.html">MY STATEMENT PDF</a>':"")+'<button class="secondary sidebar-install-button" id="sidebarInstallAppBtn" type="button">Install App</button>';
+ const initialName=access.profile?.full_name||access.session.user.email?.split("@")[0]||roleLabel;
+ const mobileBottomNav=!isPublic?'<nav class="mobile-bottom-nav" aria-label="Quick navigation">'+mobileNavItem("dashboard.html",t("হোম","Home"),"home")+mobileNavItem("member-info.html",t("সদস্য","Members"),"members")+mobileNavItem("rules.html",t("নিয়ম","Rules"),"rules")+mobileNavItem("data.html",t("ডাটা","Data"),"data")+'<button type="button" id="mobileMenuBtn" aria-label="Open menu">'+icon("menu")+'<span>'+t("আরও","More")+'</span></button></nav>':'<nav class="mobile-bottom-nav public-mobile-nav" aria-label="Quick navigation">'+mobileNavItem("dashboard.html",t("হোম","Home"),"home")+mobileNavItem("member-info.html",t("সদস্য","Members"),"members")+mobileNavItem("rules.html",t("নিয়ম","Rules"),"rules")+mobileNavItem("data.html",t("ডাটা","Data"),"data")+'<a href="login.html" aria-label="Login">'+icon("profile")+'<span>'+t("লগইন","Login")+'</span></a></nav>'
+ root.innerHTML='<div class="shell"><header class="topbar"><button class="icon-button menu-button" id="menuBtn" aria-label="Open menu" aria-expanded="false" aria-controls="sidebarPanel">'+icon("menu")+'</button><div class="brand topbar-brand">'+BRAND_LOGO_SVG+'<div class="topbar-identity"><strong id="headerUserName">'+esc(String(initialName).toLocaleUpperCase("en-US"))+'</strong><small>Friends Future Vision Forever</small></div></div><div class="actions">'+exportMenu+''+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<span class="role topbar-role">'+roleLabel+'</span><button class="icon-button notification-trigger" id="notificationBtn" aria-label="Notifications" title="Notifications">'+icon("bell")+'<span class="unread-count" id="unreadCount" hidden></span></button>')+'</div></header><div class="site-ticker global-site-ticker" id="globalNoticeTicker" role="region" aria-label="Latest notice" hidden><strong class="site-ticker-label">নোটিশ</strong><div class="site-ticker-window"><span id="globalNoticeTickerText"></span></div></div><nav class="nav primary-nav" id="primaryNav" aria-label="Main navigation">'+nav+'</nav><div class="drawer-backdrop" id="drawerBackdrop" hidden></div><aside class="sidebar-panel" id="sidebarPanel" aria-label="Main navigation" hidden><div class="sidebar-head"><a class="sidebar-brand" href="dashboard.html">'+BRAND_LOGO_SVG.replaceAll("ffvTopArcGrad","ffvTopArcGradSidebar")+'<strong>'+esc(String(initialName).toLocaleUpperCase("en-US"))+'</strong></a><button class="icon-button drawer-close" id="closeSidebar" aria-label="Close menu">×</button></div><nav class="nav sidebar-nav" id="mainNav">'+sidebarNav+'</nav><div class="sidebar-footer">'+(isPublic?'<a class="button" href="login.html">LOGIN</a>':'<div class="sidebar-account"><span class="account-role">'+roleLabel+'</span><span class="account-email">'+esc(access.session.user.email||"")+'</span></div><button class="secondary" id="sidebarThemeToggle" type="button">Dark / Light</button><button class="secondary" id="sidebarLanguageToggle" type="button">'+(lang==="bn"?"English":"বাংলা")+'</button>'+sidebarTools+'<button class="secondary" id="logoutBtn">লগআউট</button>')+'</div></aside><aside class="notification-panel" id="notificationPanel" aria-label="Notifications" hidden><div class="notification-head"><strong>'+t("নোটিফিকেশন","Notifications")+'</strong><button class="icon-button" id="closeNotifications" aria-label="Close notifications">×</button></div><div class="notification-list" id="notificationList">'+empty(t("লোড হচ্ছে…","Loading…"))+'</div></aside><main class="page" id="pageContent"><div class="empty">তথ্য লোড হচ্ছে…</div></main><footer class="footer">Friends Future Vision Forever · Secure member portal</footer>'+mobileBottomNav+'</div>';
+ let savedTheme="light";try{savedTheme=localStorage.getItem("ffv-theme")==="dark"?"dark":"light"}catch{}
+ applyTheme(savedTheme);
+ document.getElementById("themeToggle")?.addEventListener("click",()=>{const next=document.body.classList.contains("dark-theme")?"light":"dark";try{localStorage.setItem("ffv-theme",next)}catch{}applyTheme(next)});
+ document.getElementById("sidebarThemeToggle")?.addEventListener("click",()=>{const next=document.body.classList.contains("dark-theme")?"light":"dark";try{localStorage.setItem("ffv-theme",next)}catch{}applyTheme(next)});
+  document.getElementById("sidebarLanguageToggle")?.addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";document.documentElement.lang=lang;try{localStorage.setItem("ffv-lang",lang)}catch{}shell();renderPage()});
+ document.getElementById("sidebarInstallAppBtn")?.addEventListener("click",async()=>{try{const result=await installPwa();if(!result.available)toast("এই browser-এ সরাসরি Install prompt পাওয়া যায়নি। Chrome menu ⋮ থেকে Add to Home screen চেষ্টা করুন।");else if(result.outcome==="accepted")toast("App install শুরু হয়েছে।")}catch(error){toast(error.message||"Install prompt চালু করা যায়নি।")}});
+ document.querySelectorAll("[data-export-action]").forEach(button=>button.addEventListener("click",async()=>{
+  const action=button.dataset.exportAction,original=button.textContent;button.disabled=true;button.textContent="তৈরি হচ্ছে…";
+  try{
+   const tools=await import("./export-tools.js");
+   if(action==="page-xlsx")await tools.exportCurrentPage("xlsx");
+   else if(action==="page-docx")await tools.exportCurrentPage("docx");
+   else{
+    if(!confirm("সম্পূর্ণ Website Export-এ সদস্যদের ব্যক্তিগত তথ্য ও আর্থিক রেকর্ড থাকবে। ফাইলটি নিরাপদে রাখবেন। চালিয়ে যাবেন?"))return;
+    await tools.exportFullWebsite(supabase,action==="full-docx"?"docx":"xlsx");
+   }
+   toast("Export file তৈরি হয়েছে। Download folder পরীক্ষা করুন।");
+  }catch(error){console.error(error);toast("Export ব্যর্থ: "+(error.message||"Unknown error"),true)}
+  finally{button.disabled=false;button.textContent=original}
+ }));
  if(!isPublic){
+  loadGlobalNoticeTicker();
   const sidebar=document.getElementById("sidebarPanel"),panel=document.getElementById("notificationPanel"),backdrop=document.getElementById("drawerBackdrop");
-  const closeDrawers=()=>{sidebar.hidden=true;panel.hidden=true;backdrop.hidden=true;document.getElementById("menuBtn").setAttribute("aria-expanded","false")};
-  document.getElementById("menuBtn").addEventListener("click",()=>{const open=sidebar.hidden;closeDrawers();sidebar.hidden=!open;backdrop.hidden=!open;document.getElementById("menuBtn").setAttribute("aria-expanded",String(open))});
+  const closeDrawers=()=>{sidebar.hidden=true;panel.hidden=true;backdrop.hidden=true;document.getElementById("menuBtn").setAttribute("aria-expanded","false");document.getElementById("mobileMenuBtn")?.setAttribute("aria-expanded","false")};
+  const openSidebar=()=>{const open=sidebar.hidden;closeDrawers();sidebar.hidden=!open;backdrop.hidden=!open;document.getElementById("menuBtn").setAttribute("aria-expanded",String(open));document.getElementById("mobileMenuBtn")?.setAttribute("aria-expanded",String(open))};
+  document.getElementById("menuBtn").addEventListener("click",openSidebar);
+  document.getElementById("mobileMenuBtn")?.addEventListener("click",openSidebar);
   document.getElementById("closeSidebar").addEventListener("click",closeDrawers);
   document.getElementById("closeNotifications").addEventListener("click",closeDrawers);
   backdrop.addEventListener("click",closeDrawers);
-  document.getElementById("notificationBtn").addEventListener("click",async()=>{const open=panel.hidden;closeDrawers();if(open){panel.hidden=false;await loadNotificationPanel()}});
+  const openNotifications=async()=>{const open=panel.hidden;closeDrawers();if(open){panel.hidden=false;await loadNotificationPanel()}};
+  document.getElementById("notificationBtn").addEventListener("click",openNotifications);
   document.getElementById("mainNav").addEventListener("click",e=>{if(e.target.closest("a"))closeDrawers()});
-  document.getElementById("logoutBtn").addEventListener("click",async()=>{const {error}=await supabase.auth.signOut();if(error)toast(error.message);else location.replace("login.html")});
-  document.getElementById("languageBtn").addEventListener("click",()=>{lang=lang==="bn"?"en":"bn";document.documentElement.lang=lang;shell();renderPage()});
+  document.getElementById("primaryNav").addEventListener("click",e=>{if(e.target.closest("a"))closeDrawers()});
+  document.getElementById("logoutBtn").addEventListener("click",async()=>{try{sessionStorage.removeItem("ffv:member-photo-cache")}catch{}const {error}=await supabase.auth.signOut();if(error)toast(error.message);else location.replace("login.html")});
+
   refreshUnreadCount();
+ }
+}
+async function loadGlobalNoticeTicker(){
+ const ticker=document.getElementById("globalNoticeTicker"),textNode=document.getElementById("globalNoticeTickerText");
+ if(!ticker||!textNode)return;
+ try{
+  let message="";
+  // The Super Admin notice editor publishes to public.notices.
+  const noticeResult=await supabase.from("notices").select("title,body").eq("published",true).order("published_at",{ascending:false}).limit(1).maybeSingle();
+  if(!noticeResult.error&&noticeResult.data)message=String(noticeResult.data.body||noticeResult.data.title||"").trim();
+  // Compatibility fallback for installations where the original ticker settings are still populated.
+  if(!message){
+   const settingsResult=await supabase.from("site_settings").select("setting_key,setting_value").in("setting_key",["ticker_message","ticker_enabled"]);
+   if(!settingsResult.error){
+    const settings=Object.fromEntries((settingsResult.data||[]).map(row=>[row.setting_key,row.setting_value]));
+    if(settings.ticker_enabled!=="false")message=String(settings.ticker_message||"").trim();
+   }
+  }
+  if(!message){ticker.hidden=true;return}
+  textNode.textContent=message;
+  textNode.classList.add("notice-marquee-text");
+  ticker.hidden=false;
+ }catch(error){
+  console.warn("Global notice ticker unavailable",error);
+  ticker.hidden=true;
+ }
+}
+async function loadHeaderIdentity(){
+ let name=access.profile?.full_name||"";
+ if(access.role==="member"){
+  const {data,error}=await supabase.from("members").select("full_name").eq("auth_user_id",access.session.user.id).maybeSingle();
+  if(!error&&data?.full_name)name=data.full_name;
+ }
+ if(name){
+  const label=name.toLocaleUpperCase("en-US");
+  const target=document.getElementById("headerUserName");if(target)target.textContent=label;
+  const side=document.querySelector(".sidebar-brand strong");if(side)side.textContent=label;
  }
 }
 async function loadNotificationPanel(){
@@ -86,37 +214,55 @@ function dashboardChartMarkup(summaryData){
  return "<section class=\"section matrix-charts\"><h2>"+t("আর্থিক চার্ট","Financial charts")+"</h2><div class=\"matrix-chart-grid\"><article class=\"card\"><strong>"+t("মাসিক জমা · Column","Monthly contributions · Column")+"</strong><div class=\"mini-bars\">"+bars+"</div></article><article class=\"card\"><strong>"+t("জমার প্রবণতা · Line","Contribution trend · Line")+"</strong>"+line+"</article><article class=\"card\"><strong>"+t("আর্থিক অনুপাত · Pie","Financial mix · Pie")+"</strong>"+pie+"</article></div></section>";
 }
 async function renderDashboard(){
- const s=await Promise.race([
-  summary(),
-  new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
+ const [s,dueResult,memberCountResult,ledgerResult]=await Promise.all([
+  Promise.race([
+   summary(),
+   new Promise((_,reject)=>setTimeout(()=>reject(new Error("Dashboard data request timed out. Network বা Supabase connection পরীক্ষা করে Reload করুন।")),15000))
+  ]),
+  supabase.rpc("get_member_shared_financial_data_v2"),
+  supabase.from("member_directory").select("member_id",{count:"exact",head:true}),
+  access.role==="super_admin"
+   ? supabase.from("financial_transactions").select("id,member_id,transaction_type,amount,transaction_date,reference_no,direction,reversal_of_id").in("transaction_type",["contribution","reversal"]).order("created_at",{ascending:true}).order("id",{ascending:true})
+   : Promise.resolve({data:[],error:null})
  ]);
- setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p><div class="grid">'+
- card(t("মোট সম্পদ","Total assets"),money(s.total_assets),t("নগদ + ব্যাংক + বিনিয়োগ","Cash + bank + investments"))+
- card(t("ব্যাংক ব্যালেন্স","Bank balance"),money(s.bank_balance))+
- card(t("হাতে নগদ","Cash in hand"),money(s.cash_balance))+
- card(t("মোট বিনিয়োগ","Investment balance"),money(s.investment_balance))+
- card(t("সদস্যদের মোট জমা","Member contributions"),money(s.total_contributions))+
- card(t("মোট ব্যয়","Total expenses"),money(s.total_expenses))+
- card(t("অন্যান্য আয় + বিনিয়োগ লাভ","Other income + investment profit"),money(Number(s.other_income||0)+Number(s.investment_profit||0)))+
- card(t("লেনদেন সংখ্যা","Transactions"),String(s.transaction_count||0),s.last_updated?t("সর্বশেষ আপডেট: ","Last updated: ")+new Date(s.last_updated).toLocaleString():"")
- +'</div>'+dashboardChartMarkup(s)+'<div class="notice">'+t("এই হিসাব Database-এর লেনদেন থেকে তৈরি। এখনো কোনো লেনদেন না থাকলে শূন্য দেখাবে; পুরোনো বা প্রাথমিক ব্যালেন্স Super Admin এন্ট্রি না করা পর্যন্ত এখানে যোগ হবে না।","Figures are calculated from database transactions. Zero means no ledger entries have been recorded; historical or opening balances must be entered by the Super Admin.")+'</div><section class="section"><div class="section-head"><h2>'+t("সাম্প্রতিক নোটিশ","Recent notices")+'</h2><span class="pill">'+t("লগইন করা সদস্যদের জন্য","For signed-in users")+'</span></div><div id="noticeList" class="list">'+empty(t("কোনো প্রকাশিত নোটিশ নেই।","No published notices."))+'</div></section><section class="section"><h2>'+t("আপনার নোটিফিকেশন","Your notifications")+'</h2><div id="inboxList" class="list">'+empty(t("কোনো নোটিফিকেশন নেই।","No notifications."))+'</div></section><div class="notice">'+t("নোটিফিকেশনের বিস্তারিত দেখতে লগইন করো। Push alert শুধু সাধারণ বার্তা দেখাবে।","Sign in to view notification details. Push alerts display only a generic message.")+'</div><div class="form-actions"><button class="secondary" id="enablePush">এই ডিভাইসে Push চালু করুন</button></div>');
+ const {data:dueRows,error:dueError}=dueResult;
+ if(dueError)throw dueError;
+ if(memberCountResult.error)throw memberCountResult.error;
+ if(ledgerResult.error)throw ledgerResult.error;
+ const activeMemberCount=memberCountResult.count||0;
+ const dashboardUpdatedAt=s.last_updated?new Date(s.last_updated).toLocaleString("en-GB",{dateStyle:"medium",timeStyle:"short"}):"";
+ const dashboardCard=(label,value,sub="")=>card(label,value,[sub,dashboardUpdatedAt?t("সর্বশেষ আপডেট: ","Last updated: ")+dashboardUpdatedAt:""].filter(Boolean).join(" · "));
+ const dueByMember=new Map();
+ (dueRows||[]).forEach(row=>{if(!dueByMember.has(row.member_id))dueByMember.set(row.member_id,{due:Number(row.total_due||0),paid:Number(row.total_paid||0),configured:Boolean(row.due_configured)});});
+ const memberTotals=Array.from(dueByMember.values());
+ const totalDue=memberTotals.reduce((sum,item)=>sum+(item.configured?item.due:0),0);
+ const totalMemberPaid=memberTotals.reduce((sum,item)=>sum+item.paid,0);
+ const activeMemberIds=new Set((dueRows||[]).map(row=>row.member_id));
+ const activeLedgerContributions=contributionLedgerTotal(ledgerResult.data||[],activeMemberIds);
+ const contributionDifference=activeLedgerContributions-totalMemberPaid;
+ const reconciliationNotice=access.role==="super_admin"&&Math.abs(contributionDifference)>0.01
+  ?'<div class="error" role="alert"><strong>হিসাব মিলছে না — যাচাই প্রয়োজন</strong><p>Active member ledger ও DATA matrix-এর মধ্যে '+money(Math.abs(contributionDifference))+' পার্থক্য আছে। '+(contributionDifference>0?'Ledger-এ বেশি':'DATA matrix-এ বেশি')+'. DATA এবং Financial Ledger মিলিয়ে সংশোধন করুন।</p></div>'
+  :"";
+
+ setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p>'+reconciliationNotice+'<div class=\"grid\">'+
+ dashboardCard(t("মোট সদস্য","Total members"),String(activeMemberCount),t("অনুমোদিত সক্রিয় সদস্য","Approved active members"))+
+ dashboardCard(t("মোট সম্পদ","Total assets"),money(s.total_assets),t("নগদ + ব্যাংক + বিনিয়োগ","Cash + bank + investments"))+
+ dashboardCard(t("ব্যাংক ব্যালেন্স","Bank balance"),money(s.bank_balance))+
+ dashboardCard(t("হাতে নগদ","Cash in hand"),money(s.cash_balance))+
+ dashboardCard(t("মোট বিনিয়োগ","Investment balance"),money(s.investment_balance))+
+ dashboardCard(t("সদস্যদের মোট জমা","Member contributions"),money(s.total_contributions))+
+ dashboardCard(t("সদস্যদের মোট বকেয়া","Total member due"),money(totalDue))+
+ dashboardCard(t("মোট ব্যয়","Total expenses"),money(s.total_expenses))+
+ dashboardCard(t("অন্যান্য আয় + বিনিয়োগ লাভ","Other income + investment profit"),money(Number(s.other_income||0)+Number(s.investment_profit||0)))+
+ dashboardCard(t("লেনদেন সংখ্যা","Transactions"),String(s.transaction_count||0),s.last_updated?t("সর্বশেষ আপডেট: ","Last updated: ")+new Date(s.last_updated).toLocaleString():"")
+ +'</div>'+dashboardChartMarkup(s)+(access.role==="super_admin"?'<div class="form-actions"><a class="button" href="admin.html#financial-entry">✎ '+t("Hand Cash / Bank / Investment যোগ বা সংশোধন","Add or edit cash, bank and investment")+'</a></div>':"")+'<div class="notice">'+t("এই হিসাব Database-এর লেনদেন থেকে তৈরি। এখনো কোনো লেনদেন না থাকলে শূন্য দেখাবে; পুরোনো বা প্রাথমিক ব্যালেন্স Super Admin এন্ট্রি না করা পর্যন্ত এখানে যোগ হবে না।","Figures are calculated from database transactions. Zero means no ledger entries have been recorded; historical or opening balances must be entered by the Super Admin.")+'</div><section class="section"><div class="section-head"><h2>'+t("সাম্প্রতিক নোটিশ","Recent notices")+'</h2><span class="pill">'+t("লগইন করা সদস্যদের জন্য","For signed-in users")+'</span></div><div id="noticeList" class="list">'+empty(t("কোনো প্রকাশিত নোটিশ নেই।","No published notices."))+'</div></section><section class="section"><h2>'+t("আপনার নোটিফিকেশন","Your notifications")+'</h2><div id="inboxList" class="list">'+empty(t("কোনো নোটিফিকেশন নেই।","No notifications."))+'</div></section><div class="notice">'+t("নোটিফিকেশনের বিস্তারিত দেখতে লগইন করো। Push alert শুধু সাধারণ বার্তা দেখাবে।","Sign in to view notification details. Push alerts display only a generic message.")+'</div><div class="form-actions"><button class="secondary" id="enablePush">এই ডিভাইসে Push চালু করুন</button></div>');
  document.getElementById("enablePush").addEventListener("click",async()=>{try{await enablePush(supabase,access.session.user.id);toast("এই ডিভাইসে Push চালু হয়েছে।")}catch(e){toast(e.message||"Push চালু করা যায়নি।")}});
  const [notices,inbox]=await Promise.all([
   supabase.from("notices").select("id,title,body,notice_type,meeting_at,published_at").eq("published",true).order("published_at",{ascending:false}).limit(8),
   supabase.from("notifications").select("id,title,body,notification_type,created_at,read_at").eq("user_id",access.session.user.id).order("created_at",{ascending:false}).limit(10)
  ]);
- if(!notices.error){document.getElementById("noticeList").innerHTML=notices.data.length?notices.data.map(n=>'<article class="list-item"><strong>'+esc(n.title)+'</strong><p>'+esc(n.body)+'</p><small>'+esc(n.notice_type==="meeting"&&n.meeting_at?new Date(n.meeting_at).toLocaleString():new Date(n.published_at).toLocaleString())+'</small></article>').join(""):empty(t("কোনো প্রকাশিত নোটিশ নেই।","No published notices."))}
+ if(!notices.error){const noticeList=document.getElementById("noticeList");const latestNotice=notices.data[0];noticeList.innerHTML=(notices.data.length?notices.data.map(n=>'<article class="list-item"><strong>'+esc(n.title)+'</strong><p>'+esc(n.body)+'</p><small>'+esc(n.notice_type==="meeting"&&n.meeting_at?new Date(n.meeting_at).toLocaleString():new Date(n.published_at).toLocaleString())+'</small></article>').join(""):empty(t("কোনো প্রকাশিত নোটিশ নেই।","No published notices.")))}
  if(!inbox.error){document.getElementById("inboxList").innerHTML=inbox.data.length?inbox.data.map(n=>'<article class="list-item"><div class="row"><strong>'+esc(n.title)+'</strong>'+(n.read_at?'<span class="pill">Read</span>':'<span class="pill">New</span>')+'</div><p>'+esc(n.body)+'</p><small>'+esc(new Date(n.created_at).toLocaleString())+'</small>'+(n.read_at?"":' <button class="secondary mark-read" data-id="'+esc(n.id)+'">পড়া হয়েছে</button>')+'</article>').join(""):empty(t("কোনো নোটিফিকেশন নেই।","No notifications."));document.querySelectorAll(".mark-read").forEach(b=>b.addEventListener("click",async()=>{const {error}=await supabase.from("notifications").update({read_at:new Date().toISOString()}).eq("id",b.dataset.id);if(error)toast(error.message);else{renderDashboard();refreshUnreadCount()}}))}
-}
-async function renderData(){
- const s=await summary();
- const rows=s.monthly_trend||[];
- const halves=s.half_yearly_trend||[];
- setPage('<h1>'+t("কমিটির আর্থিক তথ্য","Committee financial data")+'</h1><p class="lead">'+t("সবার জন্য প্রকাশযোগ্য সামগ্রিক হিসাব। ব্যক্তিগত জমা ও বকেয়া এখানে দেখানো হয় না।","Committee-wide figures only. Personal deposits and dues are not shown here.")+'</p><div class="grid">'+
- card(t("মোট সম্পদ","Total assets"),money(s.total_assets))+
- card(t("মোট জমা","Total contributions"),money(s.total_contributions))+
- card(t("ব্যয়","Expenses"),money(s.total_expenses))+
- card(t("নিট পরিচালন ফল","Net operating result"),money(s.net_operating_result))+'</div><section class="section"><h2>'+t("মাসভিত্তিক রিপোর্ট","Monthly report")+'</h2>'+ (rows.length?'<div class="table-wrap"><table><thead><tr><th>Month</th><th>Contributions</th><th>Expenses</th><th>Other income + profit</th><th>Investment loss</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+esc(monthText(r.month))+'</td><td>'+money(r.contributions)+'</td><td>'+money(r.expenses)+'</td><td>'+money(r.income)+'</td><td>'+money(r.investment_loss)+'</td></tr>').join("")+'</tbody></table></div>':empty(t("এখনো কোনো আর্থিক লেনদেন নেই। Super Admin প্রথম লেনদেন যোগ করলে মাসিক রিপোর্ট তৈরি হবে।","No financial transactions yet. Monthly reports will appear after the Super Admin records transactions.")))+'</section><section class="section"><h2>'+t("অর্ধবার্ষিক রিপোর্ট","Half-yearly report")+'</h2>'+(halves.length?'<div class="table-wrap"><table><thead><tr><th>Period</th><th>Contributions</th><th>Expenses</th><th>Other income + profit</th><th>Investment loss</th></tr></thead><tbody>'+halves.map(r=>'<tr><td>'+esc(String(r.year)+(lang==="bn"?(r.half===1?" · জানুয়ারি–জুন":" · জুলাই–ডিসেম্বর"):" · H"+r.half))+'</td><td>'+money(r.contributions)+'</td><td>'+money(r.expenses)+'</td><td>'+money(r.income)+'</td><td>'+money(r.investment_loss)+'</td></tr>').join("")+'</tbody></table></div>':empty(t("এখনো অর্ধবার্ষিক রিপোর্ট তৈরির মতো কোনো লেনদেন নেই।","No transactions are available for half-yearly reporting yet.")))+'</section><div class="notice">'+t("কোনো Demo বা অনুমানভিত্তিক অঙ্ক ব্যবহার করা হচ্ছে না।","No demo or estimated amounts are used.")+'</div>');
 }
 function monthCount(start){
  if(!start)return 0;
@@ -124,8 +270,19 @@ function monthCount(start){
  return Math.max(0,(b.getFullYear()-a.getFullYear())*12+b.getMonth()-a.getMonth()+1);
 }
 async function renderDue(){
- const {data:sharedRows,error}=await supabase.rpc("get_member_shared_financial_data");
+ const [sharedResult,rateResult,rateHistoryResult]=await Promise.all([
+  supabase.rpc("get_member_shared_financial_data_v2"),
+  access.role==="super_admin"
+   ? supabase.from("members").select("id,member_no,full_name,monthly_contribution").eq("status","active").order("member_no")
+   : Promise.resolve({data:null,error:null}),
+  access.role==="super_admin"
+   ? supabase.from("member_contribution_rates").select("member_id,monthly_amount,effective_from,effective_to").order("effective_from")
+   : Promise.resolve({data:null,error:null})
+ ]);
+ const {data:sharedRows,error}=sharedResult;
  if(error)throw error;
+ if(rateResult.error)throw rateResult.error;
+ if(rateHistoryResult.error)throw rateHistoryResult.error;
  const byMember=new Map();
  (sharedRows||[]).forEach(row=>{
   if(!byMember.has(row.member_id)){
@@ -145,21 +302,34 @@ async function renderDue(){
  const dues=rows.map(r=>"<tr><td>"+esc(r.member_no||"—")+"</td><td>"+esc(r.full_name)+"</td><td>"+(r.configured?'<span class=\"due-chip '+dueClass(r.due)+'\">'+money(r.due)+'</span>':'<span class=\"due-chip due-unconfigured\">Rate not set</span>')+"</td></tr>").join("");
  let rateEditor="";
  if(access.role==="super_admin"){
-  const {data:rateMembers,error:rateError}=await supabase.from("members")
-   .select("id,member_no,full_name,monthly_contribution")
-   .eq("status","active").order("member_no");
-  if(rateError)throw rateError;
-  const nextMonth=new Date();nextMonth.setDate(1);nextMonth.setMonth(nextMonth.getMonth()+1);
-  const effectiveDefault=nextMonth.getFullYear()+"-"+String(nextMonth.getMonth()+1).padStart(2,"0")+"-01";
-  const rateRows=(rateMembers||[]).map(m=>'<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+esc(m.monthly_contribution?money(m.monthly_contribution):"Not set")+'</td><td><input class="due-rate-input" data-rate-member="'+esc(m.id)+'" data-current="'+Number(m.monthly_contribution||0)+'" type="number" min="1" step="1" inputmode="numeric" value="'+(m.monthly_contribution?esc(m.monthly_contribution):"")+'" aria-label="New monthly rate for '+esc(m.full_name)+'"></td></tr>').join("");
-  rateEditor='<section class="section"><div class="section-head"><h2>মাসিক জমার হার সম্পাদনা</h2><span class="pill">Super Admin only</span></div><p class="muted small">প্রত্যেক সদস্যের মাসিক হার আলাদাভাবে দিন। একবার Save করলে সব পরিবর্তন একসঙ্গে সংরক্ষিত হবে।</p><div class="field due-effective-field"><label for="dueEffectiveFrom">কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="dueEffectiveFrom" type="date" value="'+effectiveDefault+'"></div><div class="table-wrap"><table class="due-rate-table"><thead><tr><th>Member ID</th><th>Name</th><th>Current rate</th><th>New monthly rate</th></tr></thead><tbody>'+rateRows+'</tbody></table></div><div class="form-actions"><button type="button" id="saveDueRates">Save Changes</button><span id="dueRateStatus" class="muted small"></span></div></section>';
+  const rateMembers=rateResult.data||[];
+  const rateHistory=new Map();
+  (rateHistoryResult.data||[]).forEach(rate=>{if(!rateHistory.has(rate.member_id))rateHistory.set(rate.member_id,[]);rateHistory.get(rate.member_id).push(rate)});
+  const effectiveDefault="2027-01-01";
+  const rateRows=(rateMembers||[]).map(m=>{
+   const current= (rateHistory.get(m.id)||[]).filter(rate=>rate.effective_from<=effectiveDefault&&(!rate.effective_to||rate.effective_to>=effectiveDefault)).sort((a,b)=>String(b.effective_from).localeCompare(String(a.effective_from)))[0];
+   const currentRate=Number(current?.monthly_amount??2000);
+   return '<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+money(currentRate)+'</td><td><input class="due-rate-input" data-rate-member="'+esc(m.id)+'" data-current="'+currentRate+'" type="number" min="1" step="1" inputmode="numeric" value="'+currentRate+'" aria-label="New monthly rate for '+esc(m.full_name)+'"></td></tr>'
+  }).join("");
+  rateEditor='<section class="section"><div class="section-head"><h2>মাসিক জমার হার সম্পাদনা</h2><span class="pill">Super Admin only</span></div><p class="muted small">প্রত্যেক সদস্যের মাসিক হার আলাদাভাবে দিন। একবার Save করলে সব পরিবর্তন একসঙ্গে সংরক্ষিত হবে।</p><div class="field due-effective-field"><label for="dueEffectiveFrom">কার্যকর হওয়ার তারিখ (মাসের ১ তারিখ)</label><input id="dueEffectiveFrom" type="date" min="2027-01-01" max="2031-12-01" value="'+effectiveDefault+'"></div><div class="table-wrap"><table class="due-rate-table"><thead><tr><th>Member ID</th><th>Name</th><th>Current rate (selected date)</th><th>New monthly rate</th></tr></thead><tbody>'+rateRows+'</tbody></table></div><div class="form-actions"><button type="button" id="saveDueRates">Save Changes</button><span id="dueRateStatus" class="muted small"></span></div></section>';
  }
- setPage("<h1>"+t("সদস্যদের জমা ও বকেয়া","Member deposits and dues")+"</h1><p class=\"lead\">"+t("সব সক্রিয় সদস্যের জমা ও বকেয়া দেখা যাচ্ছে। সদস্যরা শুধু দেখতে পারবেন; সম্পাদনা শুধু Super Admin করতে পারবেন।","All active members’ deposits and dues. Members have view-only access; only the Super Admin can edit.")+"</p><section class=\"section\"><h2>"+t("মোট জমা","Total deposits")+"</h2><div class=\"table-wrap\"><table><thead><tr><th>Member ID</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>"+deposits+"<tr class=\"total-row\"><td colspan=\"2\">TOTAL</td><td>"+money(sumPaid)+"</td></tr></tbody></table></div></section><section class=\"section\"><h2>"+t("মোট বকেয়া","Total due")+"</h2><div class=\"table-wrap\"><table><thead><tr><th>Member ID</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>"+dues+"<tr class=\"total-row\"><td colspan=\"2\">TOTAL</td><td>"+money(sumDue)+"</td></tr></tbody></table></div><p class=\"small muted\">"+t("সবুজ: ৳২,০০০ পর্যন্ত · হলুদ: ৳২,০০০-এর বেশি থেকে ৳৫,০০০ পর্যন্ত · লাল: ৳৫,০০০-এর বেশি","Green: up to ৳2,000 · Yellow: above ৳2,000 to ৳5,000 · Red: above ৳5,000")+"</p></section>"+rateEditor+'<div class="notice">'+t("যে সদস্যের মাসিক জমার হার এখনো নির্ধারণ করা হয়নি, তার Due সঠিকভাবে গণনা করা সম্ভব নয়। Super Admin হার সেট করলে হিসাব স্বয়ংক্রিয়ভাবে আপডেট হবে।","A member’s due cannot be calculated until their monthly contribution rate is configured. The total updates automatically after the Super Admin sets the rate.")+"</div>");
+ setPage("<h1>"+t("সদস্যদের জমা ও বকেয়া","Member deposits and dues")+"</h1>"+rateEditor+"<p class=\"lead\">"+t("সব সক্রিয় সদস্যের জমা ও বকেয়া দেখা যাচ্ছে। সদস্যরা শুধু দেখতে পারবেন; সম্পাদনা শুধু Super Admin করতে পারবেন।","All active members’ deposits and dues. Members have view-only access; only the Super Admin can edit.")+"</p><p class=\"small muted\">"+t("আগাম জমা Total Deposit-এ সঙ্গে সঙ্গে যোগ হবে; তবে Due কমবে সেই Accounting Month এ পৌঁছালে।","Advance payments are included in Total Deposit immediately; they reduce Due only when their accounting month arrives.")+"</p><section class=\"section\"><h2>"+t("মোট জমা","Total deposits")+"</h2><div class=\"table-wrap\"><table><thead><tr><th>Member ID</th><th>Member Name</th><th>Total Deposit</th></tr></thead><tbody>"+deposits+"<tr class=\"total-row\"><td colspan=\"2\">TOTAL</td><td>"+money(sumPaid)+"</td></tr></tbody></table></div></section><section class=\"section\"><h2>"+t("মোট বকেয়া","Total due")+"</h2><div class=\"table-wrap\"><table><thead><tr><th>Member ID</th><th>Member Name</th><th>Total Due</th></tr></thead><tbody>"+dues+"<tr class=\"total-row\"><td colspan=\"2\">TOTAL</td><td>"+money(sumDue)+"</td></tr></tbody></table></div><p class=\"small muted\">"+t("সবুজ: ৳২,০০০ পর্যন্ত · হলুদ: ৳২,০০০-এর বেশি থেকে ৳৫,০০০ পর্যন্ত · লাল: ৳৫,০০০-এর বেশি","Green: up to ৳2,000 · Yellow: above ৳2,000 to ৳5,000 · Red: above ৳5,000")+"</p></section>"+'<div class="notice">'+t("সবার জন্য ডিফল্ট মাসিক জমা ৳২,০০০। Super Admin প্রয়োজন হলে সদস্যভেদে হার পরিবর্তন করতে পারবেন; Due স্বয়ংক্রিয়ভাবে আপডেট হবে।","The default monthly contribution is ৳2,000 for every active member. The Super Admin can change each member’s rate; Due updates automatically.")+"</div>");
  if(access.role==="super_admin"){
+  const dueDateInput=document.getElementById("dueEffectiveFrom");
+  const refreshRateBaseline=()=>{
+   const selectedDate=dueDateInput.value;
+   for(const input of document.querySelectorAll(".due-rate-input")){
+    const history=rateHistory.get(input.dataset.rateMember)||[];
+    const current=history.filter(rate=>rate.effective_from<=selectedDate&&(!rate.effective_to||rate.effective_to>=selectedDate)).sort((a,b)=>String(b.effective_from).localeCompare(String(a.effective_from)))[0];
+    const amount=Number(current?.monthly_amount??2000);
+    input.dataset.current=String(amount);input.value=String(amount);
+   }
+  };
+  dueDateInput?.addEventListener("change",refreshRateBaseline);
   document.getElementById("saveDueRates")?.addEventListener("click",async()=>{
    const dateInput=document.getElementById("dueEffectiveFrom");
    const effectiveFrom=dateInput.value;
-   if(!effectiveFrom||new Date(effectiveFrom+"T00:00:00").getDate()!==1||effectiveFrom<"2026-12-01"||effectiveFrom>="2031-12-01"){toast("কার্যকর তারিখ ১ তারিখ হতে হবে এবং Dec 2026–Nov 2031-এর মধ্যে হতে হবে।",true);dateInput.focus();return}
+   if(!effectiveFrom||new Date(effectiveFrom+"T00:00:00").getDate()!==1||effectiveFrom<"2027-01-01"||effectiveFrom>="2032-01-01"){toast("কার্যকর তারিখ ১ তারিখ হতে হবে এবং Jan 2027–Dec 2031-এর মধ্যে হতে হবে।",true);dateInput.focus();return}
    const inputs=Array.from(document.querySelectorAll(".due-rate-input"));
    const changes=inputs.filter(input=>input.value.trim()!==""&&Number(input.value)!==Number(input.dataset.current||0))
     .map(input=>({member_id:input.dataset.rateMember,amount:Number(input.value),effective_from:effectiveFrom}));
@@ -179,17 +349,52 @@ async function renderDue(){
  }
 }
 async function renderMembers(){
- const {data,error}=await supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no");if(error)throw error;
+ const [directoryResult,ownResult]=await Promise.all([
+  supabase.from("member_directory").select("member_id,member_no,full_name,full_name_bn,profile_photo_path").order("member_no"),
+  access.role==="member"
+   ? supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle()
+   : Promise.resolve({data:null,error:null})
+ ]);
+ const {data,error}=directoryResult;if(error)throw error;
  if(!data.length){setPage('<h1>Member Info</h1>'+empty(t("এখনো কোনো Active member নেই।","No active members yet.")));return}
- const own=access.role==="member"?await supabase.from("members").select("id").eq("auth_user_id",access.session.user.id).maybeSingle():{data:null};if(own.error)throw own.error;const ownId=own.data?.id||null;
- const cards=await Promise.all(data.map(async m=>{
-  let photo="";
-  if(m.profile_photo_path){const {data:u}=await supabase.storage.from("member-profile-photos").createSignedUrl(m.profile_photo_path,1800);if(u?.signedUrl)photo='<img class="member-directory-avatar" loading="lazy" src="'+esc(u.signedUrl)+'" alt="'+esc(m.full_name||"Member")+'">'}
+ if(ownResult.error)throw ownResult.error;const ownId=ownResult.data?.id||null;
+ const photoPaths=[...new Set(data.map(member=>member.profile_photo_path).filter(Boolean))];
+ const photoUrlByPath=new Map();
+ let photoCache={};
+ try{photoCache=JSON.parse(sessionStorage.getItem("ffv:member-photo-cache")||"{}")}catch{}
+ const missingPaths=[];
+ for(const path of photoPaths){
+  const cached=photoCache[path];
+  if(cached?.url&&Number(cached.expiresAt)>Date.now()+5*60*1000)photoUrlByPath.set(path,cached.url);
+  else missingPaths.push(path);
+ }
+ if(missingPaths.length){
+  try{
+   const {data:signed,error:signedError}=await supabase.storage.from("member-profile-photos").createSignedUrls(missingPaths,86400);
+   if(signedError)throw signedError;
+   (signed||[]).forEach((item,index)=>{
+    const path=item.path||missingPaths[index];
+    if(item.signedUrl){photoUrlByPath.set(path,item.signedUrl);photoCache[path]={url:item.signedUrl,expiresAt:Date.now()+23*60*60*1000}}
+   });
+   try{sessionStorage.setItem("ffv:member-photo-cache",JSON.stringify(photoCache))}catch{}
+  }catch(batchError){
+   console.warn("Batch profile photo URLs unavailable; using individual fallback",batchError);
+   const fallback=await Promise.all(missingPaths.map(async path=>{
+    const {data:signed}=await supabase.storage.from("member-profile-photos").createSignedUrl(path,86400);
+    return {path,url:signed?.signedUrl||null};
+   }));
+   fallback.forEach(item=>{if(item.url){photoUrlByPath.set(item.path,item.url);photoCache[item.path]={url:item.url,expiresAt:Date.now()+23*60*60*1000}}});
+   try{sessionStorage.setItem("ffv:member-photo-cache",JSON.stringify(photoCache))}catch{}
+  }
+ }
+ const cards=data.map(m=>{
+  const photoUrl=photoUrlByPath.get(m.profile_photo_path);
   const label=lang==="bn"?(m.full_name_bn||m.full_name):m.full_name;
   const canOpen=access.role==="super_admin"||m.member_id===ownId;
+  const photo=photoUrl?'<img class="member-directory-avatar" loading="lazy" decoding="async" src="'+esc(photoUrl)+'" alt="'+esc(m.full_name||"Member")+'">':"";
   const inside=(photo||'<span class="member-directory-avatar member-directory-fallback">'+esc(String(label||"M").trim().slice(0,1).toUpperCase())+'</span>')+'<strong class="member-directory-name">'+esc(label)+'</strong>';
-  return canOpen?'<a class="member-directory-person" href="member-profile.html?id='+encodeURIComponent(m.member_id)+'" aria-label="'+esc("Open profile: "+label)+'">'+inside+'</a>':'<div class="member-directory-person">'+inside+'</div>';
- }));
+  return canOpen?'<div class="member-directory-person-wrap"><a class="member-directory-person" href="member-profile.html?id='+encodeURIComponent(m.member_id)+'" aria-label="'+esc("Open profile: "+label)+'">'+inside+'</a>'+(access.role==="super_admin"?'<a class="member-directory-edit" href="member-profile.html?id='+encodeURIComponent(m.member_id)+'&edit=1">✎ Edit Profile</a>':"")+'</div>':'<div class="member-directory-person">'+inside+'</div>';
+ });
  setPage('<h1>'+t("সদস্য পরিচিতি","Member directory")+'</h1><p class="lead">'+t("সদস্যদের ছবি ও নাম। নিজের ছবি বা নাম চাপলে ব্যক্তিগত প্রোফাইল খুলবে। Super Admin যেকোনো সদস্যের প্রোফাইল খুলতে পারবেন।","Members are shown by photo and name. Members can open their own profile; Super Admin can open any profile.")+'</p><div class="member-directory-grid">'+cards.join("")+'</div>');
 }
 async function renderProofs(){
@@ -197,9 +402,9 @@ async function renderProofs(){
  if(access.role!=="super_admin")proofQuery=proofQuery.eq("published",true);
  const {data,error}=await proofQuery;if(error)throw error;
  const counts={};(data||[]).forEach(p=>{const k=p.proof_month.slice(0,7);counts[k]=(counts[k]||0)+1});
- const months=[];for(let i=0;i<60;i++){const d=new Date(2026,11+i,1);months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))}
+ const months=[];for(let i=0;i<60;i++){const d=new Date(2027,i,1);months.push(d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"))}
  const cards=months.map(k=>'<button type="button" class="proof-month-card" data-proof-month="'+k+'"><strong>'+esc(monthText(k))+'</strong><span>'+String(counts[k]||0)+' files</span></button>').join("");
- setPage('<h1>'+t("মাসিক জমা ও বিনিয়োগের প্রমাণ","Monthly deposit and investment proofs")+'</h1><p class="lead">ডিসেম্বর ২০২৬ থেকে নভেম্বর ২০৩১ · প্রতি মাসে একটি বা একাধিক রসিদ। শুধু নির্বাচিত মাসের ফাইল লোড হবে।</p><div class="proof-month-grid">'+cards+'</div><section class="section" id="proofMonthDetail">'+empty("ফাইল দেখতে অথবা আপলোড করতে একটি মাস নির্বাচন করুন।")+'</section>');
+ setPage('<h1>'+t("মাসিক জমা ও বিনিয়োগের প্রমাণ","Monthly deposit and investment proofs")+'</h1><p class="lead">জানুয়ারি ২০২৭ থেকে ডিসেম্বর ২০৩১ · প্রতি মাসে একটি বা একাধিক রসিদ। শুধু নির্বাচিত মাসের ফাইল লোড হবে।</p><div class="proof-month-grid">'+cards+'</div><section class="section" id="proofMonthDetail">'+empty("ফাইল দেখতে অথবা আপলোড করতে একটি মাস নির্বাচন করুন।")+'</section>');
  document.querySelectorAll("[data-proof-month]").forEach(button=>button.addEventListener("click",()=>loadProofMonth(button.dataset.proofMonth,data)));
 }
 async function loadProofMonth(month,allProofs){
@@ -209,7 +414,7 @@ async function loadProofMonth(month,allProofs){
   ?'<form id="proofMetaForm" class="section"><h3>এই মাসের Proof তথ্য সম্পাদনা</h3><p class="muted small">Title, note, month এবং প্রকাশের অবস্থা একবারে Save হবে।</p>'+rows.map(p=>'<div class="proof-meta-row" data-proof-meta-row><input type="hidden" name="id" value="'+esc(p.id)+'"><div class="field"><label>Title</label><input name="title" maxlength="180" required value="'+esc(p.title)+'"></div><div class="field"><label>Proof month</label><input name="proof_month" type="date" value="'+esc(p.proof_month)+'" required></div><div class="field"><label>Note</label><textarea name="note" rows="2" maxlength="500">'+esc(p.note||"")+'</textarea></div><label class="inline-check"><input name="published" type="checkbox" '+(p.published?"checked":"")+'> Published</label></div>').join("")+'<div class="form-actions"><button type="submit" id="saveProofMeta">Save Changes</button><span id="proofMetaStatus" class="muted small"></span></div></form>'
   :"";
  const uploadForm=access.role==="super_admin"
-  ?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><h3>Upload new proof</h3><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">ছবি সর্বোচ্চ 5MB, PDF সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>'
+  ?'<form id="proofUploadForm" class="section"><input type="hidden" name="month" value="'+month+'"><h3>Upload new proof</h3><div class="field"><label>ছবি অথবা PDF — এক বা একাধিক ফাইল</label><label class="dropzone" id="proofDropzone">ফাইল এখানে Drop করুন অথবা Browse Files<input id="proofFilesInput" type="file" name="files" multiple accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">Original ছবি সর্বোচ্চ 12MB; scan/compress হওয়ার পর 5MB-এর মধ্যে upload হবে। PDF সর্বোচ্চ 10MB। JPG, PNG, WEBP অথবা PDF।</small></div><div class="field"><label>Document Scanner</label><div class="scanner-controls"><select id="proofScanMode" aria-label="Scan output mode"><option value="bw">Black &amp; White · Recommended</option><option value="color">Keep original colour</option></select><select id="proofScanRotation" aria-label="Rotate document"><option value="0">Rotation: 0° (default)</option><option value="90">Rotate 90° clockwise</option><option value="180">Rotate 180°</option><option value="270">Rotate 90° counter-clockwise</option></select><button type="button" class="secondary" id="prepareProofScans">Scan &amp; Enhance Images</button><span id="proofScanStatus" class="muted small"></span></div><div id="proofScanPreview" class="scanner-preview" aria-live="polite"></div><small class="muted">Upload করলে ছবি স্বয়ংক্রিয়ভাবে scan ও optimize হবে; PDF অপরিবর্তিত থাকবে। Preview ও Manual Crop / Rotate চাইলে আগে Scan & Enhance Images চাপুন।</small></div><div class="field"><label>সাধারণ নোট (ঐচ্ছিক)</label><input name="note" maxlength="500"></div><div class="form-actions"><button type="submit" id="proofUploadButton">Upload selected files</button><span id="proofUploadStatus" class="muted small"></span></div></form>'
   :"";
  root.innerHTML='<h2>'+esc(monthText(month))+'</h2><div class="muted small">'+rows.length+' file(s)</div><div id="proofFiles" class="list">'+empty("ফাইল লোড হচ্ছে…")+'</div>'+metaEditor+uploadForm;
  const fileBox=document.getElementById("proofFiles");
@@ -241,19 +446,140 @@ async function loadProofMonth(month,allProofs){
    toast("Proof তথ্য সংরক্ষণ সম্পন্ন।");await renderProofs();[...document.querySelectorAll("[data-proof-month]")].find(button=>button.dataset.proofMonth===month)?.click();
   });
   const form=document.getElementById("proofUploadForm"),input=document.getElementById("proofFilesInput"),drop=document.getElementById("proofDropzone");
+  let preparedFiles=null;
+  const scanButton=document.getElementById("prepareProofScans");
+  const scanStatus=document.getElementById("proofScanStatus");
+  const scanPreview=document.getElementById("proofScanPreview");
+  const scanPreviewUrls=[];
+  const clearScanPreview=()=>{scanPreviewUrls.forEach(url=>URL.revokeObjectURL(url));scanPreviewUrls.length=0;scanPreview.replaceChildren()};
+  const ensureCropper=async()=>{
+   if(window.Cropper)return window.Cropper;
+   if(!window.__ffvCropperPromise){
+    window.__ffvCropperPromise=new Promise((resolve,reject)=>{
+     if(!document.querySelector('link[data-ffv-cropper]')){const css=document.createElement("link");css.rel="stylesheet";css.href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css";css.dataset.ffvCropper="1";document.head.append(css)}
+     const script=document.createElement("script");script.src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js";script.async=true;script.onload=()=>window.Cropper?resolve(window.Cropper):reject(new Error("Crop tool did not initialize"));script.onerror=()=>reject(new Error("Crop tool could not load"));document.head.append(script);
+    }).catch(error=>{window.__ffvCropperPromise=null;throw error});
+   }
+   return window.__ffvCropperPromise;
+  };
+  input.addEventListener("change",()=>{preparedFiles=null;clearScanPreview();scanStatus.textContent="";drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
+  scanButton.addEventListener("click",async()=>{
+   const originals=Array.from(input.files||[]);
+   const tooLarge=originals.find(file=>file.type==="application/pdf"?file.size>10*1024*1024:file.size>12*1024*1024);
+   if(tooLarge){toast("ফাইলের সাইজ সীমা অতিক্রম করেছে: "+tooLarge.name,true);return}
+   const images=originals.filter(file=>file.type.startsWith("image/"));
+   if(!originals.length){toast("আগে image অথবা PDF নির্বাচন করুন।");return}
+   if(!images.length){scanStatus.textContent="নির্বাচিত ফাইলগুলো PDF; PDF অপরিবর্তিত upload হবে।";preparedFiles=originals;return}
+   scanButton.disabled=true;scanStatus.textContent="Scanner engine load হচ্ছে…";clearScanPreview();preparedFiles=null;
+   try{
+    const {scanDocumentImage}=await import("./document-scanner.js");
+    const scanned=new Map();
+    const scanMode=document.getElementById("proofScanMode").value;
+    const scanRotation=Number(document.getElementById("proofScanRotation").value);
+    for(let index=0;index<originals.length;index++){
+     const file=originals[index];
+     if(!file.type.startsWith("image/"))continue;
+     scanStatus.textContent="Scanning "+(scanned.size+1)+" / "+images.length+" · "+file.name;
+     const result=await scanDocumentImage(file,scanMode,scanRotation);
+     scanned.set(file,result.file);
+     const card=document.createElement("article");card.className="scanner-preview-card";
+     const image=document.createElement("img");image.loading="lazy";image.alt="Enhanced document preview";image.src=URL.createObjectURL(result.file);image.dataset.scanMode=scanMode;scanPreviewUrls.push(image.src);
+     const details=document.createElement("div");
+     const ratio=file.size?Math.round((1-result.outputSize/file.size)*100):0;
+     const edgeText=result.cornersDetected?"Edges detected · perspective corrected":"Page edges not detected · image enhanced without perspective correction";
+     details.textContent=edgeText+" · "+(result.outputSize/1024).toFixed(0)+" KB"+(ratio>0?" · "+ratio+"% smaller":"");
+     const cropButton=document.createElement("button");cropButton.type="button";cropButton.className="button secondary scanner-crop-button";cropButton.textContent="Manual Crop / Rotate";
+     cropButton.addEventListener("click",async()=>{
+      if(cropButton.disabled)return;
+      cropButton.disabled=true;
+      let cropper=null,workspace=null;
+      try{
+       const CropperClass=await ensureCropper();
+       workspace=document.createElement("div");workspace.className="scanner-crop-workspace";
+       card.insertBefore(workspace,image);workspace.append(image);
+       const controls=document.createElement("div");controls.className="scanner-crop-controls";
+       const left=document.createElement("button"),right=document.createElement("button"),apply=document.createElement("button"),cancel=document.createElement("button");
+       left.type=right.type=apply.type=cancel.type="button";left.textContent="↶ Rotate";right.textContent="Rotate ↷";apply.textContent="Apply Crop";cancel.textContent="Cancel";
+       left.addEventListener("click",()=>cropper?.rotate(-90));right.addEventListener("click",()=>cropper?.rotate(90));
+       controls.append(left,right,apply,cancel);workspace.append(controls);
+       cropper=new CropperClass(image,{viewMode:1,dragMode:"crop",autoCropArea:.96,responsive:true,background:false,movable:true,zoomable:true,rotatable:true,scalable:false,guides:true,center:true,highlight:true,restore:false});
+       cancel.addEventListener("click",()=>{cropper?.destroy();cropper=null;card.insertBefore(image,details);workspace.remove();cropButton.disabled=false});
+       apply.addEventListener("click",async()=>{
+        apply.disabled=true;apply.textContent="Processing…";
+        try{
+         const canvas=cropper.getCroppedCanvas({maxWidth:2800,maxHeight:2800,imageSmoothingEnabled:true,imageSmoothingQuality:"high"});
+         if(!canvas)throw new Error("Crop output is empty");
+         const toBlob=(type,quality)=>new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error("Could not encode cropped image")),type,quality));
+         const isBw=image.dataset.scanMode==="bw";
+         let blob=await toBlob(isBw?"image/png":"image/webp",isBw?undefined:.93);
+         const targetBytes=Math.min(file.size,1*1024*1024);
+         if(blob.size>targetBytes){
+          let highQuality=blob,smallest=blob;
+          for(const quality of [.93,.9,.86,.82,.78,.74,.7,.66]){
+           const candidate=await toBlob("image/webp",quality);smallest=candidate;
+           if(candidate.size<=targetBytes){blob=candidate;break}
+          }
+          if(blob.size>targetBytes)blob=highQuality.size<=5*1024*1024?highQuality:smallest;
+         }
+         if(blob.size>5*1024*1024)throw new Error("Cropped image is still over 5MB");
+         const ext=blob.type==="image/png"?"png":"webp";
+         const updated=new File([blob],file.name.replace(/\.[^.]+$/,"")+"_scan."+ext,{type:blob.type,lastModified:Date.now()});
+         cropper.destroy();cropper=null;
+         const oldUrl=image.src;const nextUrl=URL.createObjectURL(updated);scanPreviewUrls.push(nextUrl);image.src=nextUrl;
+         if(oldUrl.startsWith("blob:"))URL.revokeObjectURL(oldUrl);
+         scanned.set(file,updated);preparedFiles=originals.map(original=>scanned.get(original)||original);
+         const savedRatio=file.size?Math.round((1-updated.size/file.size)*100):0;
+         details.textContent=edgeText+" · Manual crop applied · "+(updated.size/1024).toFixed(0)+" KB"+(savedRatio>0?" · "+savedRatio+"% smaller":"");
+         card.insertBefore(image,details);workspace.remove();cropButton.disabled=false;cropButton.textContent="Adjust Crop / Rotate";
+        }catch(error){console.error("Crop apply failed",error);apply.disabled=false;apply.textContent="Apply Crop";toast("Crop save হয়নি: "+(error.message||"Unknown error"),true)}
+       });
+      }catch(error){
+       console.error("Manual crop failed",error);if(cropper)cropper.destroy();if(workspace){card.insertBefore(image,details);workspace.remove()}cropButton.disabled=false;toast("Manual crop চালু হয়নি: "+(error.message||"Unknown error"),true);
+      }
+     });
+     card.append(image,details,cropButton);scanPreview.append(card);
+    }
+    preparedFiles=originals.map(file=>scanned.get(file)||file);
+    scanStatus.textContent="Preview ready · "+scanned.size+" image(s) processed. Upload করলে এই enhanced files সংরক্ষিত হবে।";
+   }catch(error){
+    console.error("Document scanner failed",error);preparedFiles=null;clearScanPreview();scanStatus.textContent="Scan করা যায়নি: "+(error.message||"Unknown error");toast("Scanner কাজ করেনি। Original files এখনো অপরিবর্তিত আছে।",true);
+   }finally{scanButton.disabled=false}
+  });
   drop.addEventListener("dragover",event=>{event.preventDefault();drop.classList.add("dragover")});
   drop.addEventListener("dragleave",()=>drop.classList.remove("dragover"));
-  drop.addEventListener("drop",event=>{event.preventDefault();drop.classList.remove("dragover");if(event.dataTransfer?.files?.length){input.files=event.dataTransfer.files;drop.dataset.selected=event.dataTransfer.files.length+" file(s) selected"}});
+  drop.addEventListener("drop",event=>{event.preventDefault();drop.classList.remove("dragover");if(event.dataTransfer?.files?.length){input.files=event.dataTransfer.files;drop.dataset.selected=event.dataTransfer.files.length+" file(s) selected";input.dispatchEvent(new Event("change",{bubbles:true}))}});
   input.addEventListener("change",()=>{drop.dataset.selected=input.files.length?input.files.length+" file(s) selected":""});
   form.addEventListener("submit",async event=>{
    event.preventDefault();const files=Array.from(input.files||[]);
    if(!files.length){toast("কমপক্ষে একটি ফাইল নির্বাচন করুন।");return}
    const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
-   const bad=files.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024));
-   if(bad){toast("ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+bad.name,true);return}
-   const button=document.getElementById("proofUploadButton"),status=document.getElementById("proofUploadStatus");button.disabled=true;let success=0;
-   for(const file of files){
-    status.textContent=(success+1)+" / "+files.length+" uploading…";
+   const invalidOriginal=files.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>12*1024*1024));
+   if(invalidOriginal){toast("ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+invalidOriginal.name,true);return}
+   const button=document.getElementById("proofUploadButton"),status=document.getElementById("proofUploadStatus");
+   button.disabled=true;
+   let uploadFiles=preparedFiles||files;
+   if(!preparedFiles&&files.some(file=>file.type.startsWith("image/"))){
+    status.textContent="ছবি স্বয়ংক্রিয়ভাবে scan ও optimize হচ্ছে…";
+    try{
+     const {scanDocumentImage}=await import("./document-scanner.js");
+     const scanMode=document.getElementById("proofScanMode").value;
+     const scanRotation=Number(document.getElementById("proofScanRotation").value);
+     uploadFiles=await Promise.all(files.map(async file=>{
+      if(!file.type.startsWith("image/"))return file;
+      try{return (await scanDocumentImage(file,scanMode,scanRotation)).file}
+      catch(scanError){console.warn("Automatic document scan failed; using compression",scanError);return await optimizeImageFile(file,"document").catch(()=>file)}
+     }));
+    }catch(scannerError){
+     console.warn("Automatic scanner unavailable; compressing images only",scannerError);
+     uploadFiles=await Promise.all(files.map(file=>file.type.startsWith("image/")?optimizeImageFile(file,"document").catch(()=>file):file));
+     scanStatus.textContent="Scanner পাওয়া যায়নি; ছবি compress করে upload হবে।";
+    }
+   }
+   const invalidProcessed=uploadFiles.find(file=>!allowed.includes(file.type)||(file.type==="application/pdf"?file.size>10*1024*1024:file.size>5*1024*1024));
+   if(invalidProcessed){button.disabled=false;toast("প্রসেস করা ফাইলের ধরন বা সাইজ গ্রহণযোগ্য নয়: "+invalidProcessed.name,true);return}
+   let success=0;
+   for(const file of uploadFiles){
+    status.textContent=(success+1)+" / "+uploadFiles.length+" uploading…";
     const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-80),path=month+"/"+crypto.randomUUID()+"-"+safeName;
     const {error:upError}=await supabase.storage.from("committee-proofs").upload(path,file,{upsert:false,contentType:file.type});
     if(upError){toast(file.name+": "+upError.message,true);continue}
@@ -261,7 +587,8 @@ async function loadProofMonth(month,allProofs){
     if(rowError){await supabase.storage.from("committee-proofs").remove([path]);toast(file.name+": "+rowError.message,true);continue}
     success++;
    }
-   status.textContent=success+" / "+files.length+" uploaded";
+   status.textContent=success+" / "+uploadFiles.length+" uploaded";
+   preparedFiles=null;clearScanPreview();
    toast(success+"টি ফাইল আপলোড হয়েছে।");await renderProofs();[...document.querySelectorAll("[data-proof-month]")].find(button=>button.dataset.proofMonth===month)?.click();
   });
  }
@@ -275,9 +602,9 @@ async function loadProofMonth(month,allProofs){
  const activeMethods=methods.filter(m=>m.active);
  const cards=await Promise.all(activeMethods.map(async m=>{
   const {data:u}=m.qr_path?await supabase.storage.from("payment-qr").createSignedUrl(m.qr_path,1800):{data:null};
-  return '<article class="payment-method-card"><div class="row"><strong>'+esc(m.method.toUpperCase())+'</strong><span class="pill">Active</span></div><p>'+esc(m.account_name||"")+'</p><p class="payment-number">'+esc(m.account_number||"নম্বর সেট করা হয়নি")+'</p>'+(u?.signedUrl?'<img class="payment-qr" loading="lazy" src="'+esc(u.signedUrl)+'" alt="Payment QR">':"")+'</article>';
+  return '<article class="payment-method-card"><div class="row"><strong>'+esc(m.method.toUpperCase())+'</strong><span class="pill">Active</span></div><p>'+esc(m.account_name||"")+'</p><p class="payment-number">'+esc(m.account_number||"নম্বর সেট করা হয়নি")+'</p>'+(m.account_number?'<button class="secondary" type="button" data-copy-payment-number="'+esc(m.account_number)+'">নম্বর কপি করুন</button>':"")+(u?.signedUrl?'<img class="payment-qr" loading="lazy" src="'+esc(u.signedUrl)+'" alt="Payment QR">':"")+'</article>';
  }));
- const base='<h1>Payment</h1><p class="lead">bKash অথবা Nagad-এ টাকা পাঠানোর পর Transaction ID জমা দিন। Super Admin যাচাই করে অনুমোদন করবেন।</p><div class="payment-method-grid">'+(cards.join("")||empty("Super Admin এখনো bKash/Nagad নম্বর সেট করেননি।"))+'</div>';
+ const base='<h1>Payment</h1><p class="lead">QR Scan করুন অথবা নম্বর কপি করে bKash / Nagad-এ Send Money করুন। তারপর Transaction ID জমা দিন; Super Admin যাচাই করে অনুমোদন করবেন।</p><div class="payment-method-grid">'+(cards.join("")||empty("Super Admin এখনো bKash/Nagad নম্বর সেট করেননি।"))+'</div>';
  if(isSuper){
   const settings=["bkash","nagad"].map(method=>{
    const existing=methods.find(m=>m.method===method);
@@ -305,9 +632,10 @@ async function loadProofMonth(month,allProofs){
    let paymentSaved=false;
    try{
     for(const item of uploads){
-     const ext=item.file.type==="image/png"?"png":item.file.type==="image/jpeg"?"jpg":"webp";
+     const uploadFile=await optimizeImageFile(item.file,"qr").catch(()=>item.file);
+     const ext=uploadFile.type==="image/png"?"png":uploadFile.type==="image/jpeg"?"jpg":"webp";
      const path=item.method+"/"+crypto.randomUUID()+"."+ext;
-     const {error}=await supabase.storage.from("payment-qr").upload(path,item.file,{upsert:false,contentType:item.file.type});
+     const {error}=await supabase.storage.from("payment-qr").upload(path,uploadFile,{upsert:false,contentType:uploadFile.type});
      if(error)throw error;
      item.newPath=path;newPaths.push(path);
      const row=updates.find(x=>x.method===item.method);row.qr_path=path;
@@ -383,7 +711,7 @@ async function renderProfile(){
  }));
  const photoPreview=profilePhoto.data?.signedUrl?'<img class="profile-upload-preview" src="'+esc(profilePhoto.data.signedUrl)+'" alt="Current approved profile photo">':'<div class="profile-upload-placeholder">ছবি নেই</div>';
  const nomineePreview=nomineePhoto.data?.signedUrl?'<img class="profile-upload-preview nominee-preview" src="'+esc(nomineePhoto.data.signedUrl)+'" alt="Current approved nominee photo">':'<div class="profile-upload-placeholder">ছবি নেই</div>';
- setPage('<h1>My Profile</h1><p class="lead">আপনার তথ্য ও ছবি পরিবর্তনের অনুরোধ Super Admin অনুমোদন না করা পর্যন্ত মূল Profile-এ কার্যকর হবে না। NID ও Nominee-এর ফাইল শুধু আপনি এবং Super Admin দেখতে পারবেন।</p><div class="grid">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"Not configured")+'</div><form id="profileRequest"><section class="section"><h2>ব্যক্তিগত তথ্য</h2><div class="form-grid">'+inputs+'</div></section><section class="section"><h2>Profile Picture</h2><div class="upload-card"><div class="upload-preview-wrap">'+photoPreview+'</div><div class="field"><label>নিজের Profile Picture · JPG, PNG বা WEBP · সর্বোচ্চ 5MB</label><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><small class="muted">Personal Profile-এ ছবি Rectangular দেখাবে। নতুন ছবি Approve না হওয়া পর্যন্ত পুরোনো ছবিই থাকবে।</small></div></div></section><section class="section"><h2>পরিচয়পত্র ও Nominee-এর ছবি</h2><div class="upload-grid"><div class="upload-card"><strong>নিজের NID</strong><label class="dropzone">NID ছবি/PDF নির্বাচন করুন<input type="file" name="member_nid" accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">JPG, PNG, WEBP বা PDF · সর্বোচ্চ 10MB</small></div><div class="upload-card"><strong>Nominee NID</strong><label class="dropzone">Nominee NID ছবি/PDF নির্বাচন করুন<input type="file" name="nominee_nid" accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">JPG, PNG, WEBP বা PDF · সর্বোচ্চ 10MB</small></div><div class="upload-card"><strong>Nominee Picture</strong><div class="upload-preview-wrap">'+nomineePreview+'</div><label class="dropzone">Nominee-এর ছবি নির্বাচন করুন<input type="file" name="nominee_photo" accept="image/jpeg,image/png,image/webp"></label><small class="muted">JPG, PNG বা WEBP · সর্বোচ্চ 5MB</small></div></div></section><div class="notice">সব নতুন ফাইল প্রথমে Pending Approval থাকবে। অনুমোদনের আগে অন্য সদস্য বা আপনার সক্রিয় Profile-এ নতুন ফাইল দেখানো হবে না। NID এবং Nominee NID অন্য কোনো সদস্য দেখতে পারবেন না।</div><div class="form-actions"><button type="submit" id="profileSubmit">পরিবর্তন ও ফাইল জমা দিন</button></div></form><section class="section"><h2>Password পরিবর্তন</h2><form id="passwordChangeForm"><div class="form-grid"><div class="field"><label for="currentPassword">Current Password</label><input id="currentPassword" name="current_password" type="password" autocomplete="current-password" required></div><div class="field"><label for="newPasswordProfile">New Password</label><input id="newPasswordProfile" name="new_password" type="password" autocomplete="new-password" minlength="8" required></div><div class="field"><label for="confirmPasswordProfile">Confirm New Password</label><input id="confirmPasswordProfile" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></div></div><div class="form-actions"><button type="submit" id="passwordChangeButton">Password পরিবর্তন করুন</button></div></form><p class="muted small">Password কমপক্ষে ৮ অক্ষরের হতে হবে।</p></section><section class="section"><h2>Profile request history</h2><div class="list">'+((requests.data||[]).map(r=>'<article class="list-item"><strong>'+esc(r.status)+'</strong><small>'+esc(new Date(r.created_at).toLocaleString())+'</small><p>'+esc(r.admin_note||"")+'</p></article>').join("")||empty("কোনো অনুরোধ নেই।"))+'</div></section><section class="section"><h2>আপনার Upload Status</h2><div class="list">'+(docRows.join("")||empty("কোনো NID বা Nominee ফাইল জমা দেওয়া হয়নি।"))+'</div></section>');
+ setPage('<h1>My Profile</h1><p class="lead">আপনার তথ্য ও ছবি পরিবর্তনের অনুরোধ Super Admin অনুমোদন না করা পর্যন্ত মূল Profile-এ কার্যকর হবে না। NID ও Nominee-এর ফাইল শুধু আপনি এবং Super Admin দেখতে পারবেন।</p><div class="grid">'+card("Member ID",m.member_no||"—")+card("Status",m.status)+card("Monthly contribution",m.monthly_contribution?money(m.monthly_contribution):"৳2,000 (default)")+'</div><form id="profileRequest"><section class="section"><h2>ব্যক্তিগত তথ্য</h2><div class="form-grid">'+inputs+'</div></section><section class="section"><h2>Profile Picture</h2><div class="upload-card"><div class="upload-preview-wrap">'+photoPreview+'</div><div class="field"><label>নিজের Profile Picture · JPG, PNG বা WEBP · সর্বোচ্চ 5MB</label><input type="file" name="photo" accept="image/jpeg,image/png,image/webp"><small class="muted">Personal Profile-এ ছবি Rectangular দেখাবে। নতুন ছবি Approve না হওয়া পর্যন্ত পুরোনো ছবিই থাকবে।</small></div></div></section><section class="section"><h2>পরিচয়পত্র ও Nominee-এর ছবি</h2><div class="upload-grid"><div class="upload-card"><strong>নিজের NID</strong><label class="dropzone">NID ছবি/PDF নির্বাচন করুন<input type="file" name="member_nid" accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">JPG, PNG, WEBP বা PDF · সর্বোচ্চ 10MB</small></div><div class="upload-card"><strong>Nominee NID</strong><label class="dropzone">Nominee NID ছবি/PDF নির্বাচন করুন<input type="file" name="nominee_nid" accept="image/jpeg,image/png,image/webp,application/pdf"></label><small class="muted">JPG, PNG, WEBP বা PDF · সর্বোচ্চ 10MB</small></div><div class="upload-card"><strong>Nominee Picture</strong><div class="upload-preview-wrap">'+nomineePreview+'</div><label class="dropzone">Nominee-এর ছবি নির্বাচন করুন<input type="file" name="nominee_photo" accept="image/jpeg,image/png,image/webp"></label><small class="muted">JPG, PNG বা WEBP · সর্বোচ্চ 5MB</small></div></div></section><div class="notice">সব নতুন ফাইল প্রথমে Pending Approval থাকবে। অনুমোদনের আগে অন্য সদস্য বা আপনার সক্রিয় Profile-এ নতুন ফাইল দেখানো হবে না। NID এবং Nominee NID অন্য কোনো সদস্য দেখতে পারবেন না।</div><div class="form-actions"><button type="submit" id="profileSubmit">পরিবর্তন ও ফাইল জমা দিন</button></div></form><section class="section"><h2>Password পরিবর্তন</h2><form id="passwordChangeForm"><div class="form-grid"><div class="field"><label for="currentPassword">Current Password</label><input id="currentPassword" name="current_password" type="password" autocomplete="current-password" required></div><div class="field"><label for="newPasswordProfile">New Password</label><input id="newPasswordProfile" name="new_password" type="password" autocomplete="new-password" minlength="8" required></div><div class="field"><label for="confirmPasswordProfile">Confirm New Password</label><input id="confirmPasswordProfile" name="confirm_password" type="password" autocomplete="new-password" minlength="8" required></div></div><div class="form-actions"><button type="submit" id="passwordChangeButton">Password পরিবর্তন করুন</button></div></form><p class="muted small">Password কমপক্ষে ৮ অক্ষরের হতে হবে।</p></section><section class="section"><h2>Profile request history</h2><div class="list">'+((requests.data||[]).map(r=>'<article class="list-item"><strong>'+esc(r.status)+'</strong><small>'+esc(new Date(r.created_at).toLocaleString())+'</small><p>'+esc(r.admin_note||"")+'</p></article>').join("")||empty("কোনো অনুরোধ নেই।"))+'</div></section><section class="section"><h2>আপনার Upload Status</h2><div class="list">'+(docRows.join("")||empty("কোনো NID বা Nominee ফাইল জমা দেওয়া হয়নি।"))+'</div></section>');
  const passwordForm=document.getElementById("passwordChangeForm");
  passwordForm.addEventListener("submit",async event=>{
   event.preventDefault();
@@ -418,9 +746,10 @@ async function renderProfile(){
   try{
    let photoPath=null;
    if(photo?.size){
-    const ext=photo.type==="image/png"?"png":photo.type==="image/webp"?"webp":"jpg";
+    const uploadPhoto=await optimizeImageFile(photo,"photo").catch(()=>photo);
+    const ext=uploadPhoto.type==="image/png"?"png":uploadPhoto.type==="image/webp"?"webp":"jpg";
     photoPath=access.session.user.id+"/"+crypto.randomUUID()+"."+ext;
-    const {error:upErr}=await supabase.storage.from("member-profile-photos").upload(photoPath,photo,{upsert:false,contentType:photo.type});
+    const {error:upErr}=await supabase.storage.from("member-profile-photos").upload(photoPath,uploadPhoto,{upsert:false,contentType:uploadPhoto.type});
     if(upErr)throw upErr;
    }
    if(Object.keys(changes).length||photoPath){
@@ -431,9 +760,10 @@ async function renderProfile(){
    let uploaded=0;
    for(const [docType,file] of uploads){
     if(!file?.size)continue;
-    const ext=file.type==="application/pdf"?"pdf":file.type==="image/png"?"png":file.type==="image/webp"?"webp":"jpg";
+    const uploadFile=file.type.startsWith("image/")?await optimizeImageFile(file,docType==="nominee_photo"?"photo":"document").catch(()=>file):file;
+    const ext=uploadFile.type==="application/pdf"?"pdf":uploadFile.type==="image/png"?"png":uploadFile.type==="image/webp"?"webp":"jpg";
     const path=access.session.user.id+"/"+crypto.randomUUID()+"."+ext;
-    const {error:upError}=await supabase.storage.from("member-private-documents").upload(path,file,{upsert:false,contentType:file.type});
+    const {error:upError}=await supabase.storage.from("member-private-documents").upload(path,uploadFile,{upsert:false,contentType:uploadFile.type});
     if(upError)throw upError;
     const {error:rowError}=await supabase.from("member_private_documents").insert({member_id:m.id,owner_user_id:access.session.user.id,document_type:docType,storage_path:path,status:"pending"});
     if(rowError){await supabase.storage.from("member-private-documents").remove([path]);throw rowError}
@@ -465,11 +795,20 @@ async function renderPendingPrivateDocuments(){
 }
 async function renderAdmin(){
  if(access.role!=="super_admin"){setPage('<h1>Super Admin</h1>'+empty("এই পেজে শুধু Super Admin প্রবেশ করতে পারবেন।"));return}
- setPage('<h1>Super Admin Control Panel</h1><p class="lead">সব কমিটি ডেটা, আর্থিক লেনদেন, সদস্য, প্রমাণপত্র ও নোটিশ এখান থেকে নিয়ন্ত্রণ করো।</p><div class="notice">শুধু যাচাইকৃত তথ্য এন্ট্রি করবে। Opening balance, monthly contribution ও start date না দেওয়া পর্যন্ত সেগুলো শূন্য/অনির্ধারিত থাকবে।</div><section class="section"><h2>Login Account তৈরি/সেট</h2><form id="loginAccountForm"><div class="form-grid"><div class="field"><label>Active member</label><select id="loginAccountMember" required><option value="">সদস্য নির্বাচন করো</option></select></div><div class="field"><label>Login Gmail / Email</label><input id="loginAccountEmail" type="email" autocomplete="off" required placeholder="সদস্যের Gmail লিখুন"></div></div><div class="form-actions"><button type="submit" id="loginAccountButton">Login ID তৈরি / Temporary Password সেট</button></div></form><div id="loginAccountResult"></div><p class="muted small">শুধু Active member নির্বাচন করুন। নতুন Account তৈরি হবে, অথবা আগে তৈরি কিন্তু কখনো Login না করা Account-এর Temporary Password সেট হবে। Password একবারই দেখানো হবে—কপি করে সদস্যকে দিন। সদস্য পরে Profile থেকে Password পরিবর্তন করতে পারবে।</p></section><section class="section"><h2>মাসিক জমার হার নির্ধারণ/পরিবর্তন</h2><form id="rateForm"><div class="form-grid"><div class="field"><label>Active member</label><select id="rateMember" name="member_id" required><option value="">সদস্য নির্বাচন</option></select></div><div class="field"><label>মাসিক জমা (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>কার্যকর হবে (মাসের ১ তারিখ)</label><input name="effective_from" type="date" required></div></div><div class="form-actions"><button type="submit">জমার হার সংরক্ষণ</button></div></form><p class="muted small">আগের হার স্বয়ংক্রিয়ভাবে আগের মাসের শেষ দিনে বন্ধ হবে। কার্যকর তারিখ অবশ্যই মাসের ১ তারিখ হতে হবে।</p></section><section class="section"><h2>নতুন আর্থিক লেনদেন</h2><form id="transactionForm"><div class="form-grid"><div class="field"><label>লেনদেনের ধরন</label><select name="type"><option value="opening_balance">Opening balance</option><option value="contribution">Member contribution</option><option value="withdrawal">Withdrawal</option><option value="expense">Expense</option><option value="other_income">Other income</option><option value="investment_profit">Investment profit</option><option value="investment_loss">Investment loss</option><option value="transfer">Account transfer</option></select></div><div class="field"><label>Amount (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>তারিখ</label><input name="date" type="date" value="'+today()+'" required></div><div class="field"><label>Account</label><select name="account"><option value="cash">Cash</option><option value="bank">Bank</option><option value="investment">Investment</option></select></div><div class="field"><label>Transfer destination (transfer হলে)</label><select name="destination"><option value="bank">Bank</option><option value="cash">Cash</option><option value="investment">Investment</option></select></div><div class="field"><label>সদস্য (ঐচ্ছিক; Contribution-এ বাধ্যতামূলক)</label><select name="member_id" id="transactionMember"><option value="">Select member</option></select></div><div class="field"><label>বিবরণ</label><input name="description" required></div><div class="field"><label>Reference No</label><input name="reference_no"></div></div><div class="form-actions"><button type="submit">লেনদেন সংরক্ষণ</button></div></form></section><section class="section"><h2>মাসিক প্রমাণপত্র</h2><p>মাস নির্বাচন করে Proof পেজে এক বা একাধিক ছবি/PDF Drop অথবা Browse করে আপলোড করুন।</p></section><section class="section"><h2>নোটিশ প্রকাশ</h2><form id="noticeForm"><div class="form-grid"><div class="field"><label>শিরোনাম</label><input name="title" required maxlength="180"></div><div class="field"><label>ধরন</label><select name="type"><option value="general">সাধারণ</option><option value="meeting">সভা</option><option value="reminder">স্মরণবার্তা</option></select></div><div class="field"><label>সভা হলে তারিখ ও সময়</label><input name="meeting_at" type="datetime-local"></div></div><div class="field" style="margin-top:12px"><label>বিস্তারিত</label><textarea name="body" required maxlength="5000"></textarea></div><div class="form-actions"><button type="submit">সবার জন্য প্রকাশ</button></div></form></section><section class="section"><h2>প্রকাশিত নোটিশ সম্পাদনা</h2><div id="adminNoticeEditor" class="list">লোড হচ্ছে…</div></section><section class="section"><h2>Pending Google Form registrations</h2><div id="pendingMembers" class="list"></div></section><section class="section"><h2>Pending website signups</h2><p class="muted small">সদস্যরা নিজেরা অ্যাকাউন্ট তৈরি করলে এখানে দেখা যাবে। Google Form-এর সঙ্গে একই Email মিললে Super Admin Approval-এর পর সদস্য Login করতে পারবে। Email Verification আলাদা করে করতে হবে না।</p><div id="pendingSignups" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>Pending profile changes</h2><div id="pendingRequests" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>Pending private ID documents</h2><div id="pendingDocuments" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>সদস্য তালিকা</h2><div id="adminMembers" class="table-wrap"></div></section><section class="section"><h2>সাম্প্রতিক লেনদেন</h2><div id="adminTransactions" class="table-wrap"></div></section>');
- const {data:members,error:mErr}=await supabase.from("members").select("id,member_no,full_name,phone,email,status,monthly_contribution,contribution_start_date,auth_user_id").order("member_no");
- if(mErr)throw mErr;
- const {data:signupProfiles,error:signupError}=await supabase.from("profiles").select("id,full_name,email,email_verified_at,role,created_at").in("role",["pending","rejected"]).order("created_at",{ascending:false});
- if(signupError)throw signupError;
+ setPage('<h1>Super Admin Control Panel</h1><p class="lead">সব কমিটি ডেটা, আর্থিক লেনদেন, সদস্য, প্রমাণপত্র ও নোটিশ এখান থেকে নিয়ন্ত্রণ করো।</p><div class="notice">সমিতির হিসাব ১ জানুয়ারি ২০২৭ থেকে। Opening balance দিতে হলে New Financial Transaction-এ Opening balance নির্বাচন করে Cash, Bank ও Investment-এর প্রতিটি প্রাথমিক অঙ্ক আলাদাভাবে এন্ট্রি করুন। এরপর সব পরিবর্তন ledger-এ সংরক্ষিত হবে।</div><section class="section"><h2>Login Account তৈরি/সেট</h2><form id="loginAccountForm"><div class="form-grid"><div class="field"><label>Active member</label><select id="loginAccountMember" required><option value="">সদস্য নির্বাচন করো</option></select></div><div class="field"><label>Login Gmail / Email</label><input id="loginAccountEmail" type="email" autocomplete="off" required placeholder="সদস্যের Gmail লিখুন"></div></div><div class="form-actions"><button type="submit" id="loginAccountButton">Login ID তৈরি / Temporary Password সেট</button></div></form><div id="loginAccountResult"></div><p class="muted small">শুধু Active member নির্বাচন করুন। নতুন Account তৈরি হবে, অথবা আগে তৈরি কিন্তু কখনো Login না করা Account-এর Temporary Password সেট হবে। Password একবারই দেখানো হবে—কপি করে সদস্যকে দিন। সদস্য পরে Profile থেকে Password পরিবর্তন করতে পারবে।</p></section><section class="section"><h2>মাসিক জমার হার নির্ধারণ/পরিবর্তন</h2><form id="rateForm"><div class="form-grid"><div class="field"><label>Active member</label><select id="rateMember" name="member_id" required><option value="">সদস্য নির্বাচন</option></select></div><div class="field"><label>মাসিক জমা (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>কার্যকর হবে (মাসের ১ তারিখ)</label><input name="effective_from" type="date" min="2027-01-01" max="2031-12-01" required></div></div><div class="form-actions"><button type="submit">জমার হার সংরক্ষণ</button></div></form><p class="muted small">আগের হার স্বয়ংক্রিয়ভাবে আগের মাসের শেষ দিনে বন্ধ হবে। কার্যকর তারিখ অবশ্যই মাসের ১ তারিখ হতে হবে।</p></section><section class="section" id="financial-entry"><h2>নতুন আর্থিক লেনদেন</h2><p class="muted small">Hand Cash, Bank বা Investment-এর প্রাথমিক ব্যালেন্স দিতে Opening balance নির্বাচন করুন। পরবর্তী জমা/উত্তোলন/ব্যয়ও এখানেই যোগ হবে। পুরোনো লেনদেন নিচের Financial Ledger থেকে সংশোধন করুন; DATA Matrix-এর জমা DATA পেজ থেকে সম্পাদনা করুন।</p><form id="transactionForm"><div class="form-grid"><div class="field"><label>লেনদেনের ধরন</label><select name="type"><option value="opening_balance">Opening balance</option><option value="contribution">Member contribution</option><option value="withdrawal">Withdrawal</option><option value="expense">Expense</option><option value="other_income">Other income</option><option value="investment_profit">Investment profit</option><option value="investment_loss">Investment loss</option><option value="transfer">Account transfer</option></select></div><div class="field"><label>Amount (৳)</label><input name="amount" type="number" min=".01" step=".01" required></div><div class="field"><label>তারিখ</label><input name="date" type="date" value="2027-01-01" min="2027-01-01" max="2031-12-31" required></div><div class="field"><label>Account</label><select name="account"><option value="cash">Cash</option><option value="bank">Bank</option><option value="investment">Investment</option></select></div><div class="field"><label>Transfer destination (transfer হলে)</label><select name="destination"><option value="bank">Bank</option><option value="cash">Cash</option><option value="investment">Investment</option></select></div><div class="field"><label>সদস্য (ঐচ্ছিক; Contribution-এ বাধ্যতামূলক)</label><select name="member_id" id="transactionMember"><option value="">Select member</option></select></div><div class="field"><label>বিবরণ</label><input name="description" required></div><div class="field"><label>Reference No</label><input name="reference_no"></div></div><div class="form-actions"><button type="submit">লেনদেন সংরক্ষণ</button></div></form></section><section class="section"><h2>মাসিক প্রমাণপত্র</h2><p>মাস নির্বাচন করে Proof পেজে এক বা একাধিক ছবি/PDF Drop অথবা Browse করে আপলোড করুন।</p></section><section class="section"><h2>নোটিশ প্রকাশ</h2><form id="noticeForm"><div class="form-grid"><div class="field"><label>শিরোনাম</label><input name="title" required maxlength="180"></div><div class="field"><label>ধরন</label><select name="type"><option value="general">সাধারণ</option><option value="meeting">সভা</option><option value="reminder">স্মরণবার্তা</option></select></div><div class="field"><label>সভা হলে তারিখ ও সময়</label><input name="meeting_at" type="datetime-local"></div></div><div class="field" style="margin-top:12px"><label>বিস্তারিত</label><textarea name="body" required maxlength="5000"></textarea></div><div class="form-actions"><button type="submit">সবার জন্য প্রকাশ</button></div></form></section><section class="section"><h2>প্রকাশিত নোটিশ সম্পাদনা</h2><div id="adminNoticeEditor" class="list">লোড হচ্ছে…</div></section><section class="section"><h2>Pending Google Form registrations</h2><div id="pendingMembers" class="list"></div></section><section class="section"><h2>Pending website signups</h2><p class="muted small">সদস্যরা নিজেরা অ্যাকাউন্ট তৈরি করলে এখানে দেখা যাবে। Google Form-এর সঙ্গে একই Email মিললে Super Admin Approval-এর পর সদস্য Login করতে পারবে। Email Verification আলাদা করে করতে হবে না।</p><div id="pendingSignups" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>Pending profile changes</h2><div id="pendingRequests" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>Pending private ID documents</h2><div id="pendingDocuments" class="list">'+empty("লোড হচ্ছে…")+'</div></section><section class="section"><h2>সদস্য তালিকা</h2><div id="adminMembers" class="table-wrap"></div></section><section class="section" id="financial-ledger"><h2>সাম্প্রতিক লেনদেন</h2><div id="adminTransactions" class="table-wrap"></div></section>');
+ const auditSection=document.createElement("section");
+ auditSection.className="section";
+ auditSection.innerHTML='<h2>Admin Change Audit · সর্বশেষ ৫০টি</h2><div id="adminChangeAudit" class="table-wrap"><div class="empty">লোড হচ্ছে…</div></div>';
+ document.getElementById("pageContent").append(auditSection);
+ const [membersResult,signupResult,txResult,pendingResult,noticeRowsResult]=await Promise.all([
+  supabase.from("members").select("id,member_no,full_name,phone,email,status,monthly_contribution,contribution_start_date,auth_user_id").order("member_no"),
+  supabase.from("profiles").select("id,full_name,email,email_verified_at,role,created_at").in("role",["pending","rejected"]).order("created_at",{ascending:false}),
+  supabase.from("financial_transactions").select("id,transaction_date,transaction_type,account_type,direction,amount,description,reference_no,transfer_group_id").order("transaction_date",{ascending:false}).limit(100),
+  supabase.from("profile_change_requests").select("id,member_id,submitted_by,requested_changes,requested_photo_path,created_at,members(full_name,member_no)").eq("status","pending").order("created_at"),
+  supabase.from("notices").select("id,title,body,notice_type,meeting_at,published,created_at").order("created_at",{ascending:false}).limit(50)
+ ]);
+ const {data:members,error:mErr}=membersResult;if(mErr)throw mErr;
+ const {data:signupProfiles,error:signupError}=signupResult;if(signupError)throw signupError;
  const linkedAuthIds=members.map(m=>m.auth_user_id).filter(Boolean);
  const {data:loginProfiles,error:loginProfilesError}=linkedAuthIds.length
   ?await supabase.from("profiles").select("id,email").in("id",linkedAuthIds)
@@ -527,8 +866,8 @@ async function renderAdmin(){
  document.getElementById("rateForm").addEventListener("submit",async e=>{e.preventDefault();const d=new FormData(e.currentTarget),effective=d.get("effective_from");if(new Date(effective+"T00:00:00").getDate()!==1){toast("কার্যকর তারিখ মাসের ১ তারিখ হতে হবে।");return}const {error}=await supabase.rpc("set_member_contribution_rate",{p_member_id:rateSelect.value,p_amount:Number(d.get("amount")),p_effective_from:effective});if(error)toast(error.message);else{toast("মাসিক জমার হার সংরক্ষিত হয়েছে।");renderAdmin()}});
  const memberSelect=document.getElementById("transactionMember");
  members.forEach(m=>{const o=document.createElement("option");o.value=m.id;o.textContent=(m.member_no||"")+(m.member_no?" · ":"")+m.full_name;memberSelect.append(o)});
- document.getElementById("adminMembers").innerHTML='<table><thead><tr><th>Member ID</th><th>Name</th><th>Status</th><th>Monthly</th><th>Start</th><th>Login link</th></tr></thead><tbody>'+members.map(m=>'<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+esc(m.status)+'</td><td>'+esc(m.monthly_contribution?money(m.monthly_contribution):"Not set")+'</td><td>'+esc(m.contribution_start_date||"—")+'</td><td>'+((m.auth_user_id)?'<span class="pill">Linked</span>':'<span class="pill">Not linked</span>')+'</td></tr>').join("")+'</tbody></table>';
- const tx=await supabase.from("financial_transactions").select("id,transaction_date,transaction_type,account_type,direction,amount,description,reference_no,transfer_group_id").order("transaction_date",{ascending:false}).limit(100);
+ document.getElementById("adminMembers").innerHTML='<table><thead><tr><th>Member ID</th><th>Name</th><th>Status</th><th>Monthly</th><th>Start</th><th>Login link</th></tr></thead><tbody>'+members.map(m=>'<tr><td>'+esc(m.member_no||"—")+'</td><td>'+esc(m.full_name)+'</td><td>'+esc(m.status)+'</td><td>'+esc(m.monthly_contribution?money(m.monthly_contribution):"৳2,000 (default)")+'</td><td>'+esc(m.contribution_start_date||"—")+'</td><td>'+((m.auth_user_id)?'<span class="pill">Linked</span>':'<span class="pill">Not linked</span>')+'</td></tr>').join("")+'</tbody></table>';
+ const tx=txResult;
  const txBox=document.getElementById("adminTransactions");
  if(tx.error)txBox.innerHTML=empty(tx.error.message);
  else if(!tx.data.length)txBox.innerHTML=empty("এখনো কোনো লেনদেন নেই।");
@@ -536,7 +875,7 @@ async function renderAdmin(){
   txBox.innerHTML='<form id="adminTransactionEditForm"><table><thead><tr><th>Date</th><th>Type</th><th>Account</th><th>Flow</th><th>Amount</th><th>Description</th><th>Editing</th></tr></thead><tbody>'+tx.data.map(x=>{
    const locked=x.transaction_type==="transfer"||Boolean(x.transfer_group_id)||String(x.reference_no||"").startsWith("FFV_MATRIX|");
    const reason=x.transaction_type==="transfer"||x.transfer_group_id?"Transfer pair locked":String(x.reference_no||"").startsWith("FFV_MATRIX|")?"Edit from DATA":"Editable";
-   return '<tr data-transaction-row="'+esc(x.id)+'"><td>'+(locked?esc(x.transaction_date):'<input type="date" name="date" value="'+esc(x.transaction_date)+'" data-current="'+esc(x.transaction_date)+'">')+'</td><td>'+esc(x.transaction_type)+'</td><td>'+esc(x.account_type)+'</td><td>'+esc(x.direction)+'</td><td>'+(locked?money(x.amount):'<input type="number" name="amount" min=".01" step=".01" value="'+Number(x.amount)+'" data-current="'+Number(x.amount)+'">')+'</td><td>'+(locked?esc(x.description||""):'<input type="text" name="description" maxlength="500" value="'+esc(x.description||"")+'" data-current="'+esc(x.description||"")+'">')+'</td><td><span class="pill">'+reason+'</span><input type="hidden" name="id" value="'+esc(x.id)+'"></td></tr>';
+   return '<tr data-transaction-row="'+esc(x.id)+'"><td>'+(locked?esc(x.transaction_date):'<input type="date" name="date" min="2027-01-01" max="2031-12-31" value="'+esc(x.transaction_date)+'" data-current="'+esc(x.transaction_date)+'">')+'</td><td>'+esc(x.transaction_type)+'</td><td>'+esc(x.account_type)+'</td><td>'+esc(x.direction)+'</td><td>'+(locked?money(x.amount):'<input type="number" name="amount" min=".01" step=".01" value="'+Number(x.amount)+'" data-current="'+Number(x.amount)+'">')+'</td><td>'+(locked?esc(x.description||""):'<input type="text" name="description" maxlength="500" value="'+esc(x.description||"")+'" data-current="'+esc(x.description||"")+'">')+'</td><td><span class="pill">'+reason+'</span><input type="hidden" name="id" value="'+esc(x.id)+'"></td></tr>';
   }).join("")+'</tbody></table><div class="form-actions"><button type="submit" id="saveAdminTransactions">Save Changes</button><span id="adminTransactionStatus" class="muted small"></span></div></form>';
   document.getElementById("adminTransactionEditForm").addEventListener("submit",async event=>{
    event.preventDefault();
@@ -548,16 +887,16 @@ async function renderAdmin(){
     if(next.amount!==Number(amount.dataset.current)||next.transaction_date!==date.dataset.current||next.description!==description.dataset.current)changes.push(next);
    }
    if(!changes.length){toast("কোনো পরিবর্তন করা হয়নি।");return}
-   if(changes.some(x=>!(x.amount>0)||!Number.isFinite(x.amount)||!x.transaction_date)){toast("Amount ও Date সঠিকভাবে পূরণ করুন।",true);return}
+   if(changes.some(x=>!(x.amount>0)||!Number.isFinite(x.amount)||!x.transaction_date||x.transaction_date<"2027-01-01"||x.transaction_date>"2031-12-31")){toast("Amount ও Date অবশ্যই ১ জানুয়ারি ২০২৭–৩১ ডিসেম্বর ২০৩১-এর মধ্যে হতে হবে।",true);return}
    const button=document.getElementById("saveAdminTransactions"),status=document.getElementById("adminTransactionStatus");
    button.disabled=true;status.textContent="সংরক্ষণ হচ্ছে…";
-   const {data,error}=await supabase.rpc("save_financial_transaction_edits",{p_changes:changes});
+   const {data,error}=await supabase.rpc("correct_financial_transactions",{p_idempotency_key:crypto.randomUUID(),p_changes:changes});
    if(error){status.textContent="Save হয়নি।";toast(error.message,true);button.disabled=false;return}
-   status.textContent=(data?.saved||changes.length)+"টি লেনদেন আপডেট হয়েছে।";
-   toast("লেনদেনের পরিবর্তন সংরক্ষিত হয়েছে।");renderAdmin();
+   status.textContent=(data?.saved||changes.length)+"টি লেনদেন সংশোধন হয়েছে।";
+   toast("লেনদেনের সংশোধন সংরক্ষিত হয়েছে।");renderAdmin();
   });
  }
- const pending=await supabase.from("profile_change_requests").select("id,member_id,submitted_by,requested_changes,requested_photo_path,created_at,members(full_name,member_no)").eq("status","pending").order("created_at");
+ const pending=pendingResult;
  const pBox=document.getElementById("pendingRequests");
  if(pending.error)pBox.textContent=pending.error.message;
  else if(!pending.data.length)pBox.innerHTML=empty("কোনো Pending request নেই।");
@@ -567,9 +906,65 @@ async function renderAdmin(){
   document.querySelectorAll("[data-approve],[data-reject]").forEach(b=>b.addEventListener("click",async()=>{const approved=b.hasAttribute("data-approve"),id=approved?b.dataset.approve:b.dataset.reject;const note=prompt("Admin note (optional):")||null;const {error}=await supabase.rpc("review_profile_change_request",{p_request_id:id,p_approved:approved,p_admin_note:note});if(error)toast(error.message);else{toast(approved?"Request approved.":"Request rejected.");renderAdmin()}}));
  }
  await renderPendingPrivateDocuments();
- document.getElementById("transactionForm").addEventListener("submit",async e=>{e.preventDefault();const d=new FormData(e.currentTarget),type=d.get("type"),amount=Number(d.get("amount")),account=d.get("account"),date=d.get("date"),memberId=d.get("member_id")||null,desc=String(d.get("description")||"").trim();if(!(amount>0)){toast("Amount অবশ্যই 0-এর বেশি হতে হবে।");return}if(type==="contribution"&&!memberId){toast("Contribution-এর জন্য সদস্য নির্বাচন করো।");return}let payload;if(type==="transfer"){const destination=d.get("destination");if(account===destination){toast("Source ও destination account আলাদা হতে হবে।");return}const group=crypto.randomUUID();payload=[{transaction_type:"transfer",account_type:account,direction:"out",amount,transaction_date:date,description:desc,reference_no:d.get("reference_no")||null,transfer_group_id:group,created_by:access.session.user.id},{transaction_type:"transfer",account_type:destination,direction:"in",amount,transaction_date:date,description:desc,reference_no:d.get("reference_no")||null,transfer_group_id:group,created_by:access.session.user.id}]}else{const direction=["withdrawal","expense","investment_loss"].includes(type)?"out":"in";payload={transaction_type:type,account_type:account,direction,amount,transaction_date:date,member_id:memberId,description:desc,reference_no:d.get("reference_no")||null,created_by:access.session.user.id}}const {error}=await supabase.from("financial_transactions").insert(payload);if(error)toast(error.message);else{toast("লেনদেন সংরক্ষিত হয়েছে।");renderAdmin()}});
+ const auditBox=document.getElementById("adminChangeAudit");
+ if(auditBox){
+  const {data:auditRows,error:auditError}=await supabase.from("admin_change_audit").select("id,table_name,record_id,operation,old_record,new_record,changed_by,changed_at").order("changed_at",{ascending:false}).limit(50);
+  if(auditError){auditBox.innerHTML=empty("Audit log লোড করা যায়নি: "+auditError.message)}
+  else if(!auditRows?.length){auditBox.innerHTML=empty("এখনো কোনো Admin change record নেই।")}
+  else{
+   auditBox.innerHTML='<table><thead><tr><th>সময়</th><th>Table</th><th>Action</th><th>Record</th><th>Changed fields / Details</th><th>Actor</th></tr></thead><tbody>'+auditRows.map(a=>{
+    const before=a.old_record||{},after=a.new_record||{};
+    const keys=[...new Set([...Object.keys(before),...Object.keys(after)])].filter(key=>JSON.stringify(before[key])!==JSON.stringify(after[key]));
+    const diff=Object.fromEntries(keys.map(key=>[key,{before:before[key]??null,after:after[key]??null}]));
+    const details=keys.length?diff:(a.operation==="INSERT"?after:before);
+    return '<tr><td>'+esc(new Date(a.changed_at).toLocaleString())+'</td><td>'+esc(a.table_name)+'</td><td>'+esc(a.operation)+'</td><td>'+esc(a.record_id||"—")+'</td><td><details><summary>'+esc(keys.slice(0,6).join(", ")||"Record details")+'</summary><pre>'+esc(JSON.stringify(details,null,2))+'</pre></details></td><td>'+esc(a.changed_by||"System / Service")+'</td></tr>';
+   }).join("")+'</tbody></table>';
+  }
+ }
+ document.getElementById("transactionForm").addEventListener("submit",async e=>{
+  e.preventDefault();
+  const d=new FormData(e.currentTarget);
+  const type=String(d.get("type")||"");
+  const amount=Number(d.get("amount"));
+  const account=String(d.get("account")||"");
+  const date=String(d.get("date")||"");
+  const memberId=d.get("member_id")||null;
+  const desc=String(d.get("description")||"").trim();
+  const referenceNo=String(d.get("reference_no")||"").trim()||null;
+  const destination=type==="transfer"?String(d.get("destination")||""):null;
+  if(!(amount>0)||!Number.isFinite(amount)){toast("Amount অবশ্যই 0-এর বেশি হতে হবে।",true);return}
+  if(!date){toast("লেনদেনের তারিখ দিতে হবে।",true);return}
+  if(type==="opening_balance"&&date!=="2027-01-01"){toast("Opening balance-এর তারিখ ১ জানুয়ারি ২০২৭ হতে হবে।",true);return}
+  if(type!=="opening_balance"&&(date<"2027-01-01"||date>"2031-12-31")){toast("লেনদেনের তারিখ ১ জানুয়ারি ২০২৭–৩১ ডিসেম্বর ২০৩১-এর মধ্যে হতে হবে।",true);return}
+  if(type==="contribution"&&!memberId){toast("Contribution-এর জন্য সদস্য নির্বাচন করো।",true);return}
+  if(type==="transfer"&&(!destination||account===destination)){toast("Source ও destination account আলাদা হতে হবে।",true);return}
+  const direction=type==="transfer"?"out":(["withdrawal","expense","investment_loss"].includes(type)?"out":"in");
+  const button=e.currentTarget.querySelector('button[type="submit"]');
+  if(button)button.disabled=true;
+  const {error}=await supabase.rpc("post_financial_transaction",{
+   p_idempotency_key:crypto.randomUUID(),
+   p_transaction_type:type,
+   p_amount:amount,
+   p_transaction_date:date,
+   p_account_type:account,
+   p_direction:direction,
+   p_member_id:memberId,
+   p_description:desc||null,
+   p_reference_no:referenceNo,
+   p_category:null,
+   p_project_name:null,
+   p_destination_account_type:destination
+  });
+  if(error){
+   toast(error.message,true);
+   if(button)button.disabled=false;
+   return;
+  }
+  toast("লেনদেন সংরক্ষিত হয়েছে।");
+  renderAdmin();
+ });
  document.getElementById("noticeForm").addEventListener("submit",async e=>{e.preventDefault();const d=new FormData(e.currentTarget),type=d.get("type"),meeting=d.get("meeting_at");if(type==="meeting"&&!meeting){toast("সভা হলে সময় দিতে হবে।");return}const {error}=await supabase.from("notices").insert({title:d.get("title"),body:d.get("body"),notice_type:type,meeting_at:meeting?new Date(meeting).toISOString():null,published:true,published_at:new Date().toISOString(),created_by:access.session.user.id});if(error)toast(error.message);else{toast("নোটিশ প্রকাশ হয়েছে।");renderAdmin()}});
- const noticeRows=await supabase.from("notices").select("id,title,body,notice_type,meeting_at,published,created_at").order("created_at",{ascending:false}).limit(50);
+ const noticeRows=noticeRowsResult;
  const noticeEditor=document.getElementById("adminNoticeEditor");
  if(noticeRows.error)noticeEditor.innerHTML=empty(noticeRows.error.message);
  else if(!noticeRows.data.length)noticeEditor.innerHTML=empty("এখনো কোনো নোটিশ তৈরি হয়নি।");
@@ -592,21 +987,16 @@ async function renderAdmin(){
   });
  }
 }
-async function renderRules(){
- setPage('<h1>'+t("সমিতির নিয়মাবলি","Committee rules")+'</h1><p class="lead">'+t("নিচের অংশগুলো সিস্টেমের বর্তমান পরিচালননীতি। আর্থিক শর্তাবলি ও চুক্তির ধারা Super Admin-এর অনুমোদিত মূল নথি থেকে যোগ করতে হবে।","These are the current system operating rules. Financial terms and deed clauses must be added from the owner-approved documents.")+'</p><section class="section"><h2>১. ডেটা ও হিসাব</h2><p>সব আর্থিক লেনদেন, ব্যালেন্স, প্রমাণপত্র ও সদস্য-তথ্য শুধু Super Admin আপডেট করবেন।</p></section><section class="section"><h2>২. সদস্য অ্যাক্সেস</h2><p>সদস্যরা অনুমোদিত সামগ্রিক হিসাব, প্রকাশিত নোটিশ, সদস্যদের নাম/ছবি এবং নিজেদের ব্যক্তিগত তথ্য দেখতে পারবেন। অন্য সদস্যের ব্যক্তিগত তথ্য দেখা যাবে না।</p></section><section class="section"><h2>৩. প্রোফাইল পরিবর্তন</h2><p>নিজের তথ্য পরিবর্তনের অনুরোধ বা ছবি জমা দেওয়া যাবে। Super Admin অনুমোদন না করা পর্যন্ত মূল প্রোফাইলে পরিবর্তন হবে না।</p></section><section class="section"><h2>৪. আর্থিক শর্তাবলি</h2><div class="notice">মাসিক জমার পরিমাণ, জমার শেষ তারিখ, বিলম্ব ফি, উত্তোলন, লাভ-ক্ষতি বণ্টন ও সদস্যপদ বাতিলের শর্ত এখনো এখানে নির্ধারণ করা হয়নি। অনুমোদিত লিখিত নিয়ম না পাওয়া পর্যন্ত কোনো শর্ত অনুমান করে প্রকাশ করা হবে না।</div></section>');
-}
 async function renderPage(){
  try{
   if(page==="dashboard")await renderDashboard();
-  else if(page==="data")await renderData();
   else if(page==="personal-due")await renderDue();
   else if(page==="member-info")await renderMembers();
   else if(page==="proof")await renderProofs();
   else if(page==="member")await renderProfile();
   else if(page==="admin")await renderAdmin();
-  else if(page==="rules")await renderRules();
   else if(page==="payment")await renderPayment();
  }catch(error){console.error(error);setPage('<h1>তথ্য লোড করা যায়নি</h1><div class="error">'+esc(error.message||"Unknown error")+'</div><p class="muted">Supabase connection, permissions and table setup পরীক্ষা করো।</p>')}
 }
-access=await requireRole(page==="admin"?["super_admin"]:["super_admin","admin","member"]);
-if(access){shell();await renderPage();if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(e=>console.warn("Service worker registration failed",e))}}
+access=await requireRole(page==="admin"?["super_admin"]:["super_admin","member"]);
+if(access){shell();await loadHeaderIdentity();await renderPage()}
