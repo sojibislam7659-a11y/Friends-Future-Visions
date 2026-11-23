@@ -2,11 +2,11 @@
   "name": "review-member-signup",
   "slug": "review-member-signup",
   "status": "ACTIVE",
-  "version": 4,
+  "version": 6,
   "verify_jwt": true,
-  "entrypoint_path": "/tmp/user_fn_ugtzmtmsfaajclftfeuz_0a0d4a3a-e865-4c9a-b401-d6983f70b518_4/source/index.ts",
-  "sha256": "eb4e02475f92e608446d16e9ed2f27122a08ebfc89a988a4ecc4a8e87b3ec70e",
-  "exported_at": "2026-11-22",
+  "entrypoint_path": "/tmp/user_fn_ugtzmtmsfaajclftfeuz_0a0d4a3a-e865-4c9a-b401-d6983f70b518_6/source/index.ts",
+  "sha256": "f9b491f9970923e5b0559051bd3f3bfbf8d39e443dde8dcdd1da46c6f77ff37a",
+  "exported_at": "2026-11-23",
   "source_project": "ugtzmtmsfaajclftfeuz",
   "secrets_not_included": true
 }
