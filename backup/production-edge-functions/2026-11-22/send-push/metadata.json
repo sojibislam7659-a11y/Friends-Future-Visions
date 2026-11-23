@@ -2,11 +2,11 @@
   "name": "send-push",
   "slug": "send-push",
   "status": "ACTIVE",
-  "version": 3,
+  "version": 5,
   "verify_jwt": false,
-  "entrypoint_path": "/tmp/user_fn_ugtzmtmsfaajclftfeuz_68909989-2e2b-4d58-8970-56a5fe1ca06f_2/source/index.ts",
-  "sha256": "246312e462ebab5c70989bdd6d9a79e5b7e4bb0acbf9e4bc0b2dd13dd26b4d1d",
-  "exported_at": "2026-11-22",
+  "entrypoint_path": "/tmp/user_fn_ugtzmtmsfaajclftfeuz_68909989-2e2b-4d58-8970-56a5fe1ca06f_5/source/index.ts",
+  "sha256": "f7c3b2667d7682784680fcbc199d8438ef2d4be6fc24c8bee0849a49a03fc6f2",
+  "exported_at": "2026-11-23",
   "source_project": "ugtzmtmsfaajclftfeuz",
   "secrets_not_included": true
 }
