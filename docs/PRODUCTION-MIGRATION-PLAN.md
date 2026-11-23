@@ -259,3 +259,31 @@ The encrypted Drive backup and isolated PostgreSQL 17 restore rehearsal are comp
 4. The nine-migration sequence has passed isolated rehearsal. Complete the ordered Production migrations, Edge Function rollout, and full release only after the real MFA factor is verified and post-migration live acceptance tests pass.
 
 The public Data experience is implemented as aggregate-only for anonymous visitors; the member-level contribution matrix remains behind authenticated access. No individual contribution or personal due data is exposed publicly.
+
+
+## Production rollout execution — 2026-11-23
+
+The release gates were satisfied after the project owner enrolled and used Super Admin TOTP MFA. The Production database then accepted all nine rehearsed migrations in their prescribed order; each Supabase migration operation returned success. The resulting migration history contains 62 applied versions (53 before rollout + 9 staged Production migrations).
+
+### Post-migration verification
+
+Read-only Production checks after rollout confirmed:
+- 1 verified Super Admin TOTP factor; 1 Super Admin and 7 member roles only.
+- 8 profiles, 7 member rows, 0 financial transactions, 0 financial audit rows, and 0 financial postings. Existing member/financial data counts were preserved.
+- 5 private Storage buckets and 2 objects remained present.
+- 20/20 public tables have RLS enabled; 1 table (site_settings) uses FORCE RLS.
+- Anonymous table access is limited to SELECT on committee_rules; anon cannot SELECT profiles. Authenticated clients cannot TRUNCATE financial_transactions, directly UPDATE contribution rates, or directly UPDATE profiles.
+- Public aggregate RPC works for anon and returns committee totals only; no member identifiers or personal due values are returned.
+- Simulated authenticated Super Admin with AAL2 sees 8 profiles/7 members and passes portal access. Simulated ordinary member with AAL1 sees only 1 profile/1 member and is not Super Admin.
+- save_member_admin_profile accepted a Super Admin AAL2 test call; the transaction was rolled back and the stored member note was verified unchanged. An ordinary member cross-member edit attempt was rejected with SQLSTATE 42501.
+- Eleven admin-change audit triggers are installed across the ten original audit target tables plus site_settings.
+
+### Edge Function rollout
+
+Production Edge Functions review-member-signup (version 6), create-member-login (version 5), and send-push (version 5) were updated to the reviewed Development source snapshots. Their deployed source SHA-256 values match the corresponding Development versions. invite-member source was identical to Development and was left unchanged. The Production-only google-sheets-sync function was preserved.
+
+### Remaining release boundary
+
+The full static frontend in this release branch has not been promoted to the Cloudflare Production Worker. The release branch is 689 commits ahead of main; this is a broad Development-derived code delta, not a small isolated patch. Do not blindly merge it or assume Cloudflare deployed it. The login/MFA bootstrap is already live (the owner successfully signed in using MFA), but the full portal frontend still requires a controlled promotion and live Production browser acceptance. The latest successful release browser QA and static checks exercised the frontend against Development Supabase, not the Production Worker.
+
+The last verified encrypted Drive backup and isolated restore test predate these nine Production migrations. A new post-migration Drive backup should be run before declaring the release fully closed. Security Advisor still reports the intentional aggregate-only public SECURITY DEFINER RPC, the pg_net extension in public schema, and disabled leaked-password protection; review these warnings separately rather than silently suppressing them.
