@@ -3,6 +3,7 @@ import { supabase } from "./supabase-client.js";
 import { requireRole } from "./auth-guard.js";
 import { BRAND_LOGO_SVG } from "./brand-logo.js";
 
+// Production profile image privacy and payload optimization.
 const root=document.getElementById("app");
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const money=n=>"৳"+Number(n||0).toLocaleString("en-BD",{maximumFractionDigits:2});
