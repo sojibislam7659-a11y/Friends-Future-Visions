@@ -70,7 +70,8 @@ async function main(){
  }
  if(access.role==="super_admin"&&m.nominee_nid_path){
   const {data:u}=await supabase.storage.from("member-private-documents").createSignedUrl(m.nominee_nid_path,1800);
-  if(u?.signedUrl)nomineeNidSection='<section class="section"><h2>Nominee NID</h2><a class="button secondary" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">View Nominee NID</a></section>';
+  const typeLabel={nid:"NID",birth_registration:"Birth Registration",passport:"Passport"}[m.nominee_identity_document_type]||"Identity Document";
+  if(u?.signedUrl)nomineeNidSection='<section class="section"><h2>Nominee Identity Document</h2><a class="button secondary" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">View '+esc(typeLabel)+'</a></section>';
  }
  const groups=[
   {title:"ব্যক্তিগত তথ্য",fields:[["full_name","পূর্ণ নাম"],["full_name_bn","বাংলা নাম"],["father_name","পিতার নাম"],["mother_name","মাতার নাম"],["spouse_name","স্বামী/স্ত্রীর নাম"],["date_of_birth","জন্মতারিখ"],["gender","লিঙ্গ"],["profession","পেশা"]]},
