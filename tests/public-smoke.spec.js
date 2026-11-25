@@ -51,3 +51,25 @@ test("Unauthenticated visitor can view aggregate-only public Data", async ({ pag
   await expect(page.locator("#siteNav")).toContainText("DATA");
   await page.screenshot({ path: "test-results/development-public-data.png", fullPage: true });
 });
+
+test("Development public login and Data pages fit a mobile viewport", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${baseURL}/login.html`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#loginForm")).toBeVisible();
+  let dimensions = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth
+  }));
+  expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+
+  await page.route("**/public-data.js", route => route.fulfill({ status: 200, contentType: "application/javascript", body: localPublicData }));
+  await page.route("**/public-nav.js", route => route.fulfill({ status: 200, contentType: "application/javascript", body: localPublicNav }));
+  await page.goto(`${baseURL}/data.html`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#publicData")).toContainText("সমিতির সামগ্রিক আর্থিক তথ্য", { timeout: 30000 });
+  dimensions = await page.evaluate(() => ({
+    viewport: window.innerWidth,
+    document: document.documentElement.scrollWidth
+  }));
+  expect(dimensions.document).toBeLessThanOrEqual(dimensions.viewport);
+  await page.screenshot({ path: "test-results/development-mobile-data.png", fullPage: true });
+});
