@@ -81,6 +81,8 @@ async function initialize() {
   }
 
   emailLabel.textContent = session.user.email || profile.email || "ইমেইল পাওয়া যায়নি";
+  document.getElementById("promptLoading").hidden = true;
+  document.getElementById("promptContent").hidden = false;
 }
 
 async function dismissPrompt() {
