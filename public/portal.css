@@ -1357,3 +1357,11 @@ body.dark-theme .member-profile-grid .field textarea{
 @media print{
  .sidebar-panel,.drawer-backdrop,.statement-header .menu-button{display:none!important}
 }
+
+
+/* Let desktop DATA columns size to their content instead of stretching across the page. */
+@media(min-width:641px){
+ .contribution-matrix.matrix-editable{width:auto;min-width:0;table-layout:auto}
+ .contribution-matrix.matrix-editable th:not(:first-child):not(:last-child),.contribution-matrix.matrix-editable td:not(:first-child):not(:last-child){min-width:96px}
+ .contribution-matrix.matrix-editable .matrix-amount{width:82px;max-width:100%}
+}
