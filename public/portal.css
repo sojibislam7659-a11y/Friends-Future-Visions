@@ -1318,3 +1318,29 @@ body.dark-theme .member-profile-grid .field textarea{
  .site-ticker.global-site-ticker{display:flex!important;margin:8px 0 10px!important}
  .member-profile-topbar .topbar-identity strong{overflow-wrap:anywhere}
 }
+
+
+/* Member profile summary, secure identity previews and consistent statement navigation */
+.member-profile-summary{grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}
+.member-profile-summary>.card{padding:11px 13px;border-radius:12px;min-width:0}
+.member-profile-summary>.card .label{font-size:12px}
+.member-profile-summary>.card .value{font-size:clamp(17px,2vw,22px);margin-top:4px}
+.member-statement-nav-link{min-height:42px!important;padding:8px 12px!important;font-size:12px!important;font-weight:800!important}
+.private-document-preview-link{display:inline-block;max-width:100%;margin:8px 0}
+.identity-document-preview{display:block;max-width:min(100%,420px);max-height:320px;width:auto;height:auto;object-fit:contain;border:1px solid var(--line);border-radius:10px;background:#fff;padding:5px}
+.private-document-open{margin-top:5px}
+/* Desktop: compact four-month DATA matrix; keep its current 12px text size. */
+.contribution-matrix.matrix-editable{width:100%;min-width:0;table-layout:fixed}
+.contribution-matrix.matrix-editable th,.contribution-matrix.matrix-editable td{min-width:0;padding:7px 6px;font-size:12px;overflow-wrap:anywhere}
+.contribution-matrix.matrix-editable th:first-child,.contribution-matrix.matrix-editable td:first-child{width:78px}
+.contribution-matrix.matrix-editable th:last-child,.contribution-matrix.matrix-editable td:last-child{width:112px}
+.contribution-matrix.matrix-editable .matrix-cell{min-width:0;gap:4px}
+.contribution-matrix.matrix-editable .matrix-amount{width:100%;max-width:82px;min-width:0;padding:5px 4px}
+.contribution-matrix.matrix-editable .matrix-day{max-width:100%;width:48px}
+@media(max-width:640px){
+ .contribution-matrix.matrix-editable{min-width:620px;table-layout:auto}
+ .contribution-matrix.matrix-editable th,.contribution-matrix.matrix-editable td{min-width:88px;padding:8px 6px;font-size:12px}
+ .contribution-matrix.matrix-editable th:first-child,.contribution-matrix.matrix-editable td:first-child{min-width:78px;width:78px}
+ .contribution-matrix.matrix-editable th:last-child,.contribution-matrix.matrix-editable td:last-child{min-width:104px;width:104px}
+ .member-profile-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
