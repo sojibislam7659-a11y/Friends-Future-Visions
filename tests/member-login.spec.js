@@ -34,6 +34,8 @@ test("Development member sees the optional password prompt once, skips, and does
   await page.locator("#skipPasswordButton").click();
   await expect(page).toHaveURL(/dashboard/, { timeout: 30000 });
   await expect(page.locator("#app")).toContainText("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ", { timeout: 30000 });
+  await page.locator("#mobileMenuBtn").click();
+  await expect(page.locator("#logoutBtn")).toBeVisible();
   await page.locator("#logoutBtn").click();
   await expect(page).toHaveURL(/login/, { timeout: 30000 });
 
