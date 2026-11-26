@@ -19,9 +19,9 @@ test("Development member can sign in and load the member dashboard", async ({ pa
   // The first-login password prompt is optional and must never block Dashboard access.
   // Do not click Skip or change the test account's password automatically in CI.
   const promptShown = await page.waitForURL(
-    url => /password-change(?:\\.html)?(?:$|[?#])/.test(url.pathname) || /dashboard(?:\\.html)?(?:$|[?#])/.test(url.pathname),
+    url => url.pathname.includes("password-change") || url.pathname.includes("dashboard"),
     { timeout: 30000 }
-  ).then(() => /password-change(?:\\.html)?(?:$|[?#])/.test(new URL(page.url()).pathname)).catch(() => false);
+  ).then(() => new URL(page.url()).pathname.includes("password-change")).catch(() => false);
 
   if (promptShown) {
     await expect(page.locator("#accountEmail")).not.toHaveText("ইমেইল যাচাই হচ্ছে…");
@@ -35,7 +35,7 @@ test("Development member can sign in and load the member dashboard", async ({ pa
     return;
   }
 
-  await expect(page).toHaveURL(/dashboard(?:\\.html)?(?:$|[?#])/, { timeout: 30000 });
+  await expect(page).toHaveURL(/dashboard/, { timeout: 30000 });
   await expect(page.locator("body")).toHaveAttribute("data-page", "dashboard");
   await expect(page.locator("#app")).toContainText("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ", { timeout: 30000 });
   await expect(page.locator("#app")).not.toContainText("প্রবেশ যাচাই করা যায়নি");
