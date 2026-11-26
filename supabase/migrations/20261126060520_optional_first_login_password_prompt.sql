@@ -14,7 +14,9 @@ AS $function$
   SELECT
     EXISTS (
       SELECT 1 FROM public.profiles p
-      WHERE p.id = (SELECT auth.uid()) AND p.role = 'super_admin'
+      WHERE p.id = (SELECT auth.uid())
+        AND p.role = 'super_admin'
+        AND (SELECT auth.jwt()->>'aal') = 'aal2'
     )
     OR EXISTS (
       SELECT 1
@@ -23,6 +25,10 @@ AS $function$
       WHERE p.id = (SELECT auth.uid())
         AND p.role = 'member'
         AND m.status = 'active'
+        AND (
+          COALESCE(p.must_change_password, false) = false
+          OR p.password_change_prompt_seen_at IS NOT NULL
+        )
     );
 $function$;
 
