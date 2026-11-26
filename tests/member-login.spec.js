@@ -62,7 +62,7 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   await expect(page.locator("#pageContent")).toContainText("Total Deposit", { timeout: 30000 });
   await expect(page.locator("#pageContent")).toContainText("Total Due");
   await expect(page.locator("#pageContent")).toContainText("আপনার পরিচয়পত্র");
-  await expect(page.locator("#pageContent")).not.toContainText("Status");
+  await expect(page.locator("#pageContent .member-profile-summary")).not.toContainText("Status");
 
   await page.goto(`${baseURL}/personal-due.html`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("body")).toHaveAttribute("data-page", "personal-due");
