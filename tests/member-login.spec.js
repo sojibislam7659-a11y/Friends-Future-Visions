@@ -43,3 +43,25 @@ test("Development member can sign in and load the member dashboard", async ({ pa
   expect(pageErrors, "Browser JavaScript errors detected").toEqual([]);
   await page.screenshot({ path: "test-results/member-dashboard.png", fullPage: true });
 });
+
+
+test("Development serves the dedicated first-login password page as its own asset", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // Inspect the server-delivered HTML shell without allowing its auth module
+  // to redirect an unauthenticated test browser to the login page.
+  await page.route("**/password-change.js", route => route.abort());
+
+  const response = await page.goto(`${baseURL}/password-change.html`, { waitUntil: "domcontentloaded" });
+  expect(response?.status(), "Password-change HTML must be served directly, not SPA-fallback to index/login").toBe(200);
+  await expect(page).toHaveTitle(/পাসওয়ার্ড পরিবর্তন/);
+  await expect(page.locator("#promptLoading")).toBeVisible();
+  await expect(page.locator("#promptContent")).toBeHidden();
+  await expect(page.locator("#accountEmail")).toBeAttached();
+  await expect(page.locator("#skipPasswordButton")).toBeAttached();
+
+  const dimensions = await page.evaluate(() => ({
+    scrollWidth: document.documentElement.scrollWidth,
+    clientWidth: document.documentElement.clientWidth
+  }));
+  expect(dimensions.scrollWidth, "Password page must not overflow horizontally on mobile").toBeLessThanOrEqual(dimensions.clientWidth);
+});
