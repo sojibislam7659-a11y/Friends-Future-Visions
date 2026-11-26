@@ -23,7 +23,7 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
  background:#fff;
  border:1px solid #dce6ee;border-radius:22px;
  box-shadow:0 22px 65px rgba(9,45,80,.12);backdrop-filter:blur(12px)}
-.language-row{display:flex;justify-content:flex-end;margin:-10px 0 18px}
+.language-row{display:flex;justify-content:flex-end;margin:-10px 0 12px}
 .language-toggle{border:1px solid #d5e2eb;border-radius:9px;background:#edf4f8;color:#123e66;padding:7px 12px;min-height:36px;font:600 12px Inter,"Noto Sans Bengali",sans-serif;cursor:pointer}
 .language-toggle:hover{background:rgba(255,255,255,.15)}
 .login .brand{display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:24px}.login .brand .brand-mark{width:300px;height:auto;max-width:100%;object-fit:contain;display:block;background:transparent;border-radius:0;padding:0;box-shadow:none}
@@ -32,7 +32,7 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
 .login .brand small{display:block;font-size:12px;color:#657789}
 .login h1{margin:0 0 7px;color:#092d50;font-size:clamp(25px,5vw,31px);letter-spacing:-.035em}
 .login .muted{color:#657789}
-.login .intro{margin:0 0 26px;font-size:14px}
+.login .intro{margin:0 0 20px;font-size:14px}
 .login form{display:grid;gap:9px}
 .login label{margin-top:8px;color:#294a65;font-size:13px;font-weight:600}
 .login input{width:100%;min-height:52px;padding:13px 15px;border-radius:12px;background:#fff;border:1px solid #cfdae4;color:#142b43;outline:none;font:inherit}
@@ -42,33 +42,33 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
 .login button.submit:hover{filter:brightness(1.08)}
 .login button.submit:disabled{opacity:.65;cursor:not-allowed}
 .login .message{display:none;padding:12px;border-radius:10px;background:#fff0ef;color:#963b35;border:1px solid #f0d0ce;font-size:13px}
-.login .small{margin-top:22px;color:#aebfdf;line-height:1.7;font-size:13px}
+.login .small{margin-top:18px;color:#52677a;line-height:1.6;font-size:13px}
 .login .security-note{display:flex;align-items:center;gap:9px;margin-top:20px;color:#657789;font-size:12px}
 .login .security-dot{width:8px;height:8px;flex:0 0 8px;border-radius:50%;background:#70dfb1;box-shadow:0 0 12px #70dfb1}
-.login a{color:#087fbd;font-weight:700;text-decoration:none}
+.login a{color:#0876ad;font-weight:700;text-decoration:none}
 .login a:hover{text-decoration:underline}
 .login [hidden]{display:none!important}
 .mfa-qr{display:block;width:min(220px,100%);height:auto;margin:12px auto;padding:10px;background:#fff;border:1px solid #dce6ee;border-radius:12px}
 #mfaSecret{display:block;overflow-wrap:anywhere;padding:10px;background:#f3f7fa;border-radius:8px;color:#092d50}
-@media(max-width:480px){body{padding:14px}.login{border-radius:20px}.login .brand{margin-bottom:26px}}
+@media(max-width:480px){body{padding:12px}.login{border-radius:20px;padding:24px 20px}.login .brand{margin-bottom:18px}.language-row{margin-bottom:10px}.login .intro{margin-bottom:18px}.login .small{margin-top:14px}}
 </style>
 </head>
 <body>
 <main class="login">
- <div class="language-row"><button class="language-toggle" id="languageToggle" type="button">English</button></div>
+ <div class="language-row"><button class="language-toggle" id="languageToggle" type="button" aria-label="Switch language to English" title="Switch language to English">ইংরেজি</button></div>
  <div class="brand" id="loginBrandLogo" aria-label="Friends Future Vision Forever"></div>
  <h1 data-i18n="title">সদস্য লগইন</h1>
  <p class="muted intro" data-i18n="intro">আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।</p>
  <form id="loginForm">
-  <label for="email" data-i18n="emailLabel">Email address</label>
+  <label for="email" data-i18n="emailLabel">ইমেইল ঠিকানা</label>
   <input id="email" type="email" autocomplete="username" placeholder="আপনার নিবন্ধিত ইমেইল" data-i18n-placeholder="emailPlaceholder" required>
-  <label for="password" data-i18n="passwordLabel">Password</label>
+  <label for="password" data-i18n="passwordLabel">পাসওয়ার্ড</label>
   <input id="password" type="password" autocomplete="current-password" placeholder="আপনার পাসওয়ার্ড" data-i18n-placeholder="passwordPlaceholder" required>
   <button class="submit" id="loginButton" type="submit" data-i18n="loginButton">লগইন করুন →</button>
   <div class="message" id="message" role="alert"></div>
  </form>
  <p class="small" style="text-align:center;margin-top:14px"><a href="#" id="forgotPasswordLink">পাসওয়ার্ড ভুলে গেছেন?</a></p>
- <p class="small" style="text-align:center;margin-top:8px"><a href="#" id="resendVerificationLink">Verification email পাননি? আবার পাঠান</a></p>
+ <p class="small" style="text-align:center;margin-top:8px"><a href="#" id="resendVerificationLink">ভেরিফিকেশন ইমেইল পাননি? আবার পাঠান</a></p>
  <section id="resetPanel" hidden>
   <h1 data-i18n="resetTitle">পাসওয়ার্ড রিসেট করুন</h1>
   <p class="muted intro" data-i18n="resetIntro">আপনার Gmail-এ পাঠানো ৬ সংখ্যার কোড লিখুন, তারপর নতুন Password দিন।</p>
