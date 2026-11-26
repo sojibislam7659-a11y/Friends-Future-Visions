@@ -16,7 +16,7 @@ test("Development member sees the optional password prompt only while it is pend
     await expect(page.locator("#loginForm")).toBeVisible();
     await page.locator("#email").fill(email);
     await page.locator("#password").fill(password);
-    await page.locator("#loginButton").click();
+    await page.locator("#loginButton").click({ noWaitAfter: true });
     await page.waitForURL(
       url => url.pathname.includes("password-change") || url.pathname.includes("dashboard"),
       { timeout: 30000 }
