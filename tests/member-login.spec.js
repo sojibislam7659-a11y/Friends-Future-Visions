@@ -7,6 +7,7 @@ test("Development member sees the optional password prompt once, skips, and does
   const password = process.env.DEV_TEST_PASSWORD;
   test.skip(!email || !password, "Set DEV_TEST_EMAIL and DEV_TEST_PASSWORD to run authenticated member QA.");
 
+  await page.setViewportSize({ width: 390, height: 844 });
   const pageErrors = [];
   page.on("pageerror", error => pageErrors.push(error.message));
 
