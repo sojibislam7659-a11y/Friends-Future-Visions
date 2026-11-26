@@ -67,6 +67,19 @@ async function initialize() {
     return;
   }
 
+  // Atomically claim the one-time prompt before displaying it. This prevents
+  // another tab/device from showing the same prompt after the first claim.
+  const { data: claimed, error: claimError } = await supabase.rpc("claim_first_login_password_prompt");
+  if (claimError) {
+    showMessage("প্রথম লগইন যাচাই করা যায়নি। নিরাপত্তার জন্য Dashboard-এ প্রবেশের আগে আবার চেষ্টা করুন।");
+    setBusy(true);
+    return;
+  }
+  if (claimed !== true) {
+    await goToDashboard();
+    return;
+  }
+
   emailLabel.textContent = session.user.email || profile.email || "ইমেইল পাওয়া যায়নি";
 }
 
