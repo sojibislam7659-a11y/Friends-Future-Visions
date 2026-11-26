@@ -147,12 +147,22 @@ document.getElementById("resetForm").addEventListener("submit",async event=>{
  setTimeout(()=>location.replace("login.html"),1200);
 });
 
+async function getLoginProfile(userId){
+ const full=await supabase.from("profiles").select("role,must_change_password,password_change_prompt_seen_at").eq("id",userId).maybeSingle();
+ if(!full.error)return full;
+ // Production bootstrap compatibility: before the optional prompt migration,
+ // fall back to role-only lookup so existing Super Admin MFA enrollment remains available.
+ const fallback=await supabase.from("profiles").select("role").eq("id",userId).maybeSingle();
+ if(!fallback.error)return {data:{...fallback.data,must_change_password:false,password_change_prompt_seen_at:null},error:null};
+ return full;
+}
+
 const isPasswordRecovery=location.hash.includes('type=recovery');
 if(!supabaseReady)showKey("service");
 else{
  const {data}=await supabase.auth.getSession();
  if(data.session){
-  const {data:profile}=await supabase.from("profiles").select("role,must_change_password,password_change_prompt_seen_at").eq("id",data.session.user.id).maybeSingle();
+  const {data:profile}=await getLoginProfile(data.session.user.id);
   if(isPasswordRecovery){ /* Keep the recovery session active for updateUser(). */ }
   else if(profile?.role==="super_admin")await startSuperAdminMfa();
   else if(profile?.role==="member"&&profile.must_change_password&&!profile.password_change_prompt_seen_at)location.replace("password-change.html");
@@ -194,7 +204,7 @@ form.addEventListener("submit",async e=>{
   else showKey("loginError");
  }
  else{
-  const {data:p,error:pe}=await supabase.from("profiles").select("role,must_change_password,password_change_prompt_seen_at").eq("id",data.user.id).maybeSingle();
+  const {data:p,error:pe}=await getLoginProfile(data.user.id);
   if(!pe&&p?.role==="super_admin"){await startSuperAdminMfa();return}
   if(!pe&&p?.role==="member"&&p.must_change_password&&!p.password_change_prompt_seen_at){location.replace("password-change.html");return}
   if(!pe&&p?.role==="pending"){await supabase.auth.signOut();showKey("pendingVerified")}
