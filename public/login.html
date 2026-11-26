@@ -83,18 +83,6 @@ body:after{width:240px;height:240px;bottom:-170px;left:-100px;background:rgba(48
    <div class="message" id="resetMessage" role="status" aria-live="polite"></div>
   </form>
  </section>
- <section id="mandatoryPasswordPanel" hidden>
-  <h1>প্রথম লগইনে নতুন Password সেট করুন</h1>
-  <p class="muted intro">Super Admin দেওয়া temporary password নিরাপত্তার জন্য বদলে নিজের নতুন Password সেট করুন।</p>
-  <form id="mandatoryPasswordForm">
-   <label for="requiredNewPassword">নতুন Password (কমপক্ষে ১২ অক্ষর)</label>
-   <input id="requiredNewPassword" type="password" autocomplete="new-password" minlength="12" required>
-   <label for="requiredConfirmPassword">নতুন Password আবার লিখুন</label>
-   <input id="requiredConfirmPassword" type="password" autocomplete="new-password" minlength="12" required>
-   <button class="submit" id="requiredPasswordButton" type="submit">Password পরিবর্তন করুন</button>
-   <div class="message" id="requiredPasswordMessage" role="alert"></div>
-  </form>
- </section>
  <section id="superAdminMfaPanel" hidden>
   <h1>Super Admin নিরাপত্তা যাচাই</h1>
   <p class="muted intro" id="mfaInstruction">Authenticator App দিয়ে যাচাই করুন।</p>
