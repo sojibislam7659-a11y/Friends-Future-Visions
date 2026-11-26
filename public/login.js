@@ -5,8 +5,8 @@ import {supabase,supabaseReady} from "./supabase-client.js";
 const form=document.getElementById("loginForm"),btn=document.getElementById("loginButton"),msg=document.getElementById("message");
 let lang="bn";
 const copy={
- bn:{brandBn:"ফ্রেন্ডস ফিউচার ভিশন ফরএভার",title:"সদস্য লগইন",intro:"আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।",emailLabel:"Email address",emailPlaceholder:"আপনার নিবন্ধিত ইমেইল",passwordLabel:"Password",passwordPlaceholder:"আপনার পাসওয়ার্ড",loginButton:"লগইন করুন →",security:"শুধু অনুমোদিত সদস্য ও Super Admin প্রবেশ করতে পারবেন",privacy:"আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।",newMember:"নতুন সদস্য?",forgot:"পাসওয়ার্ড ভুলে গেছেন?",emailRequired:"আগে আপনার নিবন্ধিত ইমেইল লিখুন।",resetSent:"রিসেট লিংক পাঠানো হয়েছে।",resetTitle:"নতুন পাসওয়ার্ড সেট করুন",resetIntro:"আপনার Gmail-এ পাঠানো ৬ সংখ্যার কোড লিখুন, তারপর নতুন Password দিন।",newPasswordLabel:"নতুন পাসওয়ার্ড",confirmPasswordLabel:"আবার লিখুন",savePassword:"কোড যাচাই করে Password পরিবর্তন করুন",createAccount:"নিজে অ্যাকাউন্ট তৈরি করুন",toggle:"English",checking:"যাচাই হচ্ছে…",service:"Login service configured নয়।",loginError:"লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।",emailNotConfirmed:"আপনার ইমেইল এখনো যাচাই হয়নি। Inbox/Spam থেকে সর্বশেষ Verification বা Invitation link খুলে Email verify করুন।",invalidCredentials:"ইমেইল বা পাসওয়ার্ড সঠিক নয়। আবার যাচাই করুন।",resetRateLimited:"নিরাপত্তার কারণে অল্প সময়ের মধ্যে একাধিক Email পাঠানো যাচ্ছে না। কিছুক্ষণ অপেক্ষা করে আবার চেষ্টা করুন।",verificationSent:"যদি এই ইমেইলে অসম্পূর্ণ Signup থাকে, Verification link পাঠানো হয়েছে। Inbox/Spam দেখুন।",resendFailed:"Verification email পাঠানো যায়নি। ইমেইল ঠিক আছে কি না দেখুন এবং কিছুক্ষণ পর আবার চেষ্টা করুন।",pending:"আপনার অ্যাকাউন্ট এখনো Super Admin অনুমোদন করেননি।",rejected:"এই অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি। Super Admin-এর সঙ্গে যোগাযোগ করুন।",pendingVerified:"আপনার ইমেইল যাচাই হয়েছে। এখন Super Admin-এর অনুমোদনের অপেক্ষায় আছেন।",noAccess:"এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।"},
- en:{brandBn:"Friends Future Vision Forever",title:"Member Login",intro:"Sign in securely with your approved account.",emailLabel:"Email address",emailPlaceholder:"Your registered email",passwordLabel:"Password",passwordPlaceholder:"Your password",loginButton:"Sign in →",security:"Access is restricted to approved members and the Super Admin.",privacy:"Do not share your login credentials with anyone.",newMember:"New member?",forgot:"Forgot password?",emailRequired:"Enter your registered email first.",resetSent:"Recovery code sent.",resetTitle:"Set a new password",resetIntro:"Enter the 6-digit code sent to your email, then choose a new password.",newPasswordLabel:"New password",confirmPasswordLabel:"Confirm new password",savePassword:"Verify code and update password",createAccount:"Create an account",toggle:"বাংলা",checking:"Checking…",service:"Login service is not configured.",loginError:"Unable to sign in. Check your details and try again.",emailNotConfirmed:"Your email is not verified yet. Open the latest verification or invitation link from your Inbox/Spam folder.",invalidCredentials:"The email or password is incorrect. Check your details and try again.",resetRateLimited:"For security, email requests are temporarily rate-limited. Wait a little before trying again.",verificationSent:"If this email has an unverified signup, a verification link has been sent. Check Inbox/Spam.",resendFailed:"Could not resend the verification email. Check the email address and try again later.",pending:"Your account is awaiting Super Admin approval.",rejected:"This application was not approved. Please contact the Super Admin.",pendingVerified:"Your email is verified. Your account is now awaiting Super Admin approval.",noAccess:"This account does not have committee access."}
+ bn:{brandBn:"ফ্রেন্ডস ফিউচার ভিশন ফরএভার",title:"সদস্য লগইন",intro:"আপনার অনুমোদিত অ্যাকাউন্ট দিয়ে নিরাপদে প্রবেশ করুন।",emailLabel:"ইমেইল ঠিকানা",emailPlaceholder:"আপনার নিবন্ধিত ইমেইল",passwordLabel:"পাসওয়ার্ড",passwordPlaceholder:"আপনার পাসওয়ার্ড",loginButton:"লগইন করুন →",security:"শুধু অনুমোদিত সদস্য ও সুপার অ্যাডমিন প্রবেশ করতে পারবেন",privacy:"আপনার লগইন তথ্য অন্য কারও সঙ্গে শেয়ার করবেন না।",newMember:"নতুন সদস্য?",forgot:"পাসওয়ার্ড ভুলে গেছেন?",resendVerification:"ভেরিফিকেশন ইমেইল পাননি? আবার পাঠান",emailRequired:"আগে আপনার নিবন্ধিত ইমেইল লিখুন।",resetSent:"রিসেট লিংক পাঠানো হয়েছে।",resetTitle:"নতুন পাসওয়ার্ড সেট করুন",resetIntro:"আপনার Gmail-এ পাঠানো ৬ সংখ্যার কোড লিখুন, তারপর নতুন Password দিন।",newPasswordLabel:"নতুন পাসওয়ার্ড",confirmPasswordLabel:"আবার লিখুন",savePassword:"কোড যাচাই করে Password পরিবর্তন করুন",createAccount:"নিজে অ্যাকাউন্ট তৈরি করুন",toggle:"ইংরেজি",checking:"যাচাই হচ্ছে…",service:"Login service configured নয়।",loginError:"লগইন করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।",emailNotConfirmed:"আপনার ইমেইল এখনো যাচাই হয়নি। Inbox/Spam থেকে সর্বশেষ Verification বা Invitation link খুলে Email verify করুন।",invalidCredentials:"ইমেইল বা পাসওয়ার্ড সঠিক নয়। আবার যাচাই করুন।",resetRateLimited:"নিরাপত্তার কারণে অল্প সময়ের মধ্যে একাধিক Email পাঠানো যাচ্ছে না। কিছুক্ষণ অপেক্ষা করে আবার চেষ্টা করুন।",verificationSent:"যদি এই ইমেইলে অসম্পূর্ণ নিবন্ধন থাকে, যাচাইকরণ লিংক পাঠানো হয়েছে। ইনবক্স বা স্প্যাম ফোল্ডার দেখুন।",resendFailed:"ভেরিফিকেশন ইমেইল পাঠানো যায়নি। ইমেইল ঠিক আছে কি না দেখুন এবং কিছুক্ষণ পর আবার চেষ্টা করুন।",pending:"আপনার অ্যাকাউন্ট এখনো Super Admin অনুমোদন করেননি।",rejected:"এই অ্যাকাউন্টের আবেদন অনুমোদিত হয়নি। Super Admin-এর সঙ্গে যোগাযোগ করুন।",pendingVerified:"আপনার ইমেইল যাচাই হয়েছে। এখন Super Admin-এর অনুমোদনের অপেক্ষায় আছেন।",noAccess:"এই অ্যাকাউন্টের কমিটি অনুমতি পাওয়া যায়নি।"},
+ en:{brandBn:"Friends Future Vision Forever",title:"Member Login",intro:"Sign in securely with your approved account.",emailLabel:"Email address",emailPlaceholder:"Your registered email",passwordLabel:"Password",passwordPlaceholder:"Your password",loginButton:"Sign in →",security:"Access is restricted to approved members and the Super Admin.",privacy:"Do not share your login credentials with anyone.",newMember:"New member?",forgot:"Forgot password?",resendVerification:"Didn’t receive the verification email? Resend",emailRequired:"Enter your registered email first.",resetSent:"Recovery code sent.",resetTitle:"Set a new password",resetIntro:"Enter the 6-digit code sent to your email, then choose a new password.",newPasswordLabel:"New password",confirmPasswordLabel:"Confirm new password",savePassword:"Verify code and update password",createAccount:"Create an account",toggle:"বাংলা",checking:"Checking…",service:"Login service is not configured.",loginError:"Unable to sign in. Check your details and try again.",emailNotConfirmed:"Your email is not verified yet. Open the latest verification or invitation link from your Inbox/Spam folder.",invalidCredentials:"The email or password is incorrect. Check your details and try again.",resetRateLimited:"For security, email requests are temporarily rate-limited. Wait a little before trying again.",verificationSent:"If this email has an unverified signup, a verification link has been sent. Check Inbox/Spam.",resendFailed:"Could not resend the verification email. Check the email address and try again later.",pending:"Your account is awaiting Super Admin approval.",rejected:"This application was not approved. Please contact the Super Admin.",pendingVerified:"Your email is verified. Your account is now awaiting Super Admin approval.",noAccess:"This account does not have committee access."}
 };
 function tr(key){return copy[lang][key]||copy.bn[key]||key}
 function show(key){msg.textContent=tr(key);msg.style.display="block"}
@@ -16,6 +16,9 @@ function renderLanguage(){
  document.querySelectorAll("[data-i18n-placeholder]").forEach(node=>{node.placeholder=tr(node.dataset.i18nPlaceholder)});
  document.getElementById("languageToggle").textContent=tr("toggle");
  document.getElementById("forgotPasswordLink").textContent=tr("forgot");
+ document.getElementById("resendVerificationLink").textContent=tr("resendVerification");
+ document.getElementById("languageToggle").setAttribute("aria-label",lang==="bn"?"Switch language to English":"বাংলা ভাষায় পরিবর্তন করুন");
+ document.getElementById("languageToggle").title=lang==="bn"?"Switch language to English":"বাংলা ভাষায় পরিবর্তন করুন";
  document.querySelectorAll("#resetPanel [data-i18n]").forEach(node=>{node.textContent=tr(node.dataset.i18n)});
  document.title=lang==="bn"?"সদস্য লগইন | Friends Future Vision Forever":"Member Login | Friends Future Vision Forever";
 }
@@ -23,23 +26,13 @@ document.getElementById("languageToggle").addEventListener("click",()=>{lang=lan
 function showKey(key){msg.dataset.messageKey=key;show(key)}
 
 const resetPanel=document.getElementById("resetPanel"),resetMessage=document.getElementById("resetMessage");
-const mandatoryPanel=document.getElementById("mandatoryPasswordPanel");
-const requiredPasswordMessage=document.getElementById("requiredPasswordMessage");
 const showResetMessage=text=>{resetMessage.textContent=text;resetMessage.style.display="block"};
-const showMandatoryPasswordChange=()=>{
- form.hidden=true;resetPanel.hidden=true;mandatoryPanel.hidden=false;
- document.getElementById("forgotPasswordLink").hidden=true;
- document.getElementById("resendVerificationLink").hidden=true;
- document.querySelector(".security-note").hidden=true;
- document.querySelectorAll(".login > p.small").forEach(node=>node.hidden=true);
- document.getElementById("requiredNewPassword").focus();
-};
 const mfaPanel=document.getElementById("superAdminMfaPanel");
 const mfaMessage=document.getElementById("mfaMessage");
 let activeMfaFactorId=null;
 const showMfaMessage=text=>{mfaMessage.textContent=text;mfaMessage.style.display="block"};
 const startSuperAdminMfa=async()=>{
- form.hidden=true;resetPanel.hidden=true;mandatoryPanel.hidden=true;mfaPanel.hidden=false;
+ form.hidden=true;resetPanel.hidden=true;mfaPanel.hidden=false;
  document.getElementById("forgotPasswordLink").hidden=true;
  document.getElementById("resendVerificationLink").hidden=true;
  document.querySelector(".security-note").hidden=true;
@@ -145,9 +138,8 @@ document.getElementById("resetForm").addEventListener("submit",async event=>{
  if(resetUser.user){
   const {data:resetProfile}=await supabase.from("profiles").select("must_change_password").eq("id",resetUser.user.id).maybeSingle();
   if(resetProfile?.must_change_password){
-   const {data:currentUser}=await supabase.auth.getUser();
- const {error:flagError}=await supabase.from("profiles").update({must_change_password:false}).eq("id",currentUser.user.id);
-   if(flagError){showResetMessage("Password changed, but first-login access could not be unlocked. Sign in again and complete the required password change.");button.disabled=false;button.textContent=tr("savePassword");return}
+   const {error:flagError}=await supabase.rpc("complete_required_password_change");
+   if(flagError){showResetMessage("Password changed, but the temporary-password flag could not be cleared. Contact the Super Admin.");button.disabled=false;button.textContent=tr("savePassword");return}
   }
  }
  showResetMessage(lang==="bn"?"Password পরিবর্তন হয়েছে। নতুন Password দিয়ে Login করুন।":"Password updated. Sign in with your new password.");
@@ -156,12 +148,12 @@ document.getElementById("resetForm").addEventListener("submit",async event=>{
 });
 
 async function getLoginProfile(userId){
- const full=await supabase.from("profiles").select("role,must_change_password").eq("id",userId).maybeSingle();
+ const full=await supabase.from("profiles").select("role,must_change_password,password_change_prompt_seen_at").eq("id",userId).maybeSingle();
  if(!full.error)return full;
- // Bootstrap compatibility: Production adds must_change_password only after the
- // Super Admin has enrolled MFA. Until that additive migration, read the role alone.
+ // Production bootstrap compatibility: before the optional prompt migration,
+ // fall back to role-only lookup so existing Super Admin MFA enrollment remains available.
  const fallback=await supabase.from("profiles").select("role").eq("id",userId).maybeSingle();
- if(!fallback.error)return {data:{...fallback.data,must_change_password:false},error:null};
+ if(!fallback.error)return {data:{...fallback.data,must_change_password:false,password_change_prompt_seen_at:null},error:null};
  return full;
 }
 
@@ -173,7 +165,7 @@ else{
   const {data:profile}=await getLoginProfile(data.session.user.id);
   if(isPasswordRecovery){ /* Keep the recovery session active for updateUser(). */ }
   else if(profile?.role==="super_admin")await startSuperAdminMfa();
-  else if(profile?.role==="member"&&profile.must_change_password)showMandatoryPasswordChange();
+  else if(profile?.role==="member"&&profile.must_change_password&&!profile.password_change_prompt_seen_at)location.replace("password-change.html");
   else if(profile?.role==="member")location.replace("dashboard.html");
   else{
    await supabase.auth.signOut();
@@ -202,21 +194,6 @@ document.getElementById("mfaSignOut").addEventListener("click",async()=>{
  location.replace("login.html");
 });
 
-document.getElementById("mandatoryPasswordForm").addEventListener("submit",async event=>{
- event.preventDefault();
- const password=document.getElementById("requiredNewPassword").value;
- const confirmPassword=document.getElementById("requiredConfirmPassword").value;
- if(password.length<12){requiredPasswordMessage.textContent="Password কমপক্ষে ১২ অক্ষরের হতে হবে।";requiredPasswordMessage.style.display="block";return}
- if(password!==confirmPassword){requiredPasswordMessage.textContent="দুটি Password এক নয়।";requiredPasswordMessage.style.display="block";return}
- const button=document.getElementById("requiredPasswordButton");button.disabled=true;button.textContent="পরিবর্তন হচ্ছে…";
- const {error}=await supabase.auth.updateUser({password});
- if(error){requiredPasswordMessage.textContent=error.message;requiredPasswordMessage.style.display="block";button.disabled=false;button.textContent="Password পরিবর্তন করুন";return}
- const {error:flagError}=await supabase.rpc("complete_required_password_change");
- if(flagError){requiredPasswordMessage.textContent="Password বদলেছে, কিন্তু account unlock হয়নি। আবার চেষ্টা করুন বা Super Admin-কে জানান।";requiredPasswordMessage.style.display="block";button.disabled=false;button.textContent="আবার চেষ্টা করুন";return}
- await supabase.auth.refreshSession();
- location.replace("dashboard.html");
-});
-
 form.addEventListener("submit",async e=>{
  e.preventDefault();if(!supabaseReady)return;
  btn.disabled=true;btn.textContent=tr("checking");msg.style.display="none";
@@ -229,7 +206,7 @@ form.addEventListener("submit",async e=>{
  else{
   const {data:p,error:pe}=await getLoginProfile(data.user.id);
   if(!pe&&p?.role==="super_admin"){await startSuperAdminMfa();return}
-  if(!pe&&p?.role==="member"&&p.must_change_password){showMandatoryPasswordChange();return}
+  if(!pe&&p?.role==="member"&&p.must_change_password&&!p.password_change_prompt_seen_at){location.replace("password-change.html");return}
   if(!pe&&p?.role==="pending"){await supabase.auth.signOut();showKey("pendingVerified")}
   else if(!pe&&p?.role==="rejected"){await supabase.auth.signOut();showKey("rejected")}
   else if(pe||!p||!["super_admin","member"].includes(p.role)){await supabase.auth.signOut();showKey("noAccess")}
