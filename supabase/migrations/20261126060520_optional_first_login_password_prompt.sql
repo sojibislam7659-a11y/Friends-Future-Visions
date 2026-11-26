@@ -1,4 +1,5 @@
 -- Optional, one-time first-login password prompt for members.
+-- The per-profile marker is shared across browsers/devices and is never reset by this flow.
 -- Skipping the prompt records the dismissal without forcing a password rotation.
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS password_change_prompt_seen_at timestamptz;
