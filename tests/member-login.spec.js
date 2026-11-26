@@ -49,8 +49,20 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
 
   await page.goto(`${baseURL}/member-profile.html`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("#memberProfileContent")).toBeVisible({ timeout: 30000 });
+  await expect(page.locator(".member-profile-summary")).toContainText("Total Deposit");
+  await expect(page.locator(".member-profile-summary")).toContainText("Total Due");
+  await expect(page.locator(".member-profile-summary")).not.toContainText("Status");
   await expect(page.locator("#toggleMemberEditor")).toHaveCount(0);
   await expect(page.locator("#memberFieldEditor")).toHaveCount(0);
+  await page.locator("#profileMenuBtn").click();
+  await expect(page.locator("#profileSidebar .member-statement-nav-link")).toBeVisible();
+  await page.locator("#profileCloseMenu").click();
+
+  await page.goto(`${baseURL}/member.html`, { waitUntil: "domcontentloaded" });
+  await expect(page.locator("#pageContent")).toContainText("Total Deposit", { timeout: 30000 });
+  await expect(page.locator("#pageContent")).toContainText("Total Due");
+  await expect(page.locator("#pageContent")).toContainText("আপনার পরিচয়পত্র");
+  await expect(page.locator("#pageContent")).not.toContainText("Status");
 
   await page.goto(`${baseURL}/personal-due.html`, { waitUntil: "domcontentloaded" });
   await expect(page.locator("body")).toHaveAttribute("data-page", "personal-due");
