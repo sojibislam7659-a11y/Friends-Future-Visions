@@ -263,13 +263,28 @@ async function main(){
     });
     if(error)throw error;
     databaseSaved=true;
+    const cleanupFailures=[];
     for(const item of uploaded){
      if(item.oldPath&&item.oldPath!==item.path){
-      try{await supabase.storage.from(item.bucket).remove([item.oldPath])}
-      catch(cleanupError){console.warn("Old member photo cleanup failed",cleanupError)}
+      let removed=false,lastError=null;
+      for(let attempt=0;attempt<2&&!removed;attempt++){
+       try{
+        const {error:removeError}=await supabase.storage.from(item.bucket).remove([item.oldPath]);
+        if(removeError)lastError=removeError;
+        else removed=true;
+       }catch(cleanupError){lastError=cleanupError}
+      }
+      if(!removed){
+       cleanupFailures.push({bucket:item.bucket,path:item.oldPath,error:lastError});
+       console.error("Old member upload cleanup failed",item.bucket,item.oldPath,lastError);
+      }
      }
     }
-    alert("Member-এর সব পরিবর্তন সফলভাবে Save হয়েছে।");
+    if(cleanupFailures.length){
+     alert("নতুন তথ্য ও ফাইল Save হয়েছে, কিন্তু "+cleanupFailures.length+"টি আগের ফাইল Storage থেকে মুছতে পারেনি। আবার চেষ্টা করতে বা Super Admin-এর মাধ্যমে cleanup করতে হবে।");
+    }else{
+     alert("Member-এর সব পরিবর্তন Save হয়েছে এবং সংশ্লিষ্ট Upload Box-এর আগের ফাইল মুছে ফেলা হয়েছে।");
+    }
     location.reload();
    }catch(error){
     if(!databaseSaved){
