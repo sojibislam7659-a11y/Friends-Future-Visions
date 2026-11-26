@@ -63,6 +63,21 @@ export async function requireRole(allowedRoles) {
    return null;
   }
 
+  // Require an elevated assurance session for every protected Super Admin route.
+  // Database RLS also checks AAL2; this client guard sends stale AAL1 sessions back
+  // through the existing MFA login flow instead of rendering an empty admin shell.
+  if (profile.role === "super_admin") {
+   const { data: assurance, error: assuranceError } = await withTimeout(
+    supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
+    "Super Admin MFA check"
+   );
+   if (assuranceError) throw assuranceError;
+   if (assurance?.currentLevel !== "aal2") {
+    location.replace("login.html?reason=mfa");
+    return null;
+   }
+  }
+
   // A member must have exactly one linked, active member record to enter the portal.
   // Super Admin access remains independent of the members table.
   if (profile.role === "member") {
