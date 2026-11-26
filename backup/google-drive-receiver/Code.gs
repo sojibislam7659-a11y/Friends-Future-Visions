@@ -1,9 +1,9 @@
 /**
  * Friends Future Vision Forever — encrypted backup receiver.
  *
- * Receives already-encrypted archive chunks from a trusted GitHub Actions
- * workflow and writes them into one owner-selected Google Drive folder.
- * This endpoint never reads or returns Drive contents.
+ * Receives already-encrypted archive chunks and provides token-authenticated,
+ * exact-run recovery endpoints for the trusted GitHub Actions restore workflow.
+ * It does not expose generic Drive folder listing or browsing.
  *
  * Required Script Properties:
  *   FFV_BACKUP_TOKEN  - random 256-bit bearer token
