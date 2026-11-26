@@ -26,23 +26,13 @@ document.getElementById("languageToggle").addEventListener("click",()=>{lang=lan
 function showKey(key){msg.dataset.messageKey=key;show(key)}
 
 const resetPanel=document.getElementById("resetPanel"),resetMessage=document.getElementById("resetMessage");
-const mandatoryPanel=document.getElementById("mandatoryPasswordPanel");
-const requiredPasswordMessage=document.getElementById("requiredPasswordMessage");
 const showResetMessage=text=>{resetMessage.textContent=text;resetMessage.style.display="block"};
-const showMandatoryPasswordChange=()=>{
- form.hidden=true;resetPanel.hidden=true;mandatoryPanel.hidden=false;
- document.getElementById("forgotPasswordLink").hidden=true;
- document.getElementById("resendVerificationLink").hidden=true;
- document.querySelector(".security-note").hidden=true;
- document.querySelectorAll(".login > p.small").forEach(node=>node.hidden=true);
- document.getElementById("requiredNewPassword").focus();
-};
 const mfaPanel=document.getElementById("superAdminMfaPanel");
 const mfaMessage=document.getElementById("mfaMessage");
 let activeMfaFactorId=null;
 const showMfaMessage=text=>{mfaMessage.textContent=text;mfaMessage.style.display="block"};
 const startSuperAdminMfa=async()=>{
- form.hidden=true;resetPanel.hidden=true;mandatoryPanel.hidden=true;mfaPanel.hidden=false;
+ form.hidden=true;resetPanel.hidden=true;mfaPanel.hidden=false;
  document.getElementById("forgotPasswordLink").hidden=true;
  document.getElementById("resendVerificationLink").hidden=true;
  document.querySelector(".security-note").hidden=true;
@@ -148,9 +138,8 @@ document.getElementById("resetForm").addEventListener("submit",async event=>{
  if(resetUser.user){
   const {data:resetProfile}=await supabase.from("profiles").select("must_change_password").eq("id",resetUser.user.id).maybeSingle();
   if(resetProfile?.must_change_password){
-   const {data:currentUser}=await supabase.auth.getUser();
- const {error:flagError}=await supabase.from("profiles").update({must_change_password:false}).eq("id",currentUser.user.id);
-   if(flagError){showResetMessage("Password changed, but first-login access could not be unlocked. Sign in again and complete the required password change.");button.disabled=false;button.textContent=tr("savePassword");return}
+   const {error:flagError}=await supabase.rpc("complete_required_password_change");
+   if(flagError){showResetMessage("Password changed, but the temporary-password flag could not be cleared. Contact the Super Admin.");button.disabled=false;button.textContent=tr("savePassword");return}
   }
  }
  showResetMessage(lang==="bn"?"Password পরিবর্তন হয়েছে। নতুন Password দিয়ে Login করুন।":"Password updated. Sign in with your new password.");
@@ -163,10 +152,10 @@ if(!supabaseReady)showKey("service");
 else{
  const {data}=await supabase.auth.getSession();
  if(data.session){
-  const {data:profile}=await supabase.from("profiles").select("role,must_change_password").eq("id",data.session.user.id).maybeSingle();
+  const {data:profile}=await supabase.from("profiles").select("role,must_change_password,password_change_prompt_seen_at").eq("id",data.session.user.id).maybeSingle();
   if(isPasswordRecovery){ /* Keep the recovery session active for updateUser(). */ }
   else if(profile?.role==="super_admin")await startSuperAdminMfa();
-  else if(profile?.role==="member"&&profile.must_change_password)showMandatoryPasswordChange();
+  else if(profile?.role==="member"&&profile.must_change_password&&!profile.password_change_prompt_seen_at)location.replace("password-change.html");
   else if(profile?.role==="member")location.replace("dashboard.html");
   else{
    await supabase.auth.signOut();
@@ -195,21 +184,6 @@ document.getElementById("mfaSignOut").addEventListener("click",async()=>{
  location.replace("login.html");
 });
 
-document.getElementById("mandatoryPasswordForm").addEventListener("submit",async event=>{
- event.preventDefault();
- const password=document.getElementById("requiredNewPassword").value;
- const confirmPassword=document.getElementById("requiredConfirmPassword").value;
- if(password.length<12){requiredPasswordMessage.textContent="Password কমপক্ষে ১২ অক্ষরের হতে হবে।";requiredPasswordMessage.style.display="block";return}
- if(password!==confirmPassword){requiredPasswordMessage.textContent="দুটি Password এক নয়।";requiredPasswordMessage.style.display="block";return}
- const button=document.getElementById("requiredPasswordButton");button.disabled=true;button.textContent="পরিবর্তন হচ্ছে…";
- const {error}=await supabase.auth.updateUser({password});
- if(error){requiredPasswordMessage.textContent=error.message;requiredPasswordMessage.style.display="block";button.disabled=false;button.textContent="Password পরিবর্তন করুন";return}
- const {error:flagError}=await supabase.rpc("complete_required_password_change");
- if(flagError){requiredPasswordMessage.textContent="Password বদলেছে, কিন্তু account unlock হয়নি। আবার চেষ্টা করুন বা Super Admin-কে জানান।";requiredPasswordMessage.style.display="block";button.disabled=false;button.textContent="আবার চেষ্টা করুন";return}
- await supabase.auth.refreshSession();
- location.replace("dashboard.html");
-});
-
 form.addEventListener("submit",async e=>{
  e.preventDefault();if(!supabaseReady)return;
  btn.disabled=true;btn.textContent=tr("checking");msg.style.display="none";
@@ -220,9 +194,9 @@ form.addEventListener("submit",async e=>{
   else showKey("loginError");
  }
  else{
-  const {data:p,error:pe}=await supabase.from("profiles").select("role,must_change_password").eq("id",data.user.id).maybeSingle();
+  const {data:p,error:pe}=await supabase.from("profiles").select("role,must_change_password,password_change_prompt_seen_at").eq("id",data.user.id).maybeSingle();
   if(!pe&&p?.role==="super_admin"){await startSuperAdminMfa();return}
-  if(!pe&&p?.role==="member"&&p.must_change_password){showMandatoryPasswordChange();return}
+  if(!pe&&p?.role==="member"&&p.must_change_password&&!p.password_change_prompt_seen_at){location.replace("password-change.html");return}
   if(!pe&&p?.role==="pending"){await supabase.auth.signOut();showKey("pendingVerified")}
   else if(!pe&&p?.role==="rejected"){await supabase.auth.signOut();showKey("rejected")}
   else if(pe||!p||!["super_admin","member"].includes(p.role)){await supabase.auth.signOut();showKey("noAccess")}
