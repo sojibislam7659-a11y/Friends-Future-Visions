@@ -108,11 +108,14 @@ async function loadMatrix() {
 
   const { data: sharedRows, error: sharedError } = await supabase.rpc("get_member_shared_financial_data_v2");
   if (sharedError) throw sharedError;
+  const { data: displayNameRows, error: displayNameError } = await supabase.rpc("get_matrix_member_display_names");
+  if (displayNameError) throw displayNameError;
+  const displayNameMap = new Map((displayNameRows || []).map(row => [row.member_id, row.display_name]));
   const memberMap = new Map();
   const transactionMap = new Map();
   const matrixPrefix = "FFV_MATRIX|";
   (sharedRows || []).forEach(row => {
-    if (!memberMap.has(row.member_id)) memberMap.set(row.member_id, { id: row.member_id, member_no: row.member_no, status: "active" });
+    if (!memberMap.has(row.member_id)) memberMap.set(row.member_id, { id: row.member_id, member_no: row.member_no, display_name: displayNameMap.get(row.member_id) || "", status: "active" });
     const month = String(row.contribution_month).slice(0, 7);
     const matrixRows = Number(row.matrix_count || 0) > 0 ? [{ id: null, amount: Number(row.amount || 0), reference_no: matrixPrefix + month + "|" + row.member_id }] : [];
     const manualRows = row.has_manual ? [{ id: null, amount: Number(row.amount || 0), reference_no: "MANUAL" }] : [];
@@ -199,7 +202,9 @@ async function loadMatrix() {
         }).join("");
 
         return '<tr data-member-row="' + esc(member.id) + '" data-period="' + periodKey + '">' +
-          '<td class="sticky-col">' + esc(memberNo) + '</td>' +
+          '<td class="sticky-col matrix-member-cell"><strong>' + esc(memberNo) + '</strong>' + (isSuper
+            ? '<input class="matrix-display-name-input" type="text" maxlength="40" data-member="' + esc(member.id) + '" value="' + esc(member.display_name || "") + '" aria-label="Display name for member ' + esc(memberNo) + '" placeholder="Name">'
+            : '<small class="matrix-display-name">' + esc(member.display_name || "") + '</small>') + '</td>' +
 
           cells +
           '<td class="matrix-period-total" data-period-total="' + periodKey + '" data-member="' + esc(member.id) + '"><strong>' + money(periodTotal) + '</strong></td>' +
@@ -211,7 +216,7 @@ async function loadMatrix() {
       }).join("");
       const periodTotal = members.reduce((sum, member) => sum + periodMonths.reduce((inner, month) => inner + (transactionMap.get(member.id + "|" + month)?.amount || 0), 0), 0);
       return '<section class="section matrix-period-section" data-period="' + periodKey + '"><div class="section-head"><h2>' + year + " · " + periodLabel + ' · Monthly contribution</h2><strong class="muted">' + money(periodTotal) + '</strong></div>' +
-        '<p class="matrix-scroll-hint">একসাথে ৪ মাসের তথ্য দেখুন</p><div class="table-wrap matrix-wrap"><table class="contribution-matrix matrix-editable"><thead><tr><th class="sticky-col">Member No.</th>' + headers + '<th>Period Total</th></tr></thead>' +
+        '<p class="matrix-scroll-hint">একসাথে ৪ মাসের তথ্য দেখুন</p><div class="table-wrap matrix-wrap"><table class="contribution-matrix matrix-editable"><thead><tr><th class="sticky-col">No.</th>' + headers + '<th>Total</th></tr></thead>' +
         '<tbody>' + body + '<tr class="total-row"><td>TOTAL</td>' + monthTotals + '<td data-period-grand-total="' + periodKey + '"><strong>' + money(periodTotal) + '</strong></td></tr></tbody></table></div></section>';
     }).join("");
   }).join("");
@@ -225,6 +230,29 @@ async function loadMatrix() {
     yearSelector +
     tables +
     (isSuper ? '<div class="form-actions matrix-save-actions"><button type="button" id="saveMatrix">Confirm &amp; Save</button><span id="matrixSaveStatus" class="muted small"></span></div>' : "");
+
+  if (isSuper) root.querySelectorAll(".matrix-display-name-input").forEach(input => {
+    let savedValue = input.value;
+    const saveDisplayName = async () => {
+      const value = input.value.trim();
+      if (value === savedValue) return;
+      input.disabled = true;
+      const { error } = await supabase.from("members").update({ matrix_display_name: value || null }).eq("id", input.dataset.member);
+      input.disabled = false;
+      if (error) {
+        input.value = savedValue;
+        toast("Name save হয়নি: " + error.message, true);
+        return;
+      }
+      savedValue = value;
+      const member = members.find(item => item.id === input.dataset.member);
+      if (member) member.display_name = value;
+      input.value = value;
+      toast("Display name saved.");
+    };
+    input.addEventListener("blur", saveDisplayName);
+    input.addEventListener("keydown", event => { if (event.key === "Enter") { event.preventDefault(); input.blur(); } });
+  });
 
   document.getElementById("matrixYear")?.addEventListener("change", event => {
     const hasUnsavedChanges = Array.from(root.querySelectorAll(".matrix-amount")).some(input => {
