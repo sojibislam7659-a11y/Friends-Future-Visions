@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - release/ffv-prod-parity-20261122
+      - main
   pull_request:
     branches:
       - main
