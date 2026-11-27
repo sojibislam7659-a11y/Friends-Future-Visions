@@ -71,7 +71,12 @@ async function main(){
   if(documentError||!u?.signedUrl)return '<section class="section"><h2>'+esc(label)+'</h2><p class="muted small">ফাইলটি নিরাপদে খোলা যাচ্ছে না।</p></section>';
   const typeLabel={nid:"NID",birth_registration:"Birth Registration",passport:"Passport"}[type]||"Identity Document";
   const image=/\.(?:jpe?g|png|webp)$/i.test(path);
-  const preview=image?'<a class="private-document-preview-link" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener"><img class="private-doc-thumb identity-document-preview" src="'+esc(u.signedUrl)+'" alt="'+esc(label)+'"></a>':"";
+  const pdf=/\.pdf$/i.test(path);
+  const preview=image
+   ? '<a class="private-document-preview-link" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener"><img class="private-doc-thumb identity-document-preview" src="'+esc(u.signedUrl)+'" alt="'+esc(label)+'"></a>'
+   : pdf
+    ? '<div class="private-document-pdf-preview"><iframe loading="lazy" referrerpolicy="no-referrer" src="'+esc(u.signedUrl)+'#toolbar=0&navpanes=0" title="'+esc(label)+' PDF preview"></iframe></div>'
+    : "";
   return '<section class="section"><h2>'+esc(label)+' · '+esc(typeLabel)+'</h2>'+preview+'<a class="button secondary private-document-open" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">View '+esc(typeLabel)+'</a></section>';
  };
  identityDocumentSection=await renderIdentityDocument(m.member_identity_document_path,"Member Identity Document",m.member_identity_document_type);
