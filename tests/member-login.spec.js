@@ -14,7 +14,7 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   await expect(page.locator("#loginForm")).toBeVisible();
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
-  await page.locator("#loginButton").click();
+  await page.locator("#loginButton").click({ noWaitAfter: true });
 
   await expect(page).toHaveURL(/dashboard(?:\.html)?(?:$|[?#])/, { timeout: 30000 });
   await expect(page.locator("body")).toHaveAttribute("data-page", "dashboard");
@@ -47,6 +47,7 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   }));
   expect(matrixLayout.headerCount).toBe(6);
   expect(matrixLayout.tableWidth).toBeLessThanOrEqual(matrixLayout.wrapperWidth + 1);
+  await expect(page.locator(".matrix-display-name").first()).toBeVisible();
   if ((page.viewportSize()?.width || 9999) <= 600) {
     await expect(page.locator(".public-mobile-nav")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
@@ -62,6 +63,7 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   await expect(page.locator(".member-profile-summary")).toContainText("Total Deposit");
   await expect(page.locator(".member-profile-summary")).toContainText("Total Due");
   await expect(page.locator(".member-profile-summary")).not.toContainText("Status");
+  await expect(page.locator(".private-document-preview-link, .private-document-pdf-preview")).toHaveCount(0);
   await expect(page.locator("#toggleMemberEditor")).toHaveCount(0);
   await expect(page.locator("#memberFieldEditor")).toHaveCount(0);
   await page.locator("#profileMenuBtn").click();
