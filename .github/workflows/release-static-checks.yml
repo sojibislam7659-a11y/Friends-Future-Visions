@@ -5,6 +5,7 @@ on:
     branches:
       - development
       - main
+      - production-ui-fixes-20261127-v2
       - release/production-updates-20261117
       - release/ffv-prod-parity-20261122
   pull_request:
