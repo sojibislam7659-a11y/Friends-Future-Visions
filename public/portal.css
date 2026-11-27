@@ -1365,3 +1365,44 @@ body.dark-theme .member-profile-grid .field textarea{
  .contribution-matrix.matrix-editable th:not(:first-child):not(:last-child),.contribution-matrix.matrix-editable td:not(:first-child):not(:last-child){min-width:96px}
  .contribution-matrix.matrix-editable .matrix-amount{width:82px;max-width:100%}
 }
+
+
+/* Production fix: show both identity documents consistently. */
+.private-document-pdf-preview{width:100%;max-width:440px;margin:8px 0 12px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.private-document-pdf-preview iframe{display:block;width:100%;height:clamp(360px,62vh,560px);border:0;background:#fff}
+.dashboard-statement-action{justify-content:flex-start;margin:12px 0 16px}
+.dashboard-statement-action .button{display:inline-flex;align-items:center;gap:8px}
+
+/* Production DATA: exactly six visible columns (member + four months + period total),
+   with no horizontal scrolling on mobile or desktop. */
+.contribution-matrix.matrix-editable{display:table;width:100%!important;min-width:0!important;max-width:100%;table-layout:fixed!important;border-collapse:collapse}
+.contribution-matrix.matrix-editable th,.contribution-matrix.matrix-editable td{min-width:0!important;max-width:none;padding:4px 3px!important;font-size:11px!important;line-height:1.2;overflow:hidden;overflow-wrap:anywhere}
+.contribution-matrix.matrix-editable th:first-child,.contribution-matrix.matrix-editable td:first-child{width:52px!important;min-width:52px!important;max-width:52px}
+.contribution-matrix.matrix-editable th:last-child,.contribution-matrix.matrix-editable td:last-child{width:64px!important;min-width:64px!important;max-width:64px}
+.contribution-matrix.matrix-editable th.matrix-month-head,
+.contribution-matrix.matrix-editable tbody tr:not(.total-row) td:not(.sticky-col):not(.matrix-period-total),
+.contribution-matrix.matrix-editable tbody tr.total-row td.matrix-month-total{width:calc((100% - 116px)/4)!important;min-width:0!important}
+.contribution-matrix.matrix-editable .matrix-cell{display:flex;flex-direction:column;align-items:stretch;gap:2px;min-width:0!important;width:100%;padding:0}
+.contribution-matrix.matrix-editable .matrix-amount{display:block;width:100%!important;min-width:0!important;max-width:100%!important;height:29px;min-height:29px;padding:3px 4px!important;border-radius:6px;font-size:11px!important;line-height:1.1}
+.contribution-matrix.matrix-editable .matrix-toggle{gap:3px;font-size:9px;line-height:1.1;white-space:nowrap}
+.contribution-matrix.matrix-editable .matrix-check{width:13px;height:13px;flex:0 0 13px;margin:0}
+.contribution-matrix.matrix-editable .matrix-day{display:block;width:100%!important;min-width:0!important;max-width:100%!important;height:22px;min-height:22px;padding:2px!important;font-size:9px!important}
+.contribution-matrix.matrix-editable .matrix-cell .cell-date,
+.contribution-matrix.matrix-editable .matrix-paid-day{font-size:8px!important;line-height:1.1;overflow-wrap:anywhere}
+.matrix-wrap{width:100%;max-width:100%;overflow-x:hidden!important}
+.matrix-scroll-hint{font-size:11px;opacity:.75}
+@media(max-width:640px){
+ .contribution-matrix.matrix-editable{min-width:0!important;width:100%!important;table-layout:fixed!important}
+ .contribution-matrix.matrix-editable th,.contribution-matrix.matrix-editable td{padding:3px 2px!important;font-size:10px!important}
+ .contribution-matrix.matrix-editable th:first-child,.contribution-matrix.matrix-editable td:first-child{width:46px!important;min-width:46px!important;max-width:46px}
+ .contribution-matrix.matrix-editable th:last-child,.contribution-matrix.matrix-editable td:last-child{width:58px!important;min-width:58px!important;max-width:58px}
+ .contribution-matrix.matrix-editable th.matrix-month-head,
+ .contribution-matrix.matrix-editable tbody tr:not(.total-row) td:not(.sticky-col):not(.matrix-period-total),
+ .contribution-matrix.matrix-editable tbody tr.total-row td.matrix-month-total{width:calc((100% - 104px)/4)!important}
+ .contribution-matrix.matrix-editable .matrix-amount{height:27px;min-height:27px;font-size:10px!important;padding:2px 3px!important}
+ .contribution-matrix.matrix-editable .matrix-toggle{font-size:8px}
+ .contribution-matrix.matrix-editable .matrix-day{height:20px;min-height:20px;font-size:8px!important}
+ .contribution-matrix.matrix-editable .matrix-cell .cell-date,
+ .contribution-matrix.matrix-editable .matrix-paid-day{font-size:7px!important}
+ .matrix-wrap{overflow-x:hidden!important}
+}
