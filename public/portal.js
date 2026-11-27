@@ -244,7 +244,7 @@ async function renderDashboard(){
   ?'<div class="error" role="alert"><strong>হিসাব মিলছে না — যাচাই প্রয়োজন</strong><p>Active member ledger ও DATA matrix-এর মধ্যে '+money(Math.abs(contributionDifference))+' পার্থক্য আছে। '+(contributionDifference>0?'Ledger-এ বেশি':'DATA matrix-এ বেশি')+'. DATA এবং Financial Ledger মিলিয়ে সংশোধন করুন।</p></div>'
   :"";
 
- setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p>'+reconciliationNotice+'<div class=\"grid\">'+
+ setPage('<p class="lead">'+t("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ। সদস্যদের ব্যক্তিগত তথ্য এখানে প্রকাশ করা হয় না।","Verified committee-wide financial summary. Individual member details are not shown here.")+'</p>'+(access.role==="member"?'<div class="form-actions dashboard-statement-action"><a class="button" href="statement.html">'+icon("data")+' '+t("আমার স্টেটমেন্ট","My Statement")+'</a></div>':"")+reconciliationNotice+'<div class=\"grid\">'+
  dashboardCard(t("মোট সদস্য","Total members"),String(activeMemberCount),t("অনুমোদিত সক্রিয় সদস্য","Approved active members"))+
  dashboardCard(t("মোট সম্পদ","Total assets"),money(s.total_assets),t("নগদ + ব্যাংক + বিনিয়োগ","Cash + bank + investments"))+
  dashboardCard(t("ব্যাংক ব্যালেন্স","Bank balance"),money(s.bank_balance))+
