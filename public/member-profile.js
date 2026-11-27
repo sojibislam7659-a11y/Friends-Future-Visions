@@ -109,8 +109,8 @@ async function main(){
   : "";
  const combinedEditor=access.role==="super_admin" ? '<div id="memberFieldEditor" hidden>'+adminFieldEditor+'</div>' : "";
  const isSuper=access.role==="super_admin";
- const roleLabel=profileLang==="en"?(isSuper?"Super Admin":"Member"):(isSuper?"সুপার অ্যাডমিন":"সদস্য");
   let profileLang="bn";try{profileLang=localStorage.getItem("ffv-lang")==="en"?"en":"bn"}catch{}
+ const roleLabel=profileLang==="en"?(isSuper?"Super Admin":"Member"):(isSuper?"সুপার অ্যাডমিন":"সদস্য");
  const navIcon=(name)=>{
   const paths={menu:' <path d="M4 6h16M4 12h16M4 18h16"/>',home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M23 11h-6"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5M10 14l2 2 4-4"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',statement:'<path d="M6 3h9l4 4v14H6zM15 3v5h5M9 12h7M9 16h7"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6zM9 12l2 2 4-4"/>'};
   return '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.data)+'</svg>';
