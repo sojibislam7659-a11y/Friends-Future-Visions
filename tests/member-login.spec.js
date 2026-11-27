@@ -23,6 +23,9 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   }
   await expect(page.locator("#app")).toContainText("কমিটির যাচাইকৃত আর্থিক সারসংক্ষেপ", { timeout: 30000 });
   await expect(page.locator("#app")).not.toContainText("প্রবেশ যাচাই করা যায়নি");
+  const statementCta = page.locator(".dashboard-statement-action a[href='statement.html']");
+  await expect(statementCta).toBeVisible();
+  await expect(statementCta).toContainText(/My Statement|আমার স্টেটমেন্ট/);
 
   expect(pageErrors, "Browser JavaScript errors detected").toEqual([]);
   await page.goto(`${baseURL}/data.html`, { waitUntil: "domcontentloaded" });
@@ -37,6 +40,13 @@ test("Member can sign in and load the authenticated dashboard", async ({ page })
   expect(Number.parseFloat(tickerAnimation.duration)).toBeGreaterThan(0);
   await expect(page.locator(".matrix-amount").first()).toBeDisabled();
   await expect(page.locator(".matrix-save-actions")).toHaveCount(0);
+  const matrixLayout = await page.locator(".matrix-wrap table.contribution-matrix").first().evaluate(table => ({
+    headerCount: table.querySelectorAll("thead th").length,
+    tableWidth: table.scrollWidth,
+    wrapperWidth: table.parentElement.clientWidth
+  }));
+  expect(matrixLayout.headerCount).toBe(6);
+  expect(matrixLayout.tableWidth).toBeLessThanOrEqual(matrixLayout.wrapperWidth + 1);
   if ((page.viewportSize()?.width || 9999) <= 600) {
     await expect(page.locator(".public-mobile-nav")).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
