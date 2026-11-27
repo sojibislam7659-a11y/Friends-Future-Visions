@@ -61,7 +61,7 @@ async function main(){
  }
  if(m.nominee_photo_path){
   const {data:u}=await supabase.storage.from("member-private-documents").createSignedUrl(m.nominee_photo_path,1800);
-  if(u?.signedUrl)nomineePhoto='<section class="section"><h2>Nominee Picture</h2><img class="private-doc-thumb" src="'+esc(u.signedUrl)+'" alt="Nominee picture"></section>';
+  if(u?.signedUrl)nomineePhoto='<section class="section"><h2>Nominee Picture</h2><a class="button secondary private-document-open" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">View Nominee Picture</a></section>';
  }
  let identityDocumentSection="",nomineeNidSection="";
  const canViewOwnPrivateDocuments=access.role==="super_admin"||m.auth_user_id===access.session.user.id;
@@ -70,14 +70,7 @@ async function main(){
   const {data:u,error:documentError}=await supabase.storage.from("member-private-documents").createSignedUrl(path,1800);
   if(documentError||!u?.signedUrl)return '<section class="section"><h2>'+esc(label)+'</h2><p class="muted small">ফাইলটি নিরাপদে খোলা যাচ্ছে না।</p></section>';
   const typeLabel={nid:"NID",birth_registration:"Birth Registration",passport:"Passport"}[type]||"Identity Document";
-  const image=/\.(?:jpe?g|png|webp)$/i.test(path);
-  const pdf=/\.pdf$/i.test(path);
-  const preview=image
-   ? '<a class="private-document-preview-link" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener"><img class="private-doc-thumb identity-document-preview" src="'+esc(u.signedUrl)+'" alt="'+esc(label)+'"></a>'
-   : pdf
-    ? '<div class="private-document-pdf-preview"><iframe loading="lazy" referrerpolicy="no-referrer" src="'+esc(u.signedUrl)+'#toolbar=0&navpanes=0" title="'+esc(label)+' PDF preview"></iframe></div>'
-    : "";
-  return '<section class="section"><h2>'+esc(label)+' · '+esc(typeLabel)+'</h2>'+preview+'<a class="button secondary private-document-open" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">View '+esc(typeLabel)+'</a></section>';
+  return '<section class="section"><h2>'+esc(label)+' · '+esc(typeLabel)+'</h2><a class="button secondary private-document-open" href="'+esc(u.signedUrl)+'" target="_blank" rel="noopener">View '+esc(typeLabel)+'</a></section>';
  };
  identityDocumentSection=await renderIdentityDocument(m.member_identity_document_path,"Member Identity Document",m.member_identity_document_type);
  nomineeNidSection=await renderIdentityDocument(m.nominee_nid_path,"Nominee Identity Document",m.nominee_identity_document_type);
@@ -122,7 +115,7 @@ async function main(){
   const paths={menu:' <path d="M4 6h16M4 12h16M4 18h16"/>',home:'<path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',rules:'<path d="M7 3h10l3 3v15H7zM17 3v4h4M10 11h7M10 15h7"/>',members:'<path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M20 8v6M23 11h-6"/>',data:'<path d="M4 19V5M4 19h17M8 15l4-4 3 2 5-7"/>',due:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',proof:'<path d="M7 3h8l4 4v14H7zM15 3v5h5M10 14l2 2 4-4"/>',payment:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h4"/>',admin:'<path d="M12 3 4 6v5c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V6zM9 12l2 2 4-4"/>'};
   return '<svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+(paths[name]||paths.data)+'</svg>';
  };
- const item=(href,label,ico)=>'<a href="'+href+'"'+(href==="statement.html"?' class="member-statement-nav-link button secondary"':"")+'>'+navIcon(ico)+'<span>'+label+'</span></a>';
+ const item=(href,label,ico)=>'<a href="'+href+'"'+(href==="statement.html"?' class="member-statement-nav-link sidebar-statement-button button secondary"':"")+'>'+navIcon(ico)+'<span>'+label+'</span></a>';
  const primaryNav=item("dashboard.html","হোম","home")+item("rules.html","RULES","rules")+item("member-info.html","MEMBER INFO","members")+item("data.html","DATA","data")+(isSuper?item("personal-due.html","PERSONAL DUE","due")+item("proof.html","PROOF","proof")+item("payment.html","PAYMENT","payment")+item("admin.html","SUPER ADMIN","admin"):item("personal-due.html","PERSONAL DUE","due")+item("proof.html","PROOF","proof")+item("payment.html","PAYMENT","payment")+item("statement.html","MY STATEMENT","data")+item("member.html","MY PROFILE","members"));
  const sidebarNav=isSuper?item("personal-due.html","PERSONAL DUE","due")+item("proof.html","PROOF","proof")+item("payment.html","PAYMENT","payment")+item("admin.html","SUPER ADMIN","admin"):item("personal-due.html","PERSONAL DUE","due")+item("proof.html","PROOF","proof")+item("payment.html","PAYMENT","payment")+item("statement.html","MY STATEMENT","data")+item("member.html","MY PROFILE","members");
  const bottomNav='<nav class="mobile-bottom-nav" aria-label="Quick navigation">'+item("dashboard.html","হোম","home")+item("member-info.html","সদস্য","members")+item("rules.html","নিয়ম","rules")+item("data.html","ডাটা","data")+'<button type="button" id="profileMobileMenuBtn" aria-label="Open menu">'+navIcon("menu")+'<span>আরও</span></button></nav>';
