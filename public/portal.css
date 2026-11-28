@@ -1497,3 +1497,92 @@ body.dark-theme .member-profile-grid .field textarea{
 .drawer-backdrop{background:rgba(3,12,25,.68)!important;backdrop-filter:blur(2px)}
 @media(max-height:650px){#profileSidebar{padding-bottom:max(14px,env(safe-area-inset-bottom))}#profileSidebar .sidebar-nav{gap:6px}#profileSidebar .sidebar-nav a{min-height:42px;padding:9px 12px}}
 @media(max-width:380px){#profileSidebar{width:calc(100vw - 14px);max-width:calc(100vw - 14px)}#profileSidebar .sidebar-footer{gap:7px}#profileSidebar .sidebar-footer>button,#profileSidebar .sidebar-footer>a{font-size:11px}}
+
+
+/* Member profile sidebar: authoritative final layout and controls. */
+#profileSidebar{
+ display:flex!important;flex-direction:column!important;
+ height:100dvh;max-height:100dvh;
+ padding:14px 12px max(12px,env(safe-area-inset-bottom))!important;
+ overflow-x:hidden!important;overflow-y:auto!important;
+ overscroll-behavior:contain;
+}
+#profileSidebar .sidebar-head{flex:0 0 auto;padding-bottom:12px!important}
+#profileSidebar .sidebar-nav{
+ flex:0 0 auto!important;display:flex!important;flex-direction:column!important;
+ gap:6px!important;margin:10px 0 12px!important;padding:0!important;
+}
+#profileSidebar .sidebar-nav>a{
+ display:flex!important;align-items:center!important;justify-content:flex-start!important;
+ gap:11px!important;width:100%!important;min-height:42px!important;
+ margin:0!important;padding:9px 12px!important;box-sizing:border-box!important;
+}
+#profileSidebar .sidebar-nav>a>.ui-icon{
+ display:block!important;visibility:visible!important;opacity:1!important;
+ width:20px!important;height:20px!important;min-width:20px!important;
+ flex:0 0 20px!important;overflow:visible!important;
+}
+#profileSidebar .sidebar-nav>a>span{display:inline!important;min-width:0;line-height:1.3}
+#profileSidebar .sidebar-nav>a.sidebar-statement-button{
+ background:#08745a!important;color:#fff!important;border:1px solid #3a9b7d!important;
+}
+#profileSidebar .sidebar-nav>a.sidebar-statement-button>.ui-icon{color:#fff!important}
+#profileSidebar .sidebar-footer{
+ flex:0 0 auto!important;display:grid!important;
+ grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:7px!important;align-items:stretch!important;
+ margin:0!important;padding:10px 0 0!important;
+ border-top:1px solid rgba(185,205,255,.18)!important;
+}
+#profileSidebar .sidebar-footer .sidebar-account{
+ grid-column:1/-1!important;display:flex!important;flex-direction:column!important;
+ gap:2px!important;min-width:0;margin:0 0 3px!important;padding:0 2px 5px!important;
+}
+#profileSidebar .sidebar-footer>button,
+#profileSidebar .sidebar-footer>a,
+#profileSidebar .sidebar-footer>details>summary{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:100%!important;min-width:0!important;min-height:38px!important;
+ margin:0!important;padding:7px 8px!important;box-sizing:border-box!important;
+ border-radius:9px!important;font-size:11px!important;font-weight:750!important;
+ line-height:1.25!important;text-align:center!important;white-space:normal!important;
+}
+#profileSidebar .sidebar-footer .sidebar-pdf-button{
+ grid-column:auto!important;gap:7px!important;
+ background:#174d45!important;color:#f2fff9!important;
+ border:1px solid #67bca0!important;box-shadow:0 2px 5px rgba(0,0,0,.15)!important;
+ text-decoration:none!important;
+}
+#profileSidebar .sidebar-footer .sidebar-pdf-button:hover{background:#206657!important}
+#profileSidebar .sidebar-footer .sidebar-pdf-icon{
+ display:block!important;flex:0 0 17px!important;width:17px!important;height:17px!important;
+ color:currentColor!important;visibility:visible!important;opacity:1!important;
+}
+#profileSidebar .sidebar-footer .sidebar-pdf-button>span{display:block!important;min-width:0}
+#profileSidebar .sidebar-footer #sidebarInstallAppBtn{grid-column:auto!important}
+#profileSidebar .sidebar-footer .sidebar-logout-button{
+ grid-column:1/-1!important;background:#713b43!important;color:#fff!important;
+ border:1px solid #98535b!important;
+}
+#profileSidebar .sidebar-footer #profileThemeToggle,
+#profileSidebar .sidebar-footer #profileLanguageToggle,
+#profileSidebar .sidebar-footer #sidebarInstallAppBtn{
+ background:rgba(255,255,255,.075)!important;color:#eef5ff!important;
+ border:1px solid rgba(190,205,255,.3)!important;
+}
+#profileSidebar .drawer-close{flex:0 0 40px!important}
+#profileDrawerBackdrop{position:fixed!important;inset:0!important;z-index:99!important}
+#profileSidebar{z-index:100!important}
+@media(max-height:650px){
+ #profileSidebar{padding-top:10px!important}
+ #profileSidebar .sidebar-nav{gap:4px!important;margin:7px 0 8px!important}
+ #profileSidebar .sidebar-nav>a{min-height:38px!important;padding:7px 10px!important}
+ #profileSidebar .sidebar-footer{gap:6px!important;padding-top:8px!important}
+ #profileSidebar .sidebar-footer>button,
+ #profileSidebar .sidebar-footer>a,
+ #profileSidebar .sidebar-footer>details>summary{min-height:34px!important}
+}
+@media(max-width:380px){
+ #profileSidebar{width:calc(100vw - 14px)!important;max-width:calc(100vw - 14px)!important}
+ #profileSidebar .sidebar-footer{gap:6px!important}
+}
