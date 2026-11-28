@@ -1,4 +1,4 @@
-const CACHE_NAME = "ffv-static-v10";
+const CACHE_NAME = "ffv-static-v11";
 const STATIC_FILE = /\.(?:css|js|svg|webp|png|woff2|webmanifest)$/i;
 const PRECACHE = [
   "/portal.css",
@@ -29,17 +29,22 @@ self.addEventListener("fetch", event => {
   if (url.pathname.includes("/rest/v1/") || url.pathname.includes("/auth/") || url.pathname.includes("/storage/")) return;
   if (!STATIC_FILE.test(url.pathname)) return;
 
-  const updatePromise = caches.open(CACHE_NAME).then(async cache => {
-    const response = await fetch(request);
-    if (response.ok && response.type === "basic") await cache.put(request, response.clone());
-    return response;
-  });
-  event.waitUntil(updatePromise.catch(() => {}));
-  event.respondWith(caches.open(CACHE_NAME).then(async cache => {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    return updatePromise;
-  }));
+  // Network-first for same-origin static assets: never render stale CSS/JS while online.
+  // Keep a cache fallback for offline access and update it only with successful responses.
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE_NAME);
+    try {
+      const response = await fetch(request, { cache: "no-cache" });
+      if (response.ok && response.type === "basic") {
+        await cache.put(request, response.clone());
+      }
+      return response;
+    } catch (error) {
+      const cached = await cache.match(request);
+      if (cached) return cached;
+      throw error;
+    }
+  })());
 });
 
 self.addEventListener("push", event => {
